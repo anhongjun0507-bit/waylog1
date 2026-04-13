@@ -8,6 +8,9 @@
     -moz-osx-font-smoothing: grayscale;
     background-color: #f9fafb;
   }
+  html.dark, html.dark body {
+    background-color: #111827;
+  }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -25,4 +28,30 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* Animations */
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slideDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes toastIn { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+@keyframes signatureEnter { 0% { transform: scale(0.85) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes cardEnter { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+
+.animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-slide-down { animation: slideDown 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-fade-out { animation: fadeOut 0.2s ease-out forwards; }
+.animate-toast { animation: toastIn 2.2s ease-out; }
+.animate-signature-enter { animation: signatureEnter 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-shimmer { animation: shimmer 1.5s infinite linear; }
+.animate-card-enter { animation: cardEnter 0.4s ease-out backwards; }
+.tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
+
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+  border-radius: 4px;
 }

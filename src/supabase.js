@@ -120,3 +120,25 @@ export const comments = {
     catch (e) { return { error: e } }
   },
 }
+
+export const storage = {
+  async uploadMedia(userId, file, fileName) {
+    if (!supabase) return { url: null, error: null }
+    try {
+      const path = `${userId}/${Date.now()}-${fileName}`
+      const { data, error } = await supabase.storage
+        .from('review-media')
+        .upload(path, file, { cacheControl: '31536000', upsert: false })
+      if (error) return { url: null, error }
+      const { data: urlData } = supabase.storage
+        .from('review-media')
+        .getPublicUrl(data.path)
+      return { url: urlData.publicUrl, error: null }
+    } catch (e) { return { url: null, error: e } }
+  },
+  async deleteMedia(path) {
+    if (!supabase) return noop
+    try { return await supabase.storage.from('review-media').remove([path]) }
+    catch (e) { return { error: e } }
+  },
+}

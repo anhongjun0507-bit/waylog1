@@ -3,15 +3,15 @@ import {
   Home, Utensils, Heart, Users, User, Bell, Search, ArrowLeft, Plus,
   Eye, Moon, Sun, Sparkles, MessageCircle, Share2, Bookmark, X,
   Calendar, Camera, Check, Flame, TrendingUp, ExternalLink, ChevronRight,
-  Leaf, ChefHat, Star, Smile, Lightbulb, Coffee, Cat, Music, Palette, Feather, Layers, RefreshCw,
+  Leaf, Star, Smile, Lightbulb, Coffee, Cat, Music, Palette, Feather, Layers, RefreshCw,
   BookOpen, PenLine, Target, Gift, Inbox, Flower2, Wand2, Apple, Wind, Droplets, ShoppingBag,
-  Trophy, Dumbbell, Activity, Clock, ChevronDown, ChevronUp, Minus, Edit3,
-  BarChart3, Timer, Zap, Award, Lock, Unlock, Image, Download, Send, Hash, CircleUser,
-  Package, Tag, Grid3X3, List
+  Trophy, Dumbbell, Activity, Clock,
+  BarChart3, Zap, Image, Download, CircleUser,
+  Package
 } from "lucide-react";
 
 import CATALOG from "./data/products.json";
-import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments } from "./supabase.js";
+import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, storage as supabaseStorage } from "./supabase.js";
 
 const BASE = "http://158.247.241.36";
 
@@ -170,11 +170,18 @@ const AVATAR_OPTIONS = [
 const getAvatarOpt = (id) => AVATAR_OPTIONS.find((a) => a.id === id) || AVATAR_OPTIONS[0];
 
 const Avatar = ({ id, size = 24, className = "", rounded = "rounded-full" }) => {
-  const isImage = id && typeof id === "string" && id.startsWith("data:");
-  if (isImage) {
+  if (id && typeof id === "string" && id.startsWith("data:")) {
     return (
       <div className={cls("overflow-hidden bg-gray-200", rounded, className)}>
         <img src={id} alt="" className="w-full h-full object-cover"/>
+      </div>
+    );
+  }
+  const opt = id ? AVATAR_OPTIONS.find((a) => a.id === id) : null;
+  if (opt) {
+    return (
+      <div className={cls("bg-gradient-to-br flex items-center justify-center text-white shrink-0", opt.color, rounded, className)}>
+        <opt.Icon size={Math.floor(size * 0.6)} strokeWidth={2.2}/>
       </div>
     );
   }
@@ -338,11 +345,11 @@ const aiMealAnalysis = async (mealType) => {
   if (text) {
     try {
       const cleaned = text.replace(/```json|```/g, "").trim();
-      return JSON.parse(cleaned);
+      return { ...JSON.parse(cleaned), isFallback: false };
     } catch {}
   }
   const options = fallbackMeals[mealType] || fallbackMeals.lunch;
-  return options[Math.floor(Math.random() * options.length)];
+  return { ...options[Math.floor(Math.random() * options.length)], isFallback: true };
 };
 
 const aiCoachMessage = async (tone, dayNum, completedMissions, totalMissions) => {
@@ -397,19 +404,21 @@ const getChallengeWeek = (dayNum) => Math.min(CHALLENGE_WEEKS, Math.ceil(dayNum 
 const useStoredState = (key, initial) => {
   const [val, setVal] = useState(initial);
   const [loaded, setLoaded] = useState(false);
+  const ref = useRef(initial);
   useEffect(() => {
     (async () => {
       try {
         const r = await window.storage?.get(key);
-        if (r?.value) setVal(JSON.parse(r.value));
+        if (r?.value) { const parsed = JSON.parse(r.value); setVal(parsed); ref.current = parsed; }
       } catch {}
       setLoaded(true);
     })();
   }, [key]);
   const update = async (next) => {
-    const v = typeof next === "function" ? next(val) : next;
+    const v = typeof next === "function" ? next(ref.current) : next;
+    ref.current = v;
     setVal(v);
-    try { await window.storage?.set(key, JSON.stringify(v)); } catch {}
+    try { await window.storage?.set(key, JSON.stringify(v)); } catch (e) { if (e?.name === "QuotaExceededError" || e?.code === 22) console.warn(`[useStoredState] QuotaExceededError for key "${key}"`, e); }
   };
   return [val, update, loaded];
 };
@@ -485,7 +494,7 @@ const HeartBtn = ({ on, onClick, dark, size = 14 }) => (
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     aria-label={on ? "좋아요 취소" : "좋아요"}
     aria-pressed={on}
-    className={cls("p-1.5 rounded-full backdrop-blur transition-transform active:scale-90",
+    className={cls("min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full backdrop-blur transition-transform active:scale-90",
       on ? "bg-rose-500/95" : dark ? "bg-black/50" : "bg-white/85")}
   >
     <Heart size={size} className={on ? "text-white fill-white" : dark ? "text-white" : "text-gray-700"} />
@@ -515,23 +524,6 @@ const FallbackImg = ({ r, className }) => {
   );
 };
 
-const findCatalogImage = (review) => {
-  if (!review) return null;
-  const productName = (review.product || "").toLowerCase();
-  if (!productName) return null;
-  const match = (CATALOG || []).find((p) => productName.includes((p.name || "").toLowerCase()) || (p.name || "").toLowerCase().includes(productName));
-  return match?.imageUrl || null;
-};
-
-const CAT_PICK_BG = {
-  food:     { light: "bg-amber-50",   dark: "bg-amber-950",   text: "text-amber-900",   textDark: "text-amber-100",   sub: "text-amber-700",   subDark: "text-amber-300",   chip: "bg-amber-200/60 text-amber-800", chipDark: "bg-amber-800/40 text-amber-200", accent: "#f59e0b" },
-  wellness: { light: "bg-violet-50",  dark: "bg-violet-950",  text: "text-violet-900",  textDark: "text-violet-100",  sub: "text-violet-600",  subDark: "text-violet-300",  chip: "bg-violet-200/60 text-violet-800", chipDark: "bg-violet-800/40 text-violet-200", accent: "#8b5cf6" },
-  beauty:   { light: "bg-pink-50",    dark: "bg-pink-950",    text: "text-pink-900",    textDark: "text-pink-100",    sub: "text-pink-600",    subDark: "text-pink-300",    chip: "bg-pink-200/60 text-pink-800", chipDark: "bg-pink-800/40 text-pink-200", accent: "#ec4899" },
-  kitchen:  { light: "bg-cyan-50",    dark: "bg-cyan-950",    text: "text-cyan-900",    textDark: "text-cyan-100",    sub: "text-cyan-600",    subDark: "text-cyan-300",    chip: "bg-cyan-200/60 text-cyan-800", chipDark: "bg-cyan-800/40 text-cyan-200", accent: "#06b6d4" },
-  home:     { light: "bg-sky-50",     dark: "bg-sky-950",     text: "text-sky-900",     textDark: "text-sky-100",     sub: "text-sky-600",     subDark: "text-sky-300",     chip: "bg-sky-200/60 text-sky-800", chipDark: "bg-sky-800/40 text-sky-200", accent: "#0ea5e9" },
-  one4one:  { light: "bg-green-50",   dark: "bg-green-950",   text: "text-green-900",   textDark: "text-green-100",   sub: "text-green-600",   subDark: "text-green-300",   chip: "bg-green-200/60 text-green-800", chipDark: "bg-green-800/40 text-green-200", accent: "#22c55e" },
-};
-
 const SmartImg = ({ r, className }) => {
   const [errored, setErrored] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -539,7 +531,7 @@ const SmartImg = ({ r, className }) => {
   const src = r.img.startsWith("data:") || r.img.startsWith("http") ? r.img : `${BASE}${r.img}`;
   return (
     <div className={cls("relative overflow-hidden", className)}>
-      {!loaded && <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%] animate-shimmer"/>}
+      {!loaded && <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 bg-[length:200%_100%] animate-shimmer"/>}
       <img src={src} alt=""
         className={cls("w-full h-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
         onLoad={() => setLoaded(true)} onError={() => setErrored(true)}/>
@@ -676,137 +668,8 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
 };
 
 // ---------- SCREENS ----------
-const TodaysPickCard = ({ picks, dark, onOpen }) => {
-  const [current, setCurrent] = useState(0);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    if (!picks || picks.length === 0 || paused) return;
-    const t = setInterval(() => {
-      setCurrent((c) => (c + 1) % picks.length);
-    }, 5000);
-    return () => clearInterval(t);
-  }, [picks, paused]);
-
-  if (!picks || picks.length === 0) return null;
-
-  const pick = picks[current];
-  const review = pick.review;
-
-  const handleTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-    setPaused(true);
-  };
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-  const handleTouchEnd = () => {
-    if (touchStart !== null && touchEnd !== null) {
-      const distance = touchStart - touchEnd;
-      if (distance > 40) setCurrent((c) => (c + 1) % picks.length);
-      else if (distance < -40) setCurrent((c) => (c - 1 + picks.length) % picks.length);
-    }
-    setTimeout(() => setPaused(false), 3000);
-  };
-
-  return (
-    <div className="px-4 pt-4">
-      <h2 className={cls("text-xl font-black tracking-tight mb-3", dark ? "text-white" : "text-gray-900")}>
-        Today's Pick
-      </h2>
-      {(() => {
-        const catKey = review?.category || "food";
-        const theme = CAT_PICK_BG[catKey] || CAT_PICK_BG.food;
-        const catalogImg = findCatalogImage(review);
-        const catGrad = CATEGORIES[catKey]?.color || "from-gray-300 to-gray-400";
-
-        return (
-        <button
-          onClick={(e) => {
-            if (Math.abs((touchEnd || 0) - (touchStart || 0)) > 10) return;
-            review && onOpen(review);
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          aria-label={`Today's Pick ${current + 1}/${picks.length}: ${pick.headline}`}
-          className={cls(
-            "relative w-full h-52 rounded-3xl overflow-hidden active:scale-[0.99] transition-all text-left block",
-            dark ? "bg-gray-800" : "bg-white"
-          )}
-          style={{ boxShadow: `0 2px 20px -4px ${theme.accent}30` }}
-        >
-          {/* 카테고리 그라데이션 테두리 — 왼쪽 액센트 바 */}
-          <div className={cls("absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b", catGrad)}/>
-
-          {/* 제품 이미지 or 이모지 — 오른쪽 */}
-          {catalogImg ? (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 w-[38%] flex items-center justify-center">
-              <img src={catalogImg} alt="" className="max-w-full max-h-[150px] object-contain"
-                onError={(e) => { e.target.style.display = "none"; }}/>
-            </div>
-          ) : (
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.06] select-none pointer-events-none">
-              <CategoryIcon cat={catKey} size={96} strokeWidth={1.2} className={dark ? "text-white" : "text-gray-900"}/>
-            </div>
-          )}
-
-          {/* 콘텐츠 — 왼쪽 */}
-          <div className="relative p-5 pl-6 flex flex-col justify-between h-full" style={{ maxWidth: catalogImg ? "58%" : "70%" }}>
-            <div>
-              <span className={cls("inline-block text-[10px] font-black tracking-widest uppercase mb-2 px-2 py-0.5 rounded-full", dark ? theme.chipDark : theme.chip)}>
-                {CATEGORIES[catKey]?.label || "추천"}
-              </span>
-              <p className={cls("text-xl font-black leading-tight", dark ? "text-white" : "text-gray-900")}>
-                {pick.headline}
-              </p>
-              <p className={cls("text-xs font-medium mt-1.5 leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
-                {pick.subline}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <Heart size={11} style={{ color: theme.accent }} fill="currentColor"/>
-                <span className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{review?.likes || 0}</span>
-              </div>
-              <span className={cls("text-[10px] font-black tabular-nums px-2 py-0.5 rounded-full", dark ? "bg-white/10 text-white/50" : "bg-gray-100 text-gray-400")}>
-                {current + 1}/{picks.length}
-              </span>
-            </div>
-          </div>
-
-          {/* 슬라이드 진행 바 */}
-          <div className={cls("absolute bottom-0 left-0 right-0 h-0.5", dark ? "bg-gray-700" : "bg-gray-100")}>
-            <div key={current} className="h-full" style={{ backgroundColor: theme.accent, width: "100%", animation: paused ? "none" : "slideProgress 5s linear" }}/>
-          </div>
-        </button>
-        );
-      })()}
-
-      {/* 페이지 도트 */}
-      <div className="flex justify-center gap-1.5 mt-3">
-        {picks.map((_, i) => {
-          const dotTheme = CAT_PICK_BG[picks[i]?.review?.category] || CAT_PICK_BG.food;
-          return (
-          <button key={i}
-            onClick={() => { setCurrent(i); setPaused(true); setTimeout(() => setPaused(false), 3000); }}
-            aria-label={`${i + 1}번째 Pick`}
-            className={cls("h-1.5 rounded-full transition-all", i === current ? "w-6" : "w-1.5", i === current ? "" : dark ? "bg-gray-700" : "bg-gray-200")}
-            style={i === current ? { backgroundColor: dotTheme.accent } : undefined}
-          />);
-        })}
-      </div>
-    </div>
-  );
-};
-
-const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user, onPrimary, onSignature, tg, refreshKey = 0, todaysPick, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult }) => {
+const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult }) => {
   const [hotMode, setHotMode] = useState("trending");
-  const [sigPulse, setSigPulse] = useState(false);
   const trending = useMemo(() => {
     const top = [...reviews].sort((a,b) => b.likes - a.likes).slice(0, 8);
     if (refreshKey > 0) return [...top].sort(() => Math.random() - 0.5).slice(0, 6);
@@ -818,28 +681,14 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user
     return recent.slice(0, 4);
   }, [reviews, refreshKey]);
 
-  const totalCats = Object.values(taste.cats).reduce((a,b) => a+b, 0);
-  const topCat = Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1])[0];
-  const hasTaste = favs.size >= 2 && topCat;
-
-  const moodCounts = useMemo(() => {
-    const c = {};
-    Object.values(moods || {}).forEach((m) => { if (m) c[m] = (c[m] || 0) + 1; });
-    return c;
-  }, [moods]);
-  const topMood = Object.entries(moodCounts).sort((a,b) => b[1]-a[1])[0];
-  const topMoodObj = topMood && MOODS.find((m) => m.key === topMood[0]);
-
   const personalized = useMemo(() => {
-    if (!hasTaste) return [];
+    if (favs.size < 2) return [];
     const score = (r) => (taste.cats[r.category] || 0) * 2 + r.tags.reduce((s,t) => s + (taste.tags[t] || 0), 0);
     return [...reviews].filter((r) => !favs.has(r.id)).map((r) => ({ r, s: score(r) })).filter((x) => x.s > 0).sort((a,b) => b.s - a.s).slice(0, 6).map((x) => x.r);
-  }, [reviews, taste, favs, hasTaste]);
+  }, [reviews, taste, favs]);
 
   return (
     <div>
-      <TodaysPickCard picks={todaysPick} dark={dark} onOpen={onOpen}/>
-
       <ChallengeEntryCard
           challenge={challenge}
           dailyLogs={dailyLogs}
@@ -862,126 +711,13 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user
         </button>
       </div>
 
-      {hasTaste && topCat ? (
-        <div className={cls("mx-4 mt-3 p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-          <div className="flex items-center gap-3">
-            <div className={cls("w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white shrink-0", CATEGORIES[topCat[0]].color)}>
-              <CategoryIcon cat={topCat[0]} size={22}/>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>당신의 취향 분석</p>
-              <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>
-                <span className="text-emerald-500">{CATEGORIES[topCat[0]].label}</span> 카테고리를 가장 좋아해요
-              </p>
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <p className={cls("text-xs", dark ? "text-gray-500" : "text-gray-500")}>
-                  좋아요 {favs.size}개 · 무드 {Object.values(moods||{}).filter(Boolean).length}개
-                </p>
-                {topMoodObj && (
-                  <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold inline-flex items-center gap-1", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>
-                    <topMoodObj.Icon size={10}/> {topMoodObj.label}
-                  </span>
-                )}
-              </div>
-            </div>
-            <TrendingUp size={18} className="text-emerald-500"/>
-          </div>
-          {/* 카테고리 비율 바 */}
-          <div className="mt-3 flex h-2 rounded-full overflow-hidden">
-            {Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([k,v]) => {
-              const pct = (v / totalCats) * 100;
-              return <div key={k} className={cls("bg-gradient-to-r", CATEGORIES[k].color)} style={{ width: `${pct}%` }}/>;
-            })}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-            {Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([k,v]) => (
-              <div key={k} className="flex items-center gap-1">
-                <div className={cls("w-2 h-2 rounded-full bg-gradient-to-br", CATEGORIES[k].color)}/>
-                <span className={cls("text-xs font-semibold", dark ? "text-gray-400" : "text-gray-500")}>
-                  {CATEGORIES[k].label} {Math.round((v/totalCats)*100)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className={cls("mx-4 mt-4 p-4 rounded-2xl flex items-center gap-3 border-2 border-dashed", dark ? "bg-gray-800/50 border-gray-700" : "bg-white border-emerald-200")}>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center shrink-0">
-            <Sparkles size={22} className="text-emerald-500"/>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>취향을 학습 중이에요</p>
-            <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>
-              카드를 좋아할수록 추천이 정교해져요. {favs.size}/2
-            </p>
-          </div>
-        </div>
-      )}
-
-      {user && (() => {
-        const totalActivity = favs.size + Object.values(moods || {}).filter(Boolean).length;
-        const isActive = totalActivity >= 3;
-        const progress = Math.min(totalActivity, 3);
-        const now = new Date();
-        const onejan = new Date(now.getFullYear(), 0, 1);
-        const weekNum = Math.ceil(((now - onejan) / 86400000 + onejan.getDay() + 1) / 7);
-        return (
-          <button
-            onClick={() => {
-              if (!isActive) return;
-              setSigPulse(true);
-              setTimeout(() => { setSigPulse(false); onSignature(); }, 150);
-            }}
-            disabled={!isActive}
-            className={cls("mx-4 mt-4 w-[calc(100%-2rem)] p-4 rounded-3xl flex items-center gap-3 relative overflow-hidden transition-all duration-700",
-              isActive
-                ? "bg-gradient-to-br from-emerald-500 via-teal-600 to-violet-600 text-white shadow-xl shadow-violet-500/30 border-2 border-transparent"
-                : cls("border-2 border-dashed cursor-default", dark ? "bg-gray-800/50 border-gray-700" : "bg-gradient-to-br from-gray-50 to-emerald-50/40 border-emerald-200"),
-              isActive && sigPulse && "scale-95 brightness-110",
-              isActive && !sigPulse && "active:scale-[0.98]")}>
-            <Sparkles className={cls("absolute right-2 top-2 transition-opacity duration-700", isActive ? "opacity-30 text-white" : dark ? "opacity-20 text-gray-600" : "opacity-20 text-emerald-300")} size={48}/>
-            {isActive && <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10"/>}
-            <div className={cls("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative transition-all duration-700",
-              isActive ? "bg-white/20 backdrop-blur" : dark ? "bg-gray-900/60" : "bg-white/80")}>
-              <Sparkles size={isActive ? 26 : 24} className={isActive ? "text-white" : dark ? "text-gray-500" : "text-emerald-400"} strokeWidth={2.2}/>
-            </div>
-            <div key={isActive ? "active" : "inactive"} className="flex-1 min-w-0 text-left relative animate-fade-in">
-              {isActive ? (
-                <>
-                  <p className="text-xs font-bold opacity-90 uppercase tracking-widest">WEEK {weekNum} · 새 카드</p>
-                  <p className="text-sm font-black mt-0.5">시그니처 카드가 도착했어요</p>
-                  <p className="text-xs opacity-90 mt-0.5">내 취향을 한 장으로 보고 공유하기</p>
-                </>
-              ) : (
-                <>
-                  <p className={cls("text-xs font-bold uppercase tracking-widest", dark ? "text-gray-500" : "text-emerald-600")}>곧 도착해요</p>
-                  <p className={cls("text-sm font-black mt-0.5", dark ? "text-gray-300" : "text-gray-800")}>나만의 시그니처 카드</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className={cls("flex-1 h-1.5 rounded-full overflow-hidden", dark ? "bg-gray-700" : "bg-emerald-100")}>
-                      <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-violet-500 transition-all duration-500"
-                        style={{ width: `${(progress / 3) * 100}%` }}/>
-                    </div>
-                    <span className={cls("text-xs font-black tabular-nums inline-flex items-center gap-1", dark ? "text-gray-400" : "text-emerald-700")}>
-                      {progress}/3
-                      <Heart size={9} className={dark ? "text-rose-400" : "text-rose-500"} fill="currentColor"/>
-                      <Star size={9} className={dark ? "text-amber-400" : "text-amber-500"} fill="currentColor"/>
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-            {isActive && <ChevronRight size={20} className="relative opacity-90"/>}
-          </button>
-        );
-      })()}
-
       <SectionTitle dark={dark} title="오늘의 픽" sub="좌우로 스와이프해 취향을 알려주세요" />
       <SwipePick reviews={trending} onLike={(r) => toggleFav(r.id)} onPass={() => {}} dark={dark}/>
 
       {personalized.length > 0 && (
         <>
           <SectionTitle dark={dark} tier={2} title="당신을 위한 추천" sub="스와이프와 좋아요로 학습된 결과예요" />
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
             {personalized.map((r) => (
               <div key={r.id} className="snap-start shrink-0 w-44">
                 <Card r={r} onOpen={onOpen} favs={favs} toggleFav={toggleFav} dark={dark} />
@@ -1006,7 +742,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user
           </button>
         </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto px-5 pb-2 snap-x" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-3 overflow-x-auto px-5 pb-2 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
         {(hotMode === "trending" ? trending : fresh).map((r, i) => (
           <div key={`${hotMode}-${r.id}`} className="snap-start shrink-0 w-44 animate-card-enter" style={{ animationDelay: `${i * 60}ms` }}>
             <Card r={r} onOpen={onOpen} favs={favs} toggleFav={toggleFav} dark={dark} />
@@ -1015,7 +751,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user
       </div>
 
       <SectionTitle dark={dark} tier={3} title="탐색하기" />
-      <div className="flex gap-3 overflow-x-auto px-4 pb-4 snap-x" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-3 overflow-x-auto px-4 pb-4 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
         {(CATALOG || []).slice(0, 10).map((p, i) => (
           <a key={p.id} href={p.officialUrl || "#"} target="_blank" rel="noopener noreferrer"
             className={cls("snap-start shrink-0 w-32 rounded-2xl overflow-hidden block active:scale-[0.97] transition animate-card-enter", dark ? "bg-gray-800" : "bg-white shadow-sm")}
@@ -1065,7 +801,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, followi
             </button>
           </div>
         )}
-        <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
           <button onClick={() => setActiveCat(null)}
             className={cls("text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-bold",
               !activeCat ? "bg-gray-900 text-white" : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600")}>
@@ -1079,7 +815,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, followi
             </button>
           ))}
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
           {POPULAR_TAGS.map((t) => (
             <button key={t} onClick={() => setActiveTag(t === activeTag ? null : t)}
               className={cls("text-xs px-2.5 py-1 rounded-full whitespace-nowrap",
@@ -1125,21 +861,85 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, followi
 
 const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onCompose }) => {
   const [exiting, close] = useExit(onClose);
+  const [sortBy, setSortBy] = useState("latest");
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiExpanded, setAiExpanded] = useState(false);
 
-  const related = useMemo(() => {
+  const allReviews = useMemo(() => {
     if (!product || !product.name) return [];
     return (reviews || []).filter((r) => {
       if (!r) return false;
       const nameMatch = (r.product || "").includes(product.name);
       const idMatch = (r.products || []).some((p) => p && p.id === product.id);
       return nameMatch || idMatch;
-    }).slice(0, 6);
+    });
   }, [product, reviews]);
+
+  const sortedReviews = useMemo(() => {
+    const list = [...allReviews];
+    if (sortBy === "latest") list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    else if (sortBy === "popular") list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    else if (sortBy === "oldest") list.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    return list;
+  }, [allReviews, sortBy]);
+
+  const topTags = useMemo(() => {
+    const tagMap = {};
+    allReviews.forEach((r) => (r.tags || []).forEach((t) => { tagMap[t] = (tagMap[t] || 0) + 1; }));
+    return Object.entries(tagMap).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+  }, [allReviews]);
+
+  useEffect(() => {
+    if (!product || allReviews.length < 5) return;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const cacheKey = `waylog:ai-summary:${product.id}`;
+    (async () => {
+      try {
+        const cached = await window.storage?.get(cacheKey);
+        if (cached?.value) {
+          const parsed = JSON.parse(cached.value);
+          if (parsed.month === currentMonth && parsed.data) {
+            setAiSummary(parsed);
+            return;
+          }
+        }
+      } catch {}
+      // API 연동 전까지 더미 데이터 사용
+      const fallback = {
+        month: currentMonth,
+        generatedAt: new Date().toISOString().slice(0, 10),
+        data: {
+          pros: [
+            { text: "흡수가 빠르고 효과 체감이 좋다", count: Math.min(allReviews.length, 12) },
+            { text: "맛이 부담 없고 먹기 편하다", count: Math.min(allReviews.length, 8) },
+            { text: "가격 대비 만족도가 높다", count: Math.min(allReviews.length, 6) },
+          ],
+          cons: [
+            { text: "용량이 빨리 줄어든다", count: Math.max(1, Math.floor(allReviews.length * 0.3)) },
+            { text: "호불호가 갈리는 맛", count: Math.max(1, Math.floor(allReviews.length * 0.2)) },
+          ],
+          summary: `${allReviews.length}개 리뷰를 종합하면, 대부분의 사용자가 ${product.name}의 효과와 편의성에 높은 만족도를 보이고 있어요. 꾸준한 섭취를 통해 체감 효과를 느꼈다는 후기가 많습니다.`,
+        },
+        isPlaceholder: true,
+      };
+      setAiSummary(fallback);
+      // TODO: AI 연동 시 아래 주석 해제
+      // setAiLoading(true);
+      // const data = await summarizeProduct(product, allReviews);
+      // if (data) {
+      //   const result = { month: currentMonth, generatedAt: new Date().toISOString().slice(0, 10), data };
+      //   setAiSummary(result);
+      //   try { await window.storage?.set(cacheKey, JSON.stringify(result)); } catch {}
+      // }
+      // setAiLoading(false);
+    })();
+  }, [product?.id, allReviews.length]);
 
   if (!product) return null;
 
   const cat = CATEGORIES[product.category];
   const priceStr = product.price ? product.price.toLocaleString("ko-KR") + "원" : null;
+  const hasReviews = allReviews.length > 0;
 
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
@@ -1184,6 +984,104 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
             </div>
           )}
 
+          {/* 통계 영역 */}
+          {hasReviews && (
+            <div className={cls("flex items-center gap-3 p-3 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-50")}>
+              <div className="flex-1 text-center">
+                <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
+                <p className={cls("text-[10px] font-bold", dark ? "text-gray-500" : "text-gray-400")}>리뷰</p>
+              </div>
+              <div className={cls("w-px h-8", dark ? "bg-gray-700" : "bg-gray-200")}/>
+              <div className="flex-1 text-center">
+                <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.reduce((s, r) => s + (r.likes || 0), 0)}</p>
+                <p className={cls("text-[10px] font-bold", dark ? "text-gray-500" : "text-gray-400")}>총 좋아요</p>
+              </div>
+              {topTags.length > 0 && (
+                <>
+                  <div className={cls("w-px h-8", dark ? "bg-gray-700" : "bg-gray-200")}/>
+                  <div className="flex-1 text-center">
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {topTags.map((t) => (
+                        <span key={t} className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>#{t}</span>
+                      ))}
+                    </div>
+                    <p className={cls("text-[10px] font-bold mt-1", dark ? "text-gray-500" : "text-gray-400")}>인기 태그</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* AI 리뷰 요약 */}
+          {allReviews.length >= 5 && aiSummary?.data ? (
+            <div className={cls("rounded-2xl overflow-hidden", dark ? "bg-violet-950/40 ring-1 ring-violet-800/30" : "bg-gradient-to-br from-violet-50 to-purple-50 ring-1 ring-violet-100")}>
+              <button onClick={() => setAiExpanded(!aiExpanded)}
+                className="w-full p-4 flex items-center gap-3 text-left active:opacity-80 transition">
+                <div className={cls("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", dark ? "bg-violet-900/60" : "bg-violet-100")}>
+                  <Sparkles size={18} className={dark ? "text-violet-300" : "text-violet-600"}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>AI가 분석한 이 제품</p>
+                    {aiSummary.isPlaceholder && (
+                      <span className={cls("text-[9px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-violet-800/50 text-violet-300" : "bg-violet-100 text-violet-600")}>DEMO</span>
+                    )}
+                  </div>
+                  <p className={cls("text-[10px] mt-0.5", dark ? "text-violet-400" : "text-violet-500")}>
+                    리뷰 {allReviews.length}개 기반 · 마지막 분석: {aiSummary.generatedAt?.replace(/-/g, ".")}
+                  </p>
+                </div>
+                <ChevronRight size={16} className={cls("transition-transform", aiExpanded ? "rotate-90" : "", dark ? "text-violet-400" : "text-violet-500")}/>
+              </button>
+              {aiExpanded && (
+                <div className="px-4 pb-4 space-y-3 animate-fade-in">
+                  {/* 장점 */}
+                  <div>
+                    <p className={cls("text-xs font-black mb-1.5", dark ? "text-emerald-400" : "text-emerald-600")}>👍 장점</p>
+                    <div className="space-y-1">
+                      {aiSummary.data.pros.map((p, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className={cls("text-xs leading-relaxed flex-1", dark ? "text-gray-300" : "text-gray-700")}>• {p.text}</span>
+                          <span className={cls("text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>{p.count}명</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 단점 */}
+                  <div>
+                    <p className={cls("text-xs font-black mb-1.5", dark ? "text-rose-400" : "text-rose-600")}>👎 단점</p>
+                    <div className="space-y-1">
+                      {aiSummary.data.cons.map((c, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className={cls("text-xs leading-relaxed flex-1", dark ? "text-gray-300" : "text-gray-700")}>• {c.text}</span>
+                          <span className={cls("text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-rose-900/40 text-rose-300" : "bg-rose-50 text-rose-700")}>{c.count}명</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 총평 */}
+                  <div className={cls("p-3 rounded-xl", dark ? "bg-violet-900/30" : "bg-white/70")}>
+                    <p className={cls("text-xs font-black mb-1", dark ? "text-violet-300" : "text-violet-700")}>💡 총평</p>
+                    <p className={cls("text-xs leading-relaxed", dark ? "text-gray-300" : "text-gray-600")}>{aiSummary.data.summary}</p>
+                  </div>
+                  {aiSummary.isPlaceholder && (
+                    <p className={cls("text-[10px] text-center pt-1", dark ? "text-violet-500" : "text-violet-400")}>
+                      이 요약은 데모 데이터예요 · 곧 AI 자동 생성으로 전환됩니다
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : allReviews.length > 0 && allReviews.length < 5 ? (
+            <div className={cls("p-4 rounded-2xl flex items-center gap-3", dark ? "bg-violet-950/20 ring-1 ring-violet-900/20" : "bg-violet-50/50 ring-1 ring-violet-100")}>
+              <Sparkles size={18} className={dark ? "text-violet-500" : "text-violet-400"}/>
+              <div>
+                <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>AI 리뷰 요약</p>
+                <p className={cls("text-[10px] mt-0.5", dark ? "text-gray-500" : "text-gray-400")}>리뷰가 5개 이상 쌓이면 분석을 시작해요 ({allReviews.length}/5)</p>
+              </div>
+            </div>
+          ) : null}
+
           {/* 버튼들 */}
           <div className="flex gap-2">
             {product.officialUrl && (
@@ -1193,40 +1091,65 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                 <ExternalLink size={15}/> 공식 페이지
               </button>
             )}
-            <button onClick={() => { onCompose && onCompose(); }}
-              className="flex-1 py-3 rounded-2xl text-sm font-black bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition">
-              <PenLine size={15}/> 리뷰 쓰기
-            </button>
+            {!hasReviews && (
+              <button onClick={() => onCompose && onCompose(product)}
+                className="flex-1 py-3 rounded-2xl text-sm font-black bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                <PenLine size={15}/> 첫 번째 리뷰 작성하기
+              </button>
+            )}
           </div>
 
-          {/* 관련 리뷰 */}
-          {related.length > 0 && (
+          {/* 리뷰 섹션 */}
+          {hasReviews ? (
             <div>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mb-3", dark ? "text-gray-500" : "text-gray-500")}>관련 웨이로그 {related.length}개</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>이 제품의 모든 리뷰</p>
+                <div className={cls("flex gap-1 text-xs rounded-full p-0.5", dark ? "bg-gray-800" : "bg-gray-100")}>
+                  {[{ key: "latest", label: "최신" }, { key: "popular", label: "인기" }, { key: "oldest", label: "오래된" }].map((s) => (
+                    <button key={s.key} onClick={() => setSortBy(s.key)}
+                      className={cls("px-2.5 py-1 rounded-full font-bold transition",
+                        sortBy === s.key ? "bg-white text-emerald-600 shadow" : dark ? "text-gray-400" : "text-gray-500")}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-2">
-                {related.map((r) => (
-                  <button key={r.id} onClick={() => onOpenReview && onOpenReview(r)}
-                    className={cls("w-full flex items-center gap-3 p-3 rounded-2xl text-left transition active:scale-[0.98]", dark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100")}>
-                    <SmartImg r={r} className="w-12 h-12 rounded-xl object-cover shrink-0"/>
+                {sortedReviews.map((rv) => (
+                  <button key={rv.id} onClick={() => onOpenReview && onOpenReview(rv)}
+                    className={cls("w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition active:scale-[0.98]", dark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100")}>
+                    <SmartImg r={rv} className="w-16 h-16 rounded-xl object-cover shrink-0"/>
                     <div className="flex-1 min-w-0">
-                      <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-gray-900")}>{r.title}</p>
-                      <p className={cls("text-xs line-clamp-1 mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>{r.author} · {r.likes} likes</p>
+                      <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-gray-900")}>{rv.title}</p>
+                      <p className={cls("text-xs mt-0.5 line-clamp-1", dark ? "text-gray-400" : "text-gray-500")}>{rv.author}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={cls("text-xs inline-flex items-center gap-1", dark ? "text-gray-500" : "text-gray-400")}>
+                          <Heart size={10}/> {rv.likes || 0}
+                        </span>
+                        <span className={cls("text-xs", dark ? "text-gray-600" : "text-gray-400")}>{rv.date}</span>
+                      </div>
                     </div>
                     <ChevronRight size={16} className={dark ? "text-gray-600" : "text-gray-400"}/>
                   </button>
                 ))}
               </div>
             </div>
-          )}
-
-          {related.length === 0 && (
-            <div className={cls("py-6 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
-              <PenLine size={24} className="mx-auto mb-2 opacity-40"/>
-              <p className="text-xs font-medium">아직 리뷰가 없어요</p>
-              <p className="text-xs mt-0.5 opacity-70">첫 번째 리뷰를 작성해보세요!</p>
+          ) : (
+            <div className={cls("py-8 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
+              <PenLine size={28} className="mx-auto mb-2 opacity-40"/>
+              <p className="text-sm font-bold">아직 리뷰가 없어요</p>
+              <p className="text-xs mt-1 opacity-70">첫 번째 리뷰를 작성해보세요!</p>
             </div>
           )}
         </div>
+
+        {/* 플로팅 리뷰 작성 버튼 (리뷰가 있을 때) */}
+        {hasReviews && (
+          <button onClick={() => onCompose && onCompose(product)}
+            className="sticky bottom-4 ml-auto mr-4 mb-4 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-xl shadow-emerald-500/30 flex items-center justify-center active:scale-90 transition">
+            <PenLine size={18}/>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1298,7 +1221,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
           </div>
 
           {/* 카테고리 칩 */}
-          <div className="flex gap-2 overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
             {[
               { key: "all", label: "전체" },
               { key: "food", label: "뉴트리션" },
@@ -1479,7 +1402,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth }) => {
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth, onComment }) => {
   const [draft, setDraft] = useState("");
   const submit = () => {
     const text = draft.trim();
@@ -1538,7 +1461,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
           <button onClick={() => onLike(p.id)} className={cls("flex items-center gap-1 transition active:scale-90", p.liked && "text-rose-500")}>
             <Heart size={14} className={p.liked ? "fill-rose-500" : ""}/> {p.likes}
           </button>
-          <button className="flex items-center gap-1"><MessageCircle size={14}/> {p.comments}</button>
+          <button onClick={() => onComment && onComment()} className="flex items-center gap-1 active:scale-90 transition"><MessageCircle size={14}/> {p.comments}</button>
           <button onClick={() => onShare(p)} className="ml-auto active:scale-90 transition"><Share2 size={14}/></button>
         </div>
       </div>
@@ -1557,10 +1480,11 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
     let list = (reviews || []).filter((r) => {
       if (!r) return false;
       const title = (r.title || "").toLowerCase();
+      const body = (r.body || "").toLowerCase();
       const product = (r.product || "").toLowerCase();
       const author = (r.author || "").toLowerCase();
       const tags = (r.tags || []);
-      return title.includes(s) || product.includes(s) || author.includes(s) || tags.some((t) => (t || "").toLowerCase().includes(s));
+      return title.includes(s) || body.includes(s) || product.includes(s) || author.includes(s) || tags.some((t) => (t || "").toLowerCase().includes(s));
     });
     if (filterCat !== "all") list = list.filter((r) => r.category === filterCat);
     if (sortBy === "popular") list = [...list].sort((a, b) => b.likes - a.likes);
@@ -1612,8 +1536,8 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                       <button onClick={() => submit(t)} className="text-xs active:opacity-60">{t}</button>
                       <button onClick={() => removeRecent && removeRecent(t)}
                         aria-label={`${t} 삭제`}
-                        className={cls("w-4 h-4 rounded-full flex items-center justify-center active:scale-90", dark ? "bg-gray-700 text-gray-500" : "bg-gray-100 text-gray-400")}>
-                        <X size={9}/>
+                        className={cls("w-5 h-5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center active:scale-90", dark ? "bg-gray-700 text-gray-500" : "bg-gray-100 text-gray-400")}>
+                        <X size={10}/>
                       </button>
                     </div>
                   ))}
@@ -1633,7 +1557,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
         {q && (
           <div>
             <div className="flex items-center justify-between mb-3 gap-2">
-              <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: "none" }}>
                 <button onClick={() => setFilterCat("all")}
                   className={cls("text-xs px-3 py-1.5 rounded-full font-bold shrink-0 transition",
                     filterCat === "all" ? "bg-emerald-500 text-white" : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600")}>
@@ -1716,16 +1640,149 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   );
 };
 
-const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick }) => {
+const ShareCardModal = ({ review, onClose, dark, user }) => {
+  const [exiting, close] = useExit(onClose);
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const cardRef = useRef(null);
+
+  const cat = CATEGORIES[review.category] || CATEGORIES.food;
+  const accent = CAT_SOLID[review.category] || "#10b981";
+  const shareUrl = `waylog.kr/r/${review.id}`;
+  const bodyPreview = (review.body || "").slice(0, 50) + ((review.body || "").length > 50 ? "…" : "");
+
+  const handleSaveImage = async () => {
+    if (!cardRef.current || saving) return;
+    setSaving(true);
+    try {
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2 });
+      const link = document.createElement("a");
+      link.download = `waylog-${review.id}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error("이미지 저장 실패:", e);
+    }
+    setSaving(false);
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`https://${shareUrl}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  return (
+    <div className={cls("fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+      <div className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
+        <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
+        <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>공유 카드</p>
+        <div className="w-6"/>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center gap-5">
+        {/* 미리보기 카드 */}
+        <div ref={cardRef} className="w-full rounded-3xl overflow-hidden shadow-2xl" style={{ aspectRatio: "5/4" }}>
+          <div className="relative w-full h-full flex flex-col" style={{ background: `linear-gradient(135deg, ${accent}18, ${accent}30)` }}>
+            {/* 배경 장식 */}
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-20" style={{ background: `radial-gradient(circle, ${accent}, transparent)` }}/>
+            <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-10" style={{ background: `radial-gradient(circle, ${accent}, transparent)` }}/>
+
+            {/* 상단: 제품 이미지 */}
+            <div className="flex-1 relative flex items-center justify-center p-5 pb-2">
+              {review.img ? (
+                <img src={review.img.startsWith("data:") || review.img.startsWith("http") ? review.img : review.img}
+                  alt="" className="max-w-full max-h-full object-contain rounded-2xl shadow-lg" crossOrigin="anonymous"/>
+              ) : (
+                <div className={cls("w-28 h-28 rounded-3xl bg-gradient-to-br flex items-center justify-center", cat.color)}>
+                  <CategoryIcon cat={review.category} size={48} className="text-white/80"/>
+                </div>
+              )}
+            </div>
+
+            {/* 중앙: 제품명, 작성자 */}
+            <div className="px-5 pb-1">
+              <p className="text-base font-black text-gray-900 leading-tight line-clamp-2">{review.title || review.product}</p>
+              <p className="text-xs font-bold text-gray-500 mt-1">by {review.author}</p>
+            </div>
+
+            {/* 본문 요약 */}
+            {bodyPreview && (
+              <div className="px-5 py-2">
+                <p className="text-xs text-gray-600 leading-relaxed italic">"{bodyPreview}"</p>
+              </div>
+            )}
+
+            {/* 하단 */}
+            <div className="px-5 pb-4 pt-1 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-400 inline-flex items-center gap-1">
+                  <Heart size={10} style={{ color: accent }} fill={accent}/> {review.likes || 0}
+                </span>
+                <span className="text-xs text-gray-400">{review.date}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                  <Sparkles size={8} className="text-white"/>
+                </div>
+                <span className="text-[10px] font-black text-gray-400 tracking-tight">{shareUrl}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 공유 버튼들 */}
+        <div className="w-full space-y-2">
+          <button onClick={handleSaveImage} disabled={saving}
+            className={cls("w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition active:scale-[0.98]",
+              saving ? "opacity-60 cursor-wait" : "",
+              "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20")}>
+            {saving ? (
+              <><RefreshCw size={16} className="animate-spin"/> 이미지 생성 중...</>
+            ) : (
+              <><Download size={16}/> 이미지로 저장</>
+            )}
+          </button>
+
+          <button disabled
+            className={cls("w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed",
+              dark ? "bg-yellow-900/30 text-yellow-300" : "bg-yellow-50 text-yellow-700 border border-yellow-200")}>
+            <MessageCircle size={16}/> 카카오톡 공유 <span className="text-[10px] font-normal">(준비 중)</span>
+          </button>
+
+          <button onClick={handleCopyLink}
+            className={cls("w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]",
+              copied
+                ? dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700"
+                : dark ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-700")}>
+            {copied ? (
+              <><Check size={16}/> 복사됨!</>
+            ) : (
+              <><ExternalLink size={16}/> 링크 복사</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick }) => {
   const [exiting, close] = useExit(onBack);
-  const related = SEED_REVIEWS.filter((x) => x.id !== r.id && (x.tags || []).some((t) => (r.tags || []).includes(t))).slice(0,4);
+  const related = (allReviews || SEED_REVIEWS).filter((x) => x.id !== r.id && (x.tags || []).some((t) => (r.tags || []).includes(t))).slice(0, 4);
   const cat = CATEGORIES[r.category] || CATEGORIES.food;
   const [comment, setComment] = useStoredState(`waylog:draft:comment:${r.id}`, "");
   const [replyTo, setReplyTo] = useState(null);
+  const [expandedReplies, setExpandedReplies] = useState({});
+  const commentRefs = useRef({});
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [zoomedImg, setZoomedImg] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const isMine = user && r.author === user.nickname;
   const galleryRef = useRef(null);
 
@@ -1755,7 +1812,7 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
       <div className="relative">
         {r.media && r.media.length > 0 ? (
           <div className="relative">
-            <div ref={galleryRef} onScroll={handleGalleryScroll} className="flex overflow-x-auto snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+            <div ref={galleryRef} onScroll={handleGalleryScroll} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none" }}>
               {r.media.map((m) => (
                 <div key={m.id} className="snap-start shrink-0 w-full h-80 bg-gray-200 dark:bg-gray-800">
                   {m.type === "image" ? (
@@ -1792,16 +1849,19 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
         <button onClick={() => toggleFav(r.id)} aria-label="좋아요" className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
           <Heart size={18} className={favs.has(r.id) ? "text-rose-500 fill-rose-500" : "text-white"}/>
         </button>
+        <button onClick={() => setShareOpen(true)} aria-label="공유" className="absolute top-4 right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+          <Share2 size={18} className="text-white"/>
+        </button>
         {isMine && (
           <>
             <button onClick={() => setMenuOpen(!menuOpen)} aria-label="옵션 메뉴"
-              className="absolute top-4 right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+              className="absolute top-4 right-28 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
               <span className="text-white text-lg font-black leading-none -mt-1">⋯</span>
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)}/>
-                <div className={cls("absolute top-16 right-16 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
+                <div className={cls("absolute top-16 right-28 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
                   <button onClick={() => { setMenuOpen(false); onEdit && onEdit(r); }}
                     className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
                     <PenLine size={14}/> 수정하기
@@ -1826,12 +1886,12 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
           <span>{formatRelativeTime(r.date)}</span>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {r.tags.map((t) => (
+          {(r.tags || []).map((t) => (
             <span key={t} className={cls("text-xs px-2.5 py-1 rounded-full", dark ? cat.dchip : cat.chip)}>#{t}</span>
           ))}
         </div>
         <p className={cls("mt-4 text-[15px] leading-relaxed whitespace-pre-wrap", dark ? "text-gray-200" : "text-gray-700")}>
-          {r.body.split(/(#[^\s#]+)/g).map((part, i) => {
+          {(r.body || "").split(/(#[^\s#]+)/g).map((part, i) => {
             if (part.startsWith("#") && part.length > 1) {
               return (
                 <button key={i} onClick={() => onHashtagClick && onHashtagClick(part.slice(1))}
@@ -1860,8 +1920,12 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
           <div className="space-y-3">
             {comments.filter((c) => !c.parentId).map((c) => {
               const replies = comments.filter((x) => x.parentId === c.id);
+              const isExpanded = expandedReplies[c.id];
+              const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
+              const hiddenCount = replies.length - 1;
+              const isMyComment = user && c.author === user.nickname;
               return (
-                <div key={c.id}>
+                <div key={c.id} ref={(el) => { commentRefs.current[c.id] = el; }}>
                   <div className="flex gap-2.5 group">
                     <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar })} className="active:scale-90 transition shrink-0">
                       <Avatar id={c.avatar} size={14} className="w-8 h-8"/>
@@ -1869,13 +1933,17 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
                         <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
+                        {isMyComment && (
+                          <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
+                        )}
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                       </div>
                       <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>{c.text}</p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
-                          className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-500" : "text-gray-400")}>
-                          답글
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
+                          답글 달기 <span className="text-[10px]">&#8629;</span>
+                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-[10px]", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
                         </button>
                         <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, c.id)}
                           className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).includes(user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
@@ -1890,16 +1958,18 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
                         )}
                       </div>
                     </div>
-                    {user && c.author === user.nickname && (
+                    {isMyComment && (
                       <button onClick={() => deleteComment && deleteComment(r.id, c.id)} aria-label="댓글 삭제"
-                        className={cls("w-6 h-6 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition", dark ? "bg-gray-800 text-gray-500 hover:text-rose-400" : "bg-gray-100 text-gray-400 hover:text-rose-500")}>
-                        <X size={12}/>
+                        className={cls("w-8 h-8 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90 transition", dark ? "bg-gray-800 text-gray-500 hover:text-rose-400" : "bg-gray-100 text-gray-400 hover:text-rose-500")}>
+                        <X size={14}/>
                       </button>
                     )}
                   </div>
-                  {replies.length > 0 && (
+                  {visibleReplies.length > 0 && (
                     <div className={cls("mt-2 ml-5 pl-5 space-y-2 border-l-2", dark ? "border-gray-700" : "border-gray-200")}>
-                      {replies.map((reply) => (
+                      {visibleReplies.map((reply) => {
+                        const isMyReply = user && reply.author === user.nickname;
+                        return (
                         <div key={reply.id} className="flex gap-2 group">
                           <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar })} className="active:scale-90 transition shrink-0">
                             <Avatar id={reply.avatar} size={12} className="w-6 h-6"/>
@@ -1907,6 +1977,9 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2">
                               <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
+                              {isMyReply && (
+                                <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
+                              )}
                               <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
                             </div>
                             <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
@@ -1917,8 +1990,8 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
                             </p>
                             <div className="flex items-center gap-3 mt-1">
                               <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
-                                className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-500" : "text-gray-400")}>
-                                답글
+                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
+                                답글 달기 <span className="text-[10px]">&#8629;</span>
                               </button>
                               <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, reply.id)}
                                 className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).includes(user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
@@ -1933,14 +2006,27 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
                               )}
                             </div>
                           </div>
-                          {user && reply.author === user.nickname && (
+                          {isMyReply && (
                             <button onClick={() => deleteComment && deleteComment(r.id, reply.id)} aria-label="답글 삭제"
-                              className={cls("w-5 h-5 rounded-full flex items-center justify-center shrink-0 active:scale-90", dark ? "bg-gray-800 text-gray-500" : "bg-gray-100 text-gray-400")}>
-                              <X size={10}/>
+                              className={cls("w-7 h-7 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90", dark ? "bg-gray-800 text-gray-500" : "bg-gray-100 text-gray-400")}>
+                              <X size={12}/>
                             </button>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
+                      {!isExpanded && hiddenCount > 0 && (
+                        <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
+                          <span className="text-[10px]">&#8629;</span> 답글 {hiddenCount}개 더보기
+                        </button>
+                      )}
+                      {isExpanded && hiddenCount > 0 && (
+                        <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: false }))}
+                          className={cls("text-xs font-bold pl-1 active:opacity-60", dark ? "text-gray-500" : "text-gray-400")}>
+                          접기
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1948,8 +2034,8 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
             })}
           </div>
           {replyTo && (
-            <div className={cls("mt-3 px-3 py-2 rounded-xl flex items-center justify-between text-xs", dark ? "bg-emerald-900/20 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>
-              <span><span className="font-black">@{replyTo.author}</span>에게 답글 작성 중</span>
+            <div className={cls("mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between text-xs animate-pulse", dark ? "bg-emerald-800/40 text-emerald-200 ring-1 ring-emerald-700/50" : "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200")}>
+              <span className="inline-flex items-center gap-1.5"><span className="text-sm">&#8629;</span> <span className="font-black">@{replyTo.author}</span>에게 답글 작성 중</span>
               <button onClick={() => setReplyTo(null)} aria-label="답글 취소" className="active:scale-90"><X size={12}/></button>
             </div>
           )}
@@ -1960,8 +2046,15 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
               className={cls("flex-1 bg-transparent outline-none text-xs px-2", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
             <button onClick={() => {
               if (comment.trim()) {
-                const ok = addComment(r.id, comment, replyTo?.id || null, replyTo?.isReply ? replyTo.author : null);
-                if (ok) { setComment(""); setReplyTo(null); window.storage?.delete(`waylog:draft:comment:${r.id}`); }
+                const parentId = replyTo?.id || null;
+                const ok = addComment(r.id, comment, parentId, replyTo?.isReply ? replyTo.author : null);
+                if (ok) {
+                  setComment(""); setReplyTo(null); window.storage?.delete(`waylog:draft:comment:${r.id}`);
+                  if (parentId) {
+                    setExpandedReplies((prev) => ({ ...prev, [parentId]: true }));
+                    setTimeout(() => { commentRefs.current[parentId]?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
+                  }
+                }
               }
             }}
               className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-full">등록</button>
@@ -2013,22 +2106,27 @@ const DetailScreen = ({ r, onBack, onOpen, favs, toggleFav, dark, comments, addC
           </div>
         </div>
       )}
+      {shareOpen && (
+        <ShareCardModal review={r} onClose={() => setShareOpen(false)} dark={dark} user={user}/>
+      )}
     </div>
   );
 };
 
-const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
+const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => {
   const [exiting, close] = useExit(onClose);
   const [title, setTitle] = useStoredState("waylog:draft:compose:title", "");
   const [body, setBody] = useStoredState("waylog:draft:compose:body", "");
   const [tags, setTags] = useStoredState("waylog:draft:compose:tags", "");
   const [category, setCategory] = useStoredState("waylog:draft:compose:category", "");
-  const [mediaItems, setMediaItems] = useStoredState("waylog:draft:compose:media", []);
+  const [mediaItems, setMediaItems] = useState([]);
   const [selectedProducts, setSelectedProducts] = useStoredState("waylog:draft:compose:products", []);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productQuery, setProductQuery] = useState("");
+  const [pickerCat, setPickerCat] = useState(category || "all");
   const [error, setError] = useState("");
   const [confirmClearDraft, setConfirmClearDraft] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // 수정 모드 prefill (한 번만)
   useEffect(() => {
@@ -2042,6 +2140,15 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
     }
   }, [editing?.id]);
 
+  useEffect(() => {
+    if (prefillProduct && !editing) {
+      if (!selectedProducts.find((x) => x.id === prefillProduct.id)) {
+        setSelectedProducts((prev) => prev.length < 3 ? [...prev, prefillProduct] : prev);
+      }
+      if (prefillProduct.category && !category) setCategory(prefillProduct.category);
+    }
+  }, [prefillProduct?.id]);
+
   const isEditMode = !!editing;
   const valid = title.trim() && body.trim() && category;
 
@@ -2053,7 +2160,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
       await window.storage?.delete("waylog:draft:compose:body");
       await window.storage?.delete("waylog:draft:compose:tags");
       await window.storage?.delete("waylog:draft:compose:category");
-      await window.storage?.delete("waylog:draft:compose:media");
+      // mediaItems는 useState로 관리되므로 localStorage 삭제 불필요
       await window.storage?.delete("waylog:draft:compose:products");
     } catch {}
   };
@@ -2072,12 +2179,13 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        canvas.toBlob((blob) => resolve({ dataUrl, blob: blob || null }), "image/jpeg", quality);
       };
-      img.onerror = () => resolve(reader.result);
+      img.onerror = () => resolve({ dataUrl: reader.result, blob: null });
       img.src = reader.result;
     };
-    reader.onerror = () => resolve(null);
+    reader.onerror = () => resolve({ dataUrl: null, blob: null });
     reader.readAsDataURL(file);
   });
 
@@ -2108,11 +2216,11 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
           reader.onload = () => resolve(reader.result);
           reader.readAsDataURL(file);
         });
-        newItems.push({ id: Date.now() + Math.random(), type: "video", url, duration: Math.round(duration) });
+        newItems.push({ id: Date.now() + Math.random(), type: "video", url, duration: Math.round(duration), file });
       } else if (file.type.startsWith("image/")) {
-        const url = await resizeImage(file, 1600, 0.85);
-        if (!url) continue;
-        newItems.push({ id: Date.now() + Math.random(), type: "image", url });
+        const { dataUrl, blob } = await resizeImage(file, 1600, 0.85);
+        if (!dataUrl) continue;
+        newItems.push({ id: Date.now() + Math.random(), type: "image", url: dataUrl, file: blob || file });
       }
     }
     setMediaItems((prev) => [...prev, ...newItems]);
@@ -2132,10 +2240,11 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
   };
 
   const filteredProducts = useMemo(() => {
-    let list = category ? PRODUCTS.filter((p) => p.category === category) : PRODUCTS;
-    if (!productQuery.trim()) return list;
-    return list.filter((p) => (p.name || "").toLowerCase().includes((productQuery || "").toLowerCase()));
-  }, [productQuery, category]);
+    if (productQuery.trim()) {
+      return PRODUCTS.filter((p) => (p.name || "").toLowerCase().includes(productQuery.toLowerCase()));
+    }
+    return pickerCat && pickerCat !== "all" ? PRODUCTS.filter((p) => p.category === pickerCat) : PRODUCTS;
+  }, [productQuery, pickerCat]);
 
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
@@ -2143,7 +2252,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
         <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <div className="flex flex-col items-center">
           <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{isEditMode ? "웨이로그 수정" : "새 웨이로그"}</p>
-          {!isEditMode && (title || body || tags || mediaItems.length > 0 || selectedProducts.length > 0) && (
+          {!isEditMode && (title || body || tags || selectedProducts.length > 0) && (
             <div className="flex items-center gap-2 mt-0.5">
               <span className={cls("text-xs font-bold inline-flex items-center gap-1", dark ? "text-emerald-400" : "text-emerald-600")}>
                 <Check size={10}/> 임시 저장됨
@@ -2155,8 +2264,9 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
             </div>
           )}
         </div>
-        <button disabled={!valid}
+        <button disabled={!valid || submitting}
           onClick={async () => {
+            setSubmitting(true);
             const firstImg = mediaItems.find((m) => m.type === "image");
             const ok = await onSubmit({
               id: editing?.id,
@@ -2169,13 +2279,14 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
               img: firstImg?.url || (editing?.img || ""),
               media: mediaItems,
             });
+            setSubmitting(false);
             if (ok !== false) {
               if (!isEditMode) clearDraft();
               close();
             }
           }}
-          className={cls("text-sm font-bold", valid ? "text-emerald-500" : dark ? "text-gray-600" : "text-gray-300")}>
-          {isEditMode ? "수정 완료" : "등록"}
+          className={cls("text-sm font-bold inline-flex items-center gap-1", submitting ? "opacity-50" : valid ? "text-emerald-500" : dark ? "text-gray-600" : "text-gray-300")}>
+          {submitting ? <><RefreshCw size={14} className="animate-spin"/> 저장 중</> : isEditMode ? "수정 완료" : "등록"}
         </button>
       </div>
 
@@ -2244,7 +2355,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
             )}
           </div>
           <p className={cls("text-xs mt-2 opacity-70", dark ? "text-gray-500" : "text-gray-500")}>
-            사진/동영상 최대 10개 · 동영상은 1분 이하 · 파일당 5MB
+            사진/동영상 최대 10개 · 임시저장에는 포함되지 않아요
           </p>
         </div>
 
@@ -2271,7 +2382,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
           {selectedProducts.length < 3 && (
             <button onClick={() => {
               if (!category) { setError("먼저 카테고리를 선택해주세요"); return; }
-              setProductPickerOpen(true);
+              setPickerCat(category || "all"); setProductQuery(""); setProductPickerOpen(true);
             }}
               className={cls("w-full py-3 rounded-xl border-2 border-dashed text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]",
                 !category ? dark ? "border-gray-700 bg-gray-800/30 text-gray-600" : "border-gray-200 bg-gray-50 text-gray-400" : dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-emerald-200 bg-emerald-50/40 text-emerald-700")}>
@@ -2329,11 +2440,15 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>제품 선택</p>
-                {category && (
+                {productQuery.trim() ? (
                   <p className={cls("text-xs font-bold mt-0.5", dark ? "text-emerald-400" : "text-emerald-600")}>
-                    {CATEGORIES[category]?.label} 카테고리 제품만 표시
+                    전체 제품에서 찾는 중
                   </p>
-                )}
+                ) : pickerCat && pickerCat !== "all" && CATEGORIES[pickerCat] ? (
+                  <p className={cls("text-xs font-bold mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>
+                    {CATEGORIES[pickerCat].label} 카테고리
+                  </p>
+                ) : null}
               </div>
               <div className="flex items-center gap-3">
                 <span className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>최대 3개 ({selectedProducts.length}/3)</span>
@@ -2343,10 +2458,21 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
                 </button>
               </div>
             </div>
-            <div className={cls("flex items-center gap-2 px-3 py-2 rounded-full mb-3", dark ? "bg-gray-800" : "bg-gray-100")}>
+            <div className={cls("flex items-center gap-2 px-3 py-2 rounded-full mb-2", dark ? "bg-gray-800" : "bg-gray-100")}>
               <Search size={14} className={dark ? "text-gray-500" : "text-gray-400"}/>
               <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="제품명 검색"
                 className={cls("flex-1 text-sm bg-transparent outline-none", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto mb-3 pb-1 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+              {[{ key: "all", label: "전체" }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label }))].map((c) => (
+                <button key={c.key} onClick={() => { setPickerCat(c.key); setProductQuery(""); }}
+                  className={cls("shrink-0 px-3 py-1 rounded-full text-xs font-bold transition",
+                    pickerCat === c.key
+                      ? "bg-emerald-500 text-white"
+                      : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500")}>
+                  {c.label}
+                </button>
+              ))}
             </div>
             <div className="flex-1 overflow-y-auto -mx-1 px-1">
               {filteredProducts.length === 0 ? (
@@ -2371,7 +2497,14 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing }) => {
                         )}
                         <div className="flex-1 min-w-0 text-left">
                           <p className={cls("text-xs font-bold line-clamp-2", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
-                          <p className={cls("text-xs mt-0.5 opacity-70", dark ? "text-gray-400" : "text-gray-500")}>후기 {p.count}개</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={cls("text-xs opacity-70", dark ? "text-gray-400" : "text-gray-500")}>후기 {p.count}개</span>
+                            {category && p.category !== category && (
+                              <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-600")}>
+                                {CATEGORIES[p.category]?.label || "기타"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {selected ? (
                           <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
@@ -2418,6 +2551,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [recoverInput, setRecoverInput] = useState("");
   const [avatar, setAvatar] = useState("");
   const [error, setError] = useState("");
@@ -2445,6 +2579,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
       if (!emailRegex.test(email.trim())) { setError("올바른 이메일 형식이 아니에요 (예: name@email.com)"); return; }
       if (password.length < 8) { setError("비밀번호는 8자 이상이어야 해요"); return; }
       if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { setError("비밀번호는 영문과 숫자를 모두 포함해야 해요"); return; }
+      if (avatar && avatar.length > 500000) { setError("프로필 이미지가 너무 커요. 더 작은 이미지를 선택해주세요"); return; }
       setLoading(true);
       const { data, error: signUpError } = await supabaseAuth.signUp(email.trim(), password, nickname.trim());
       setLoading(false);
@@ -2488,8 +2623,13 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
         else setError(signInError.message);
         return;
       }
-      const profile = data?.user?.user_metadata;
-      onAuth({ id: data.user.id, nickname: profile?.nickname || email.split("@")[0], email: email.trim(), avatar: "", joinedAt: data.user.created_at });
+      const meta = data?.user?.user_metadata;
+      let loginAvatar = "";
+      try {
+        const { data: prof } = await supabaseAuth.getProfile(data.user.id);
+        if (prof?.avatar_url) loginAvatar = prof.avatar_url;
+      } catch {}
+      onAuth({ id: data.user.id, nickname: meta?.nickname || email.split("@")[0], email: email.trim(), avatar: loginAvatar, joinedAt: data.user.created_at });
       close();
     } else if (mode === "forgot-password") {
       if (!emailRegex.test(recoverInput.trim())) { setError("올바른 이메일을 입력해주세요"); return; }
@@ -2604,7 +2744,13 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             {mode === "signup" && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (
               <p className="text-xs text-rose-500 -mt-2 font-medium">올바른 이메일 형식이 아니에요</p>
             )}
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" type="password" className={inputCls}/>
+            <div className="relative">
+              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" type={showPw ? "text" : "password"} className={cls(inputCls, "pr-10")}/>
+              <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
+                className={cls("absolute right-0 top-1/2 -translate-y-1/2 p-2", dark ? "text-gray-500" : "text-gray-400")}>
+                {showPw ? <Eye size={16}/> : <Eye size={16} className="opacity-40"/>}
+              </button>
+            </div>
             {mode === "signup" && password && (
               <div className="-mt-2 flex flex-col gap-0.5">
                 <p className={cls("text-xs font-medium inline-flex items-center gap-1", password.length >= 8 ? dark ? "text-emerald-400" : "text-emerald-600" : "text-rose-500")}>
@@ -2634,12 +2780,18 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           </div>
         )}
 
-        <button onClick={submit}
-          className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold mt-6 active:scale-[0.98] transition shadow-lg shadow-emerald-500/20">
-          {mode === "signup" && "회원가입 완료"}
-          {mode === "login" && "로그인"}
-          {mode === "forgot-password" && "재설정 링크 보내기"}
-          {mode === "forgot-email" && "이메일 찾기"}
+        <button onClick={submit} disabled={loading}
+          className={cls("w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold mt-6 active:scale-[0.98] transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2", loading && "opacity-70 cursor-wait")}>
+          {loading ? (
+            <><RefreshCw size={16} className="animate-spin"/> 처리 중...</>
+          ) : (
+            <>
+              {mode === "signup" && "회원가입 완료"}
+              {mode === "login" && "로그인"}
+              {mode === "forgot-password" && "재설정 링크 보내기"}
+              {mode === "forgot-email" && "이메일 찾기"}
+            </>
+          )}
         </button>
 
         {mode === "login" && (
@@ -2698,7 +2850,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
   );
 };
 
-const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSettings, dark, favs, moods, userReviews, taste }) => {
+const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSettings, onSignature, dark, favs, moods, userReviews, taste }) => {
   const [exiting, close] = useExit(onClose);
   const [editing, setEditing] = useState(false);
   const [nick, setNick] = useState(user.nickname);
@@ -2790,9 +2942,13 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
           </div>
         )}
 
-        <button onClick={() => onOpenSettings && onOpenSettings()}
-          className={cls("w-full mt-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 border", dark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-700 hover:bg-gray-50")}>
+        <button onClick={() => onSignature && onSignature()}
+          className="w-full mt-6 py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 via-teal-600 to-violet-600 text-white shadow-lg active:scale-[0.98] transition">
           <Sparkles size={14}/>
+          내 시그니처 카드 보기
+        </button>
+        <button onClick={() => onOpenSettings && onOpenSettings()}
+          className={cls("w-full mt-2 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 border", dark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-700 hover:bg-gray-50")}>
           설정
         </button>
         <button onClick={() => { onLogout(); close(); }}
@@ -2911,21 +3067,21 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
         canvas.width = width; canvas.height = height;
         canvas.getContext("2d").drawImage(img, 0, 0, width, height);
         setPhoto(canvas.toDataURL("image/jpeg", 0.7));
+        // photo 세팅 완료 후 AI 분석 시작
+        setAnalyzing(true);
+        aiMealAnalysis(mealType).then((ai) => {
+          setResult(ai);
+          setEditName(ai.name);
+          setEditCal(String(ai.cal));
+          setEditProtein(String(ai.protein));
+          setEditCarb(String(ai.carb));
+          setEditFat(String(ai.fat));
+          setAnalyzing(false);
+        });
       };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
-    // TODO: 이미지 스토리지 필요 지점 - Firebase Storage로 마이그레이션
-    setAnalyzing(true);
-    aiMealAnalysis(mealType).then((ai) => {
-      setResult(ai);
-      setEditName(ai.name);
-      setEditCal(String(ai.cal));
-      setEditProtein(String(ai.protein));
-      setEditCarb(String(ai.carb));
-      setEditFat(String(ai.fat));
-      setAnalyzing(false);
-    });
   };
 
   const handleSave = () => {
@@ -2981,9 +3137,14 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
             )}
             <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-50")}>
               <div className="flex items-center justify-between mb-3">
-                <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>
-                  {editMode ? "직접 수정" : "AI 분석 결과"}
-                </p>
+                <div>
+                  <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>
+                    {editMode ? "직접 수정" : "AI 분석 결과"}
+                  </p>
+                  {result.isFallback && !editMode && (
+                    <p className={cls("text-[10px] mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>AI 연결 실패 — 추천 식단이에요. 수정해주세요</p>
+                  )}
+                </div>
                 <button onClick={() => setEditMode(!editMode)}
                   className={cls("text-xs font-bold px-2 py-1 rounded-full", dark ? "bg-gray-700 text-gray-300" : "bg-white text-gray-600")}>
                   {editMode ? "자동 결과 보기" : "수정하기"}
@@ -2996,22 +3157,22 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>칼로리</label>
-                      <input value={editCal} onChange={(e) => setEditCal(e.target.value)} type="number"
+                      <input value={editCal} onChange={(e) => setEditCal(e.target.value)} type="number" inputMode="numeric"
                         className={cls("w-full px-3 py-2 rounded-xl text-sm", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
                     </div>
                     <div>
                       <label className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>단백질(g)</label>
-                      <input value={editProtein} onChange={(e) => setEditProtein(e.target.value)} type="number"
+                      <input value={editProtein} onChange={(e) => setEditProtein(e.target.value)} type="number" inputMode="numeric"
                         className={cls("w-full px-3 py-2 rounded-xl text-sm", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
                     </div>
                     <div>
                       <label className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>탄수화물(g)</label>
-                      <input value={editCarb} onChange={(e) => setEditCarb(e.target.value)} type="number"
+                      <input value={editCarb} onChange={(e) => setEditCarb(e.target.value)} type="number" inputMode="numeric"
                         className={cls("w-full px-3 py-2 rounded-xl text-sm", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
                     </div>
                     <div>
                       <label className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>지방(g)</label>
-                      <input value={editFat} onChange={(e) => setEditFat(e.target.value)} type="number"
+                      <input value={editFat} onChange={(e) => setEditFat(e.target.value)} type="number" inputMode="numeric"
                         className={cls("w-full px-3 py-2 rounded-xl text-sm", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
                     </div>
                   </div>
@@ -3096,7 +3257,7 @@ const ExerciseModal = ({ onClose, onSave, dark }) => {
         </div>
 
         <p className={cls("text-xs font-bold mb-2", dark ? "text-gray-400" : "text-gray-500")}>시간 (분)</p>
-        <input value={minutes} onChange={(e) => setMinutes(e.target.value)} type="number" placeholder="30"
+        <input value={minutes} onChange={(e) => setMinutes(e.target.value)} type="number" inputMode="numeric" placeholder="30"
           className={cls("w-full px-4 py-3 rounded-2xl text-sm font-bold mb-4", dark ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-900")}/>
 
         <p className={cls("text-xs font-bold mb-2", dark ? "text-gray-400" : "text-gray-500")}>강도</p>
@@ -3191,7 +3352,7 @@ const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
               ].map((f) => (
                 <div key={f.label}>
                   <label className={cls("text-xs font-bold block mb-1", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</label>
-                  <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" step="0.1"
+                  <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" inputMode="decimal" step="0.1"
                     className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
                 </div>
               ))}
@@ -3684,19 +3845,19 @@ const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
             <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>맞춤 칼로리와 운동량 계산에 사용돼요</p>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>키 (cm)</label>
-              <input value={height} onChange={(e) => setHeight(e.target.value)} type="number" placeholder="165" className={inputCls}/>
+              <input value={height} onChange={(e) => setHeight(e.target.value)} type="number" inputMode="numeric" placeholder="165" className={inputCls}/>
             </div>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>몸무게 (kg)</label>
-              <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" placeholder="65" className={inputCls}/>
+              <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" inputMode="numeric" placeholder="65" className={inputCls}/>
             </div>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>체지방 (%, 선택)</label>
-              <input value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} type="number" placeholder="25" className={inputCls}/>
+              <input value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} type="number" inputMode="numeric" placeholder="25" className={inputCls}/>
             </div>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>나이</label>
-              <input value={age} onChange={(e) => setAge(e.target.value)} type="number" placeholder="30" className={inputCls}/>
+              <input value={age} onChange={(e) => setAge(e.target.value)} type="number" inputMode="numeric" placeholder="30" className={inputCls}/>
             </div>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>성별</label>
@@ -4135,11 +4296,6 @@ const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords
           </div>
         )}
 
-        {subTab === "graph" && (
-          <div className="p-4">
-            <ChallengeGraphScreen challenge={challenge} dailyLogs={dailyLogs} inbodyRecords={inbodyRecords} onClose={() => setSubTab("today")} dark={dark}/>
-          </div>
-        )}
       </div>
 
       {/* 하단 탭 */}
@@ -4385,6 +4541,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
     ]},
     { group: "정보", rows: [
       { icon: Sparkles, label: "버전", sub: "5.5.0", type: "info" },
+
       { icon: BookOpen, label: "온보딩 다시 보기", type: "action", onClick: () => onReplayOnboarding && onReplayOnboarding() },
       { icon: BookOpen, label: "이용약관", type: "action", onClick: () => setDocOpen("terms") },
       { icon: BookOpen, label: "개인정보 처리방침", type: "action", onClick: () => setDocOpen("privacy") },
@@ -4435,7 +4592,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
           className={cls("w-full py-3.5 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-rose-400 bg-gray-800" : "border-gray-200 text-rose-500 bg-white")}>
           로그아웃
         </button>
-        <p className={cls("text-xs text-center pb-4", dark ? "text-gray-600" : "text-gray-400")}>웨이로그 v5.3.0</p>
+        <p className={cls("text-xs text-center pb-4", dark ? "text-gray-600" : "text-gray-400")}>웨이로그 v5.5.0</p>
       </div>
 
       {confirmClear && (
@@ -4787,8 +4944,8 @@ const WeeklySignatureCard = ({ user, taste, moods, favs, userReviews, reviews, s
 
           {/* 헤더: 아바타 + 닉네임 */}
           <div className="relative flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 flex items-center justify-center text-3xl shadow-lg">
-              {user.avatar}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg overflow-hidden">
+              <Avatar id={user.avatar} size={28} className="w-14 h-14"/>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Week {weekNum}</p>
@@ -4891,7 +5048,7 @@ const WeeklySignatureCard = ({ user, taste, moods, favs, userReviews, reviews, s
         {sigHistory && sigHistory.length > 0 && (
           <div className="mt-6">
             <p className={cls("text-xs font-black uppercase tracking-wider mb-3", dark ? "text-gray-500" : "text-gray-500")}>지난 카드</p>
-            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
               {sigHistory.map((h, i) => {
                 const cat = h.topCat ? CATEGORIES[h.topCat] : null;
                 return (
@@ -4958,6 +5115,13 @@ const WeeklySignatureCard = ({ user, taste, moods, favs, userReviews, reviews, s
 // ---------- APP ----------
 function AppInner() {
   const [tab, setTab] = useState("home");
+  const [toast, setToast] = useState("");
+  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(""), 2200); return () => clearTimeout(t); } }, [toast]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [tab]);
+
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -5017,6 +5181,7 @@ function AppInner() {
   const [search, setSearch] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [compose, setCompose] = useState(false);
+  const [composeProduct, setComposeProduct] = useState(null);
   const [editingReview, setEditingReview] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [armClearNotif, setArmClearNotif] = useState(false);
@@ -5049,10 +5214,12 @@ function AppInner() {
     ]);
   };
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const [toast, setToast] = useState("");
-  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(""), 2200); return () => clearTimeout(t); } }, [toast]);
   const notifRef = useRef(null);
   const [dark, setDark] = useStoredState("waylog:dark", false);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", !!dark);
+  }, [dark]);
 
   // --- 인증 (Supabase 우선, 실패 시 로컬 폴백) ---
   const [user, setUserRaw] = useState(null);
@@ -5064,19 +5231,26 @@ function AppInner() {
     try { if (u) localStorage.setItem("waylog:user", JSON.stringify(u)); else localStorage.removeItem("waylog:user"); } catch {}
   };
 
+  const buildUserFromSession = async (session) => {
+    const meta = session.user.user_metadata || {};
+    let avatar = "";
+    try {
+      const { data: profile } = await supabaseAuth.getProfile(session.user.id);
+      if (profile?.avatar_url) avatar = profile.avatar_url;
+    } catch {}
+    return { id: session.user.id, email: session.user.email, nickname: meta.nickname || session.user.email.split("@")[0], avatar, joinedAt: session.user.created_at };
+  };
+
   useEffect(() => {
     if (!supabase) {
-      // Supabase 미설정 → 로컬 저장소에서 복원
       try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
       setAuthLoading(false);
       return;
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const meta = session.user.user_metadata || {};
-        setUser({ id: session.user.id, email: session.user.email, nickname: meta.nickname || session.user.email.split("@")[0], avatar: "", joinedAt: session.user.created_at });
+        setUser(await buildUserFromSession(session));
       } else {
-        // Supabase 세션 없으면 로컬 폴백
         try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
       }
       setAuthLoading(false);
@@ -5085,10 +5259,9 @@ function AppInner() {
       setAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const meta = session.user.user_metadata || {};
-        setUser({ id: session.user.id, email: session.user.email, nickname: meta.nickname || session.user.email.split("@")[0], avatar: "", joinedAt: session.user.created_at });
+        setUser(await buildUserFromSession(session));
       }
     });
     return () => subscription.unsubscribe();
@@ -5120,7 +5293,8 @@ function AppInner() {
           id: r.id, title: r.title, body: r.content, category: r.category,
           tags: r.tags || [], author: r.profiles?.nickname || "익명", authorId: r.user_id,
           date: (r.created_at || "").slice(0, 10), likes: r.likes_count || 0, views: r.views_count || 0,
-          product: r.product_name || "", products: [], media: r.media || [], img: r.media?.[0] || "",
+          product: r.product_name || "", products: [], media: r.media || [],
+          img: (r.media?.[0]?.url) || (typeof r.media?.[0] === "string" ? r.media[0] : "") || "",
         })));
       }
     })();
@@ -5199,6 +5373,7 @@ function AppInner() {
     if (currentWeek !== sigWeek) {
       pushNotif(`WEEK ${currentWeek} 시그니처 카드가 도착했어요`);
       setToast(`WEEK ${currentWeek} 시그니처 카드가 도착했어요`);
+      setSignatureOpen(true);
       setSigHistory((prev) => [
         { week: currentWeek, year: now.getFullYear(), createdAt: now.toISOString(), favs: favs.size, moods: moodCount, posts: userReviews.length, topCat: Object.entries(taste.cats).sort((a,b) => b[1]-a[1])[0]?.[0] || null },
         ...prev,
@@ -5221,13 +5396,12 @@ function AppInner() {
   }, [notifOpen]);
 
   const reviews = useMemo(() => {
-    let list = [...userReviews, ...SEED_REVIEWS].filter((r) => !blocked.has(r.author));
+    const seen = new Set(userReviews.map((r) => r.id));
+    const seeds = SEED_REVIEWS.filter((r) => !seen.has(r.id));
+    let list = [...userReviews, ...seeds].filter((r) => !blocked.has(r.author));
     if (refreshKey > 0) list = [...list].sort(() => Math.random() - 0.5);
     return list;
   }, [userReviews, blocked, refreshKey]);
-
-  // ---------- Today's Pick ----------
-  const [todaysPick, setTodaysPick, todaysPickLoaded] = useStoredState("waylog:todaysPick", null);
 
   // ---------- Challenge State ----------
   // TODO: Firebase 마이그레이션 필요 지점 - challenge 데이터를 Firestore로 이전
@@ -5239,77 +5413,17 @@ function AppInner() {
   const [challengeMainOpen, setChallengeMainOpen] = useState(false);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
 
+  // 챌린지 완료 자동 감지
   useEffect(() => {
-    if (!todaysPickLoaded) return;
-    const today = new Date().toISOString().slice(0, 10);
-    if (todaysPick?.date === today && todaysPick?.picks?.length === 4) return;
-    if (reviews.length === 0) return;
-
-    const scored = [...reviews]
-      .map((r) => ({ r, score: (r.likes || 0) * 2 + (r.views || 0) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 4)
-      .map((x) => x.r);
-
-    if (scored.length < 4) return;
-
-    // 폴백 템플릿 (AI 실패 시 사용)
-    const makeFallbackPicks = (items) => {
-      const headlines = {
-        food: ["맛으로 완성하는 하루", "영양이 스며드는 한 끼", "건강한 식탁의 발견"],
-        wellness: ["마음의 균형을 찾다", "오늘의 웰니스 루틴", "나를 돌보는 시간"],
-        beauty: ["오늘의 뷰티 시크릿", "피부가 달라지는 순간", "빛나는 하루의 시작"],
-        kitchen: ["퍼스널 케어의 정석", "매일의 나를 가꾸다", "작지만 확실한 변화"],
-        home: ["일상을 바꾸는 한 끗", "공간의 품격", "홈 라이프 업그레이드"],
-        one4one: ["나눔의 선한 영향력", "한 번의 선택, 두 배의 가치", "함께 만드는 변화"],
-      };
-      const sublines = ["웨이로거들의 뜨거운 관심을 받은 BEST", "오늘 가장 많은 사랑을 받은 리뷰", "지금 이 순간 가장 주목받는 픽", "모두가 기억할 만한 특별한 발견"];
-      const gradients = ["from-rose-400 via-pink-500 to-fuchsia-500", "from-amber-400 via-orange-500 to-red-500", "from-emerald-400 via-teal-500 to-cyan-500", "from-violet-400 via-purple-500 to-indigo-500"];
-      return items.map((r, i) => ({
-        headline: (headlines[r.category] || ["오늘의 추천"])[i % 3],
-        subline: sublines[i % sublines.length],
-        gradient: gradients[i % gradients.length],
-        review: r,
-      }));
-    };
-
-    // 먼저 폴백으로 즉시 표시
-    setTodaysPick({ date: today, picks: makeFallbackPicks(scored) });
-
-    // AI로 업그레이드 시도
-    generatePicksWithAI(scored).then((aiPicks) => {
-      if (aiPicks && aiPicks.length === 4) setTodaysPick({ date: today, picks: aiPicks });
-    });
-  }, [reviews, todaysPickLoaded]);
-
-  const generatePicksWithAI = async (topReviews) => {
-    const prompt = `다음은 웨이로그 앱에서 오늘 가장 인기 있는 리뷰 4개입니다:
-${topReviews.map((r, i) => `${i + 1}. [${CATEGORIES[r.category]?.label || r.category}] "${r.title}" - ${r.product || "제품 없음"} (좋아요 ${r.likes})`).join("\n")}
-
-각 리뷰에 대해 매력적인 "Today's Pick" 배너 카피를 생성해주세요.
-- headline: 감성적이고 호기심을 자극하는 10-15자 한글 문구
-- subline: 리뷰의 매력을 설명하는 20-30자 한글 문구
-
-JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`;
-    const text = await callClaude(prompt, 600);
-    if (!text) return null;
-    try {
-      const cleaned = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      const gradients = [
-        "from-rose-400 via-pink-500 to-fuchsia-500",
-        "from-amber-400 via-orange-500 to-red-500",
-        "from-emerald-400 via-teal-500 to-cyan-500",
-        "from-violet-400 via-purple-500 to-indigo-500",
-      ];
-      return parsed.map((p, i) => ({
-        headline: p.headline,
-        subline: p.subline,
-        gradient: gradients[i % gradients.length],
-        review: topReviews[p.reviewIndex ?? i],
-      }));
-    } catch { return null; }
-  };
+    if (!challenge || challenge.status === "completed" || !challenge.startDate) return;
+    const dayNum = getChallengeDay(challenge.startDate);
+    const now = new Date();
+    const start = new Date(challenge.startDate);
+    const elapsed = Math.floor((now - start) / 86400000) + 1;
+    if (elapsed > CHALLENGE_DAYS) {
+      setChallenge({ ...challenge, status: "completed", completedAt: new Date().toISOString() });
+    }
+  }, [challenge]);
 
   const learnFrom = (rev, weight = 1) => {
     if (!rev) return;
@@ -5324,12 +5438,13 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
   const toggleFav = async (id) => {
     const has = favsArr.includes(id);
     const rev = [...userReviews, ...SEED_REVIEWS].find((x) => x.id === id);
+    const prevMood = moods[id];
 
     // 취향 학습 (로컬)
     if (has) {
       learnFrom(rev, -1);
-      if (moods[id] === "love" || moods[id] === "wow") learnFrom(rev, -2);
-      if (moods[id]) setMoods((m) => { const c = { ...m }; delete c[id]; return c; });
+      if (prevMood === "love" || prevMood === "wow") learnFrom(rev, -2);
+      if (prevMood) setMoods((m) => { const c = { ...m }; delete c[id]; return c; });
     } else {
       learnFrom(rev, 1);
     }
@@ -5343,8 +5458,15 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
         ? await supabaseFavorites.remove(user.id, id)
         : await supabaseFavorites.add(user.id, id);
       if (error) {
-        // 롤백
+        // 롤백 — favs + taste + mood 모두 되돌림
         setFavsArr((prev) => has ? [...prev, id] : prev.filter((x) => x !== id));
+        if (has) {
+          learnFrom(rev, 1);
+          if (prevMood === "love" || prevMood === "wow") learnFrom(rev, 2);
+          if (prevMood) setMoods((m) => ({ ...m, [id]: prevMood }));
+        } else {
+          learnFrom(rev, -1);
+        }
       }
     }
   };
@@ -5368,7 +5490,27 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
     });
   };
 
-  const openDetail = (r) => nav.push({ type: "detail", payload: r });
+  const openDetail = (r) => {
+    nav.push({ type: "detail", payload: r });
+    // 서버에서 댓글 가져오기 (로컬 seed와 병합)
+    if (supabase && r.id) {
+      supabaseComments.fetchByReview(r.id).then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          const serverComments = data.map((c) => ({
+            id: c.id, author: c.profiles?.nickname || "익명", avatar: c.profiles?.avatar_url || "",
+            text: c.content, parentId: c.parent_id || null, mentionTo: c.mention_to || null,
+            createdAt: new Date(c.created_at).getTime(), time: "", likedBy: c.liked_by || [],
+          }));
+          setCommentsMap((prev) => {
+            const local = prev[r.id] || [];
+            const serverIds = new Set(serverComments.map((c) => c.id));
+            const localOnly = local.filter((c) => !serverIds.has(c.id) && typeof c.id === "number");
+            return { ...prev, [r.id]: [...serverComments, ...localOnly] };
+          });
+        }
+      });
+    }
+  };
   const back = () => nav.pop();
 
   const addRecent = (term) => {
@@ -5377,25 +5519,48 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
   const removeRecent = (term) => setRecents((prev) => prev.filter((t) => t !== term));
   const clearRecents = () => { setRecents([]); setToast("최근 검색어를 모두 삭제했어요"); };
 
+  const uploadMedia = async (mediaItems) => {
+    if (!user || !supabase) return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
+    const uploaded = [];
+    for (const m of mediaItems) {
+      if (m.file) {
+        const ext = m.type === "video" ? "mp4" : "jpg";
+        const { url, error } = await supabaseStorage.uploadMedia(user.id, m.file, `${m.id}.${ext}`);
+        if (url && !error) {
+          uploaded.push({ id: m.id, type: m.type, url, duration: m.duration });
+          continue;
+        }
+      }
+      // fallback: file이 없거나 업로드 실패 시 — 이미 URL인 경우 그대로 유지
+      const isDataUrl = (m.url || "").startsWith("data:");
+      uploaded.push({ id: m.id, type: m.type, url: isDataUrl ? "" : (m.url || ""), duration: m.duration });
+    }
+    return uploaded;
+  };
+
   const submitReview = async (data) => {
     try {
+      // 미디어 업로드 (base64 → Supabase Storage URL)
+      const uploadedMedia = await uploadMedia(data.media || []);
+      const firstImgUrl = uploadedMedia.find((m) => m.type === "image")?.url || "";
+
       if (data.id) {
         // 수정 모드 (로컬)
         setUserReviews((prev) => prev.map((r) => r.id === data.id ? {
           ...r,
           title: data.title, body: data.body, product: data.product,
           products: data.products || [],
-          media: data.media || [],
+          media: uploadedMedia,
           tags: data.tags.length ? data.tags : ["내웨이로그"],
           category: data.category,
-          img: data.img || "",
+          img: firstImgUrl || data.img || "",
         } : r));
-        // Supabase 수정
-        if (user) {
+        // Supabase 수정 (서버 UUID인 경우만)
+        if (user && typeof data.id === "string") {
           supabaseReviews.update(data.id, {
             title: data.title, content: data.body, category: data.category,
             tags: data.tags.length ? data.tags : ["내웨이로그"],
-            product_name: data.product, media: data.media || [],
+            product_name: data.product, media: uploadedMedia,
           }).catch(() => {});
         }
         setTimeout(() => setToast("웨이로그가 수정됐어요"), 280);
@@ -5405,10 +5570,10 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
       // 새 리뷰
       const localR = {
         id: Date.now(),
-        img: data.img || "",
+        img: firstImgUrl || data.img || "",
         title: data.title, body: data.body, product: data.product,
         products: data.products || [],
-        media: data.media || [],
+        media: uploadedMedia,
         tags: data.tags.length ? data.tags : ["내웨이로그"],
         category: data.category, views: 0, likes: 0,
         date: new Date().toISOString().slice(0, 10),
@@ -5419,40 +5584,68 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
 
       // Supabase 저장
       if (user) {
-        supabaseReviews.create({
+        const { data: created, error: createErr } = await supabaseReviews.create({
           user_id: user.id,
           title: data.title, content: data.body, category: data.category,
           tags: data.tags.length ? data.tags : ["내웨이로그"],
-          product_name: data.product, media: data.media || [],
-        }).catch(() => {});
+          product_name: data.product, media: uploadedMedia,
+        });
+        if (createErr || !created?.id) {
+          // 서버 저장 실패 → 로컬 롤백
+          setUserReviews((prev) => prev.filter((r) => r.id !== localR.id));
+          setToast("서버 저장에 실패했어요. 다시 시도해주세요");
+          return false;
+        }
+        // 서버 ID로 로컬 ID 업데이트 (중복 방지)
+        setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id } : r));
       }
 
       setTimeout(() => { setTab("feed"); setToast("웨이로그가 등록됐어요"); }, 280);
       return true;
     } catch (err) {
-      setToast("등록 실패. 미디어가 너무 크거나 저장 공간이 부족해요");
+      setToast("등록 실패. 다시 시도해주세요");
       return false;
     }
   };
 
-  const deleteReview = (id) => {
+  const deleteReview = async (id) => {
+    const backup = userReviews.find((r) => r.id === id);
     setUserReviews((prev) => prev.filter((r) => r.id !== id));
     setFavsArr((prev) => prev.filter((x) => x !== id));
     setMoods((prev) => { const m = { ...prev }; delete m[id]; return m; });
     setCommentsMap((prev) => { const m = { ...prev }; delete m[id]; return m; });
-    if (user) supabaseReviews.delete(id).catch(() => {});
+    if (user && typeof id === "string") {
+      const { error } = await supabaseReviews.delete(id);
+      if (error && backup) {
+        setUserReviews((prev) => [backup, ...prev]);
+        setToast("삭제 실패. 다시 시도해주세요");
+        return;
+      }
+    }
     setToast("웨이로그가 삭제됐어요");
   };
 
   const addComment = async (rid, text, parentId = null, mentionTo = null) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return false; }
-    const localComment = { id: Date.now(), author: user.nickname, avatar: user.avatar, time: "방금", createdAt: Date.now(), text, parentId, mentionTo, likedBy: [] };
+    const localId = Date.now();
+    const localComment = { id: localId, author: user.nickname, avatar: user.avatar, time: "방금", createdAt: localId, text, parentId, mentionTo, likedBy: [] };
     setCommentsMap((prev) => ({
       ...prev,
       [rid]: [...(prev[rid] || []), localComment],
     }));
-    // Supabase 동기화 (비동기, 실패해도 로컬은 유지)
-    supabaseComments.create({ user_id: user.id, review_id: rid, content: text, parent_id: parentId }).catch(() => {});
+    // Supabase 동기화 + 서버 ID로 교체
+    if (supabase) {
+      supabaseComments.create({ user_id: user.id, review_id: rid, content: text, parent_id: parentId })
+        .then(({ data }) => {
+          if (data?.id) {
+            setCommentsMap((prev) => ({
+              ...prev,
+              [rid]: (prev[rid] || []).map((c) => c.id === localId ? { ...c, id: data.id } : c),
+            }));
+          }
+        })
+        .catch(() => {});
+    }
     return true;
   };
 
@@ -5474,6 +5667,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
       ...prev,
       [rid]: (prev[rid] || []).filter((c) => c.id !== cid),
     }));
+    if (supabase && typeof cid === "string") supabaseComments.delete(cid).catch(() => {});
     setToast("댓글이 삭제됐어요");
   };
 
@@ -5487,6 +5681,10 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
   const logout = async () => {
     await supabaseAuth.signOut();
     setUser(null);
+    setFavsArr([]); setMoods({}); setTaste({ cats: {}, tags: {} });
+    setFollowingArr([]); setBlockedArr([]); setNotifications([]);
+    setChallenge(null); setChallengeDailyLogs({}); setChallengeInbody([]); setChallengeAnonPosts([]);
+    setRecents([]); setSigWeek(0); setSigHistory([]);
     setToast("로그아웃되었어요");
   };
 
@@ -5511,7 +5709,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
   };
 
   const screens = {
-    home: <HomeScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} taste={taste} moods={moods} user={user} tg={tg} onPrimary={() => requireAuth(() => setCompose(true))} onSignature={() => setSignatureOpen(true)} refreshKey={refreshKey} todaysPick={todaysPick?.picks}
+    home: <HomeScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} taste={taste} moods={moods} user={user} tg={tg} onPrimary={() => requireAuth(() => setCompose(true))} refreshKey={refreshKey}
       challenge={challenge} dailyLogs={challengeDailyLogs}
       onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
       onChallengeOpen={() => setChallengeMainOpen(true)}
@@ -5522,6 +5720,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
       user={user}
       onAddPost={addCommunityPost}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
+      onComment={() => setToast("댓글 기능은 준비 중이에요")}
       onShare={async (p) => {
       const text = `${p.author}: ${p.content}\n\n— 웨이로그에서 공유`;
       try {
@@ -5553,31 +5752,6 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
           </div>
         </div>
       )}
-      <style>{`
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        @keyframes slideDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-        @keyframes toastIn { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
-        @keyframes signatureEnter { 0% { transform: scale(0.85) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes cardEnter { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
-        @keyframes slideProgress { from { width: 0%; } to { width: 100%; } }
-        .animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
-        .animate-slide-down { animation: slideDown 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
-        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-        .animate-fade-out { animation: fadeOut 0.2s ease-out forwards; }
-        .animate-toast { animation: toastIn 2.2s ease-out; }
-        .animate-signature-enter { animation: signatureEnter 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
-        .animate-shimmer { animation: shimmer 1.5s infinite linear; }
-        .animate-card-enter { animation: cardEnter 0.4s ease-out backwards; }
-        .tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
-        button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-          outline: 2px solid #10b981;
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-      `}</style>
       <header className={cls("sticky top-0 z-20 backdrop-blur border-b",
         dark ? "bg-gray-900/95 border-gray-800" : "bg-white/95 border-gray-100")}>
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
@@ -5710,7 +5884,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
       {/* Detail stack */}
       {nav.stack.map((s, i) => s.type === "detail" && (
         <DetailScreen key={`${s.payload.id}-${i}`} r={s.payload} onBack={back} onOpen={openDetail}
-          favs={favs} toggleFav={toggleFav} dark={dark}
+          reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
           comments={(commentsMap[s.payload.id] || []).filter((c) => !blocked.has(c.author))} addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike} user={user}
           onEdit={(r) => { setEditingReview(r); back(); setTimeout(() => setCompose(true), 280); }}
           onDelete={(r) => { deleteReview(r.id); back(); }}
@@ -5719,7 +5893,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
           onUserClick={setSelectedUser}/>
       ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
-      {compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); }} onSubmit={submitReview} dark={dark} editing={editingReview}/>}
+      {compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}
       {authOpen && <AuthScreen onClose={() => setAuthOpen(false)} onAuth={(u) => {
         setUser(u);
         setToast(`${u.nickname}님 환영해요`);
@@ -5735,6 +5909,7 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
         onLogout={logout}
         onUpdateProfile={(u) => { setUser(u); setToast("프로필이 수정됐어요"); }}
         onOpenSettings={() => { setProfileOpen(false); setTimeout(() => setSettingsOpen(true), 100); }}
+        onSignature={() => { setProfileOpen(false); setTimeout(() => setSignatureOpen(true), 100); }}
         dark={dark} favs={favs} moods={moods} userReviews={userReviews} taste={taste}/>}
       {settingsOpen && <SettingsScreen user={user} dark={dark} setDark={setDark}
         notifPref={notifPref} setNotifPref={setNotifPref}
@@ -5784,8 +5959,9 @@ JSON 배열만 응답: [{"headline":"...","subline":"...","reviewIndex":0},...]`
             setSelectedCatalogProduct(null);
             setTimeout(() => openDetail(r), 280);
           }}
-          onCompose={() => {
+          onCompose={(prod) => {
             setSelectedCatalogProduct(null);
+            setComposeProduct(prod || selectedCatalogProduct);
             setTimeout(() => setCompose(true), 280);
           }}
         />
