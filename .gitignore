@@ -15,3 +15,8 @@ dist-ssr
 
 # Backups
 src/App.jsx.backup*
+
+# Android signing — NEVER commit
+*.jks
+*.keystore
+android/keystore.properties
