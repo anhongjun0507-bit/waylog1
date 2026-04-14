@@ -2041,11 +2041,15 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     const remaining = 10 - mediaItems.length;
     if (files.length > remaining) {
       setError(`최대 10개까지 업로드 가능해요 (${remaining}개 남음)`);
+      e.target.value = "";
       return;
     }
     const newItems = [];
+    let skippedUnsupported = 0;
     for (const file of files) {
       const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+      if (!isVideo && !isImage) { skippedUnsupported++; continue; }
       if (isVideo) {
         if (file.size > 30 * 1024 * 1024) { setError(`${file.name}: 동영상은 30MB 이하만 가능해요`); continue; }
         const duration = await new Promise((resolve) => {
@@ -2059,16 +2063,37 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
         const url = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
           reader.readAsDataURL(file);
         });
+        if (!url) { setError(`${file.name}: 파일을 읽지 못했어요`); continue; }
         newItems.push({ id: Date.now() + Math.random(), type: "video", url, duration: Math.round(duration), file });
-      } else if (file.type.startsWith("image/")) {
-        const { dataUrl, blob } = await resizeImage(file, 1600, 0.85);
-        if (!dataUrl) continue;
+      } else {
+        let dataUrl, blob;
+        try {
+          ({ dataUrl, blob } = await resizeImage(file, 1600, 0.85));
+        } catch (err) {
+          setError(`${file.name}: 이미지 처리 실패`);
+          continue;
+        }
+        // resizeImage 가 실패해도 원본 파일로 fallback
+        if (!dataUrl) {
+          const fallback = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+          if (!fallback) { setError(`${file.name}: 파일을 읽지 못했어요`); continue; }
+          dataUrl = fallback;
+        }
         newItems.push({ id: Date.now() + Math.random(), type: "image", url: dataUrl, file: blob || file });
       }
     }
-    setMediaItems((prev) => [...prev, ...newItems]);
+    if (skippedUnsupported > 0 && newItems.length === 0) {
+      setError("이미지 또는 동영상 파일만 업로드할 수 있어요");
+    }
+    if (newItems.length > 0) setMediaItems((prev) => [...prev, ...newItems]);
     e.target.value = "";
   };
 
@@ -2197,7 +2222,8 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 dark ? "border-gray-700 bg-gray-800/50 hover:bg-gray-800" : "border-gray-300 bg-white hover:bg-gray-50")}>
                 <Camera size={20} className={dark ? "text-gray-500" : "text-gray-400"}/>
                 <span className={cls("text-[10px] font-bold mt-1", dark ? "text-gray-500" : "text-gray-400")}>추가</span>
-                <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaUpload}/>
+                <input type="file" accept="image/*,video/*" multiple onChange={handleMediaUpload}
+                  className="absolute w-px h-px opacity-0 overflow-hidden -m-px p-0 border-0"/>
               </label>
             )}
           </div>
@@ -2355,13 +2381,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                       <button key={p.id} onClick={() => toggleProduct(p)}
                         className={cls("w-full flex items-center gap-3 p-2 rounded-2xl transition active:scale-[0.98]",
                           selected ? dark ? "bg-emerald-900/40 ring-2 ring-emerald-500" : "bg-emerald-50 ring-2 ring-emerald-500" : dark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100")}>
-                        {p.img ? (
-                          <img src={`${BASE}${p.img}`} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0"/>
-                        ) : (
-                          <div className={cls("w-14 h-14 rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br", CATEGORIES[p.category]?.color || "from-gray-300 to-gray-400")}>
-                            <ShoppingBag size={22} className="text-white"/>
-                          </div>
-                        )}
+                        <ProductImage
+                          src={p.img ? `${BASE}${p.img}` : null}
+                          alt={p.name}
+                          className="w-14 h-14 rounded-xl object-cover shrink-0"
+                          iconSize={22}
+                          fallbackGradient={CATEGORIES[p.category]?.color || "from-gray-300 to-gray-400"}/>
                         <div className="flex-1 min-w-0 text-left">
                           <p className={cls("text-xs font-bold line-clamp-2", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -2735,11 +2760,14 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
   const [editing, setEditing] = useState(false);
   const [nick, setNick] = useState(user.nickname);
   const [avatar, setAvatar] = useState(user.avatar);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) return;
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => setAvatar(reader.result);
     reader.readAsDataURL(file);
@@ -2748,9 +2776,19 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
   const moodCount = Object.values(moods).filter(Boolean).length;
   const totalCats = Object.values(taste.cats).reduce((a,b) => a+b, 0);
 
-  const save = () => {
-    onUpdateProfile({ ...user, nickname: nick.trim() || user.nickname, avatar });
-    setEditing(false);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onUpdateProfile(
+        { ...user, nickname: nick.trim() || user.nickname, avatar },
+        avatarFile
+      );
+      setAvatarFile(null);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2758,8 +2796,9 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
       <header className={cls("sticky top-0 z-10 flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={20} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>프로필</p>
-        <button onClick={() => editing ? save() : setEditing(true)} className="text-emerald-500 text-sm font-bold">
-          {editing ? "저장" : "편집"}
+        <button onClick={() => editing ? save() : setEditing(true)} disabled={saving}
+          className={cls("text-sm font-bold", saving ? "text-emerald-300" : "text-emerald-500")}>
+          {editing ? (saving ? "저장 중…" : "저장") : "편집"}
         </button>
       </header>
 
@@ -5589,8 +5628,9 @@ function AppInner() {
               className={cls("p-2 rounded-full relative", dark ? "hover:bg-gray-800" : "hover:bg-gray-100")}>
                 <Bell size={18} className={dark ? "text-gray-300" : "text-gray-700"}/>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-500 rounded-full text-xs font-bold text-white flex items-center justify-center">
-                    {unreadCount}
+                  <span className={cls("absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-rose-500 rounded-full text-[10px] font-black text-white flex items-center justify-center leading-none ring-2 tabular-nums",
+                    dark ? "ring-gray-900" : "ring-white")}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </button>
@@ -5729,7 +5769,21 @@ function AppInner() {
       }} dark={dark}/>}
       {profileOpen && user && <ProfileScreen user={user} onClose={() => setProfileOpen(false)}
         onLogout={logout}
-        onUpdateProfile={(u) => { setUser(u); setToast("프로필이 수정됐어요"); }}
+        onUpdateProfile={async (u, avatarFile) => {
+          let avatarUrl = u.avatar;
+          if (avatarFile && supabase && u.id) {
+            const { url } = await supabaseStorage.uploadAvatar(u.id, avatarFile);
+            if (url) avatarUrl = url;
+          }
+          if (supabase && u.id) {
+            await supabaseAuth.updateProfile(u.id, { nickname: u.nickname, avatar_url: avatarUrl });
+            await supabaseAuth.updateUserMetadata({ nickname: u.nickname, avatar_url: avatarUrl });
+          }
+          const updated = { ...u, avatar: avatarUrl };
+          profileCacheRef.current = { userId: u.id, avatar: avatarUrl };
+          setUser(updated);
+          setToast("프로필이 수정됐어요");
+        }}
         onOpenSettings={() => { setProfileOpen(false); setTimeout(() => setSettingsOpen(true), 100); }}
         onSignature={() => { setProfileOpen(false); setTimeout(() => setSignatureOpen(true), 100); }}
         dark={dark} favs={favs} moods={moods} userReviews={userReviews} taste={taste}/>}

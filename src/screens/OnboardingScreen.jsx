@@ -37,7 +37,7 @@ export const OnboardingScreen = ({ onClose, dark }) => {
 
   return (
     <div className={cls("fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-      <div className="flex justify-end p-4 h-12">
+      <div className="flex justify-end px-4 pt-safe pb-2 mt-3">
         {!isLast && (
           <button onClick={onClose} className={cls("text-xs font-bold px-3 py-1.5 rounded-full", dark ? "text-gray-400 bg-gray-800" : "text-gray-500 bg-gray-100")}>
             건너뛰기

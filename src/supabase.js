@@ -62,6 +62,18 @@ export const auth = {
       return await supabase.from('profiles').select('*').eq('id', userId).single()
     } catch (e) { return { data: null, error: e } }
   },
+  async updateProfile(userId, patch) {
+    if (!supabase) return noop
+    try {
+      return await supabase.from('profiles').upsert({ id: userId, ...patch, updated_at: new Date().toISOString() })
+        .select().single()
+    } catch (e) { return { data: null, error: e } }
+  },
+  async updateUserMetadata(metadata) {
+    if (!supabase) return noop
+    try { return await supabase.auth.updateUser({ data: metadata }) }
+    catch (e) { return { data: null, error: e } }
+  },
 }
 
 export const reviews = {
@@ -324,5 +336,20 @@ export const storage = {
     if (!supabase) return noop
     try { return await supabase.storage.from('review-media').remove([path]) }
     catch (e) { return { error: e } }
+  },
+  async uploadAvatar(userId, file) {
+    if (!supabase) return { url: null, error: null }
+    try {
+      const ext = (file.type && file.type.split('/')[1]) || 'jpg'
+      const path = `${userId}/avatar-${Date.now()}.${ext}`
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { cacheControl: '31536000', upsert: true })
+      if (error) return { url: null, error }
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(data.path)
+      return { url: urlData.publicUrl, error: null }
+    } catch (e) { return { url: null, error: e } }
   },
 }
