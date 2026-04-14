@@ -1,0 +1,6 @@
+dist
+node_modules
+package-lock.json
+*.min.js
+public/sw.js
+src/data/products.json

@@ -1,19 +1,46 @@
 import { useState, useEffect, useMemo, useRef, Component } from "react";
 import {
+  // App.jsx 에서 직접 JSX 렌더에 사용하는 아이콘만. 상수/컴포넌트용 아이콘은 해당 파일로 이동.
   Home, Utensils, Heart, Users, User, Bell, Search, ArrowLeft, Plus,
-  Eye, Moon, Sun, Sparkles, MessageCircle, Share2, Bookmark, X,
-  Calendar, Camera, Check, Flame, TrendingUp, ExternalLink, ChevronRight,
-  Leaf, Star, Smile, Lightbulb, Coffee, Cat, Music, Palette, Feather, Layers, RefreshCw,
-  BookOpen, PenLine, Target, Gift, Inbox, Flower2, Wand2, Apple, Wind, Droplets, ShoppingBag,
-  Trophy, Dumbbell, Activity, Clock,
-  BarChart3, Zap, Image, Download, CircleUser,
+  Eye, Moon, Sun, Sparkles, MessageCircle, Share2, X,
+  Calendar, Camera, Check, Flame, ExternalLink, ChevronRight,
+  Star, RefreshCw,
+  BookOpen, PenLine, Target, Inbox, Wind, ShoppingBag,
+  Trophy, Dumbbell, Activity,
+  BarChart3, Image, Download,
   Package
 } from "lucide-react";
 
-import CATALOG from "./data/products.json";
-import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, storage as supabaseStorage } from "./supabase.js";
+import { useCatalog, useCatalogLoading } from "./catalog.js";
+import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage } from "./supabase.js";
+import { sanitizeImageUrl, sanitizeText, sanitizeInline } from "./utils/sanitize.js";
+import { compressImage } from "./utils/image.js";
+import { friendlyError } from "./utils/errors.js";
+import { identify, events as analyticsEvents } from "./utils/analytics.js";
+import { pushSupported, requestPushPermission, subscribePush } from "./utils/push.js";
+import {
+  BASE, CHALLENGE_WEEKS, CHALLENGE_DAYS, AI_CACHE_MAX, AI_CACHE_TTL_MS,
+  PRODUCTS, MOODS, CATEGORIES, CAT_SOLID, SIGNATURES,
+  CHALLENGE_MISSIONS, EXERCISE_TYPES,
+  AI_COACH_TONES, REPORT_REASONS,
+} from "./constants.js";
+import { useDebouncedValue, useStoredState, useNavStack, useExit, useTimeGradient } from "./hooks.js";
+import { cls, formatRelativeTime } from "./utils/ui.js";
+import {
+  Avatar, MissionIcon, CategoryIcon, CategoryChip,
+  ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText,
+} from "./components/index.js";
+import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
+import { AppProvider, useAppContext } from "./contexts/AppContext.js";
+import { AdminModerationScreen } from "./screens/AdminModerationScreen.jsx";
+import { OnboardingScreen } from "./screens/OnboardingScreen.jsx";
+import { InbodyScreen } from "./screens/InbodyScreen.jsx";
+import { AnonCommunityScreen } from "./screens/AnonCommunityScreen.jsx";
+import { ChallengeStartScreen } from "./screens/ChallengeStartScreen.jsx";
 
-const BASE = "http://158.247.241.36";
+// 과거 레거시 미디어 CDN (r.img 가 상대경로일 때 접두). 비워두면 상대경로 그대로 사용.
+// 배포 환경별로 VITE_MEDIA_BASE 로 주입하거나 비워둔다 (현재는 Supabase Storage를 쓰므로 기본 비어있음).
+// 상수들은 src/constants.js 로 이전됨
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -67,253 +94,32 @@ class ErrorBoundary extends Component {
 }
 
 // ---------- SEED DATA ----------
-const SEED_REVIEWS = [
-  { id: 142, img: "/media/reviews/1000020640.jpg", title: "미역국 만들기 쉽죠잉~~^^", tags: ["초사리미역","미역국","양조간장"], product: "정기품 완도 진상각 미역", category: "food", views: 12, likes: 32, date: "2026-02-09", body: "초사리미역으로 끓이니 진하고 깊은 국물맛이 나와요. 양조간장 한 스푼만 넣어도 감칠맛 폭발!" },
-  { id: 150, img: "/media/reviews/beauty_1770561672807.jpeg", title: "헉-!! 3개월만에 변화된 내 피부-!!!😱😍", tags: ["아티스트리","더마아키텍트"], product: "아티스트리 더마아키텍트", category: "beauty", views: 28, likes: 87, date: "2026-02-09", body: "3개월간 꾸준히 사용한 결과 피부결이 확실히 달라졌어요. 모공도 줄고 탄력도 올라온 느낌." },
-  { id: 147, img: "/media/reviews/20260208_165932.jpg", title: "씽잉볼과 함께 ❤️", tags: ["하이요가","씽잉볼","라벤더오일"], product: "아티스트리 오가닉 라벤더 에센셜 오일", category: "wellness", views: 9, likes: 21, date: "2026-02-08", body: "요가 명상 시간에 라벤더 디퓨징하면 마음이 한결 차분해져요." },
-  { id: 152, img: "/media/reviews/20260209_082112.jpg", title: "음양탕♡", tags: ["음양탕","소금","미네랄"], product: "정기품 설홍소금", category: "food", views: 6, likes: 14, date: "2026-02-09", body: "아침 공복에 따뜻한 물 + 차가운 물 + 설홍소금 한꼬집. 속이 편안해져요." },
-  { id: 252, img: "/media/reviews/17754348627272594263686092021618.jpg", title: "그냥 뜨거운 물만 부으세요~☕️", tags: ["아메리카노","COE"], product: "까페드다몬 아메리카노 블랙", category: "food", views: 4, likes: 11, date: "2026-04-06", body: "스틱 하나에 물만 부어도 카페 퀄리티. 출장이나 여행에 강력 추천." },
-  { id: 253, img: "/media/reviews/20260406_094348.jpg", title: "다요트 시작은 단백질로부터", tags: ["바디키","다이어트","단백질"], product: "바디키 식사대용 쉐이크 그레인", category: "wellness", views: 4, likes: 17, date: "2026-04-06", body: "한 포로 한 끼 든든하게 해결. 그레인 식감이 의외로 포만감 좋아요." },
-  { id: 254, img: "/media/reviews/1000055119.jpg", title: "작두콩차", tags: ["작두콩","현미녹차"], product: "라임트리 유기농 현미녹차", category: "food", views: 4, likes: 8, date: "2026-04-06", body: "고소하고 부드러워서 카페인에 약한 분도 부담 없이." },
-  { id: 255, img: "/media/reviews/20260405_131341.jpg", title: "퀸사용 첫경험", tags: ["퀸쿡","무수분요리"], product: "암웨이 퀸 Ti 크라운 세트", category: "home", views: 1, likes: 5, date: "2026-04-06", body: "무수분 요리에 진심이 되었습니다. 식재료 본연의 맛이 살아나요." },
-  { id: 303, img: "/media/reviews/GridArt_20260318_163212999.jpg", title: "고추잡채과 꽃빵/오징어무침", tags: ["무수분요리","집들이요리"], product: "암웨이 퀸 Ti 웍", category: "home", views: 7, likes: 19, date: "2026-03-18", body: "웍 하나로 집들이 요리 완성. 손님들 반응 최고였어요." },
-  { id: 304, img: "/media/reviews/1000021466.jpg", title: "흑임자 찹쌀케익", tags: ["퀸","흑임자"], product: "정기품 명인 삼색통깨 세트", category: "food", views: 11, likes: 26, date: "2026-03-02", body: "명절 선물용으로 만들었는데 호평 폭주!" },
-  { id: 306, img: "/media/reviews/IMG_7044.jpeg", title: "소화 어려울때 한포면 끝", tags: ["엔자임","소화"], product: "엔자임 바이옴 (30포)", category: "wellness", views: 8, likes: 22, date: "2026-02-27", body: "과식한 날 한 포 먹으면 속이 한결 편해져요." },
-  { id: 309, img: "/media/reviews/1000020929.jpg", title: "발사믹소스 추천", tags: ["발사믹식초","다이어트","샐러드"], product: "벨레이 모데나 발사믹식초", category: "food", views: 9, likes: 24, date: "2026-02-22", body: "샐러드, 스테이크, 카프레제까지 만능 소스." },
-  { id: 311, img: "/media/reviews/20260213_181425.jpg", title: "곱창김 2번째 품절😭", tags: ["곱창김","선물용"], product: "정기품 초사리 곱창 돌김", category: "food", views: 13, likes: 31, date: "2026-02-13", body: "한 번 먹어보면 다른 김 못 먹어요." },
-  { id: 305, img: "/media/reviews/IMG_9788.jpeg", title: "더마아키텍트로 얼굴 재건축🤩", tags: ["더마아키텍트","아티스트리"], product: "아티스트리 더마아키텍트", category: "beauty", views: 22, likes: 55, date: "2026-02-27", body: "사용 첫 주부터 광채가 달라요." },
-  { id: 307, img: "/media/reviews/BandPhoto_2026_02_27_12_16_19.jpg", title: "나쁜거 씻어내고 맛나게🍅", tags: ["과일야채세정제"], product: "디쉬 드랍스 과일 채소 세정제", category: "home", views: 6, likes: 13, date: "2026-02-27", body: "농약과 중금속 걱정 없이 안심하고 먹을 수 있어요." },
-  { id: 401, img: "", title: "G&H 바디워시 부드러운 향기", tags: ["바디워시","보습","향기"], product: "G&H 오리지널 바디워시", category: "kitchen", views: 5, likes: 18, date: "2026-04-01", body: "자극 없이 순하고 향이 은은해요. 샤워 후에도 피부가 촉촉하게 유지돼요. 가족 모두 함께 쓸 수 있어요." },
-  { id: 402, img: "", title: "샴푸 바꾸고 두피 가려움 해결", tags: ["샴푸","두피케어","탈모"], product: "사티니크 모이스처 샴푸", category: "kitchen", views: 7, likes: 24, date: "2026-03-28", body: "두피가 예민해서 여러 제품 써봤는데 이게 제일 나아요. 2주 쓰니 가려움이 많이 줄었어요." },
-  { id: 403, img: "", title: "아침 세안 이거 하나면 끝", tags: ["폼클렌저","세안","민감성"], product: "아티스트리 하이드라매틱스 클렌저", category: "kitchen", views: 4, likes: 12, date: "2026-04-03", body: "거품이 풍성하고 당김 없이 깔끔해요. 민감한 피부도 문제없이 사용 중." },
-  { id: 404, img: "", title: "퍼스널 위생 루틴의 시작", tags: ["치약","구강케어","미백"], product: "글리스터 멀티액션 치약", category: "kitchen", views: 3, likes: 9, date: "2026-03-25", body: "진하지 않은데 상쾌함이 오래가요. 미백 효과는 한 달 정도 쓰니 조금씩 보여요." },
-  { id: 501, img: "", title: "원포원 참여 후기 - 아이들에게 희망을", tags: ["원포원","나눔","기부"], product: "뉴트리라이트 원포원 프로그램", category: "one4one", views: 15, likes: 42, date: "2026-04-02", body: "내가 산 뉴트리라이트 제품 하나로 결식 아동에게 영양 공급이 간다니 뜻깊어요. 매달 자동 참여 중입니다." },
-  { id: 502, img: "", title: "원포원 굿즈 에코백 득템", tags: ["원포원","에코백","친환경"], product: "원포원 한정판 에코백", category: "one4one", views: 8, likes: 19, date: "2026-03-20", body: "수익금 전액 기부되는 한정판 에코백. 디자인도 예쁘고 의미도 있어서 가족 선물로도 딱." },
-  { id: 503, img: "", title: "나눔의 힘, 한 번 더 구매 결심", tags: ["원포원","정기구매","나눔"], product: "뉴트리라이트 키즈 츄어블", category: "one4one", views: 11, likes: 28, date: "2026-03-15", body: "아이 먹이면서 동시에 다른 아이도 돕는 셈이라 마음이 든든해요. 꾸준히 정기구매하고 있어요." },
-];
+// SEED_REVIEWS / SEED_COMMENTS / POPULAR_TAGS 는 src/mocks/seed.js 로 이전됨 (#29).
+// 상수(CATEGORIES, MOODS, CHALLENGE_*, AVATAR_OPTIONS 등)는 src/constants.js 로 이전됨.
 
-const PRODUCTS = [
-  { id: 2305, name: "암웨이 퀸 Ti 대형 프라이팬", count: 6, category: "home", img: "/media/products/%EC%95%94%EC%9B%A8%EC%9D%B4%ED%80%B8Ti%EB%8C%80%ED%98%95%ED%94%84%EB%9D%BC%EC%9D%B4%ED%8C%AC%EC%A0%84%EA%B3%A8%EB%83%84%EB%B9%84_sQVMIWV.jpg" },
-  { id: 2461, name: "벨레이 모데나 발사믹식초", count: 5, category: "food", img: "/media/products/%EB%B2%A8%EB%A0%88%EC%9D%B4%EB%AA%A8%EB%8D%B0%EB%82%98%EB%B0%9C%EC%82%AC%EB%AF%B9%EC%8B%9D%EC%B4%88%EC%9D%B8%EB%B2%A0%ED%82%A4%EC%95%84%ED%86%A0.jpg" },
-  { id: 2310, name: "암웨이 퀸 Ti 중형 프라이팬", count: 4, category: "home", img: "/media/products/%EC%95%94%EC%9B%A8%EC%9D%B4%ED%80%B8Ti%EC%A4%91%ED%98%95%ED%94%84%EB%9D%BC%EC%9D%B4%ED%8C%AC_Ar9EJdc.jpg" },
-  { id: 2727, name: "L.O.C 다목적 세정제", count: 4, category: "home", img: "/media/products/LOC%EB%B0%94%EC%9D%B4%EC%98%A4%ED%80%98%EC%8A%A4%ED%8A%B8%EC%A3%BC%ED%83%9D%EC%9A%A9%EB%8B%A4%EB%AA%A9%EC%A0%81%EC%84%B8%EC%A0%95%EC%A0%9C.jpg" },
-  { id: 2298, name: "암웨이 퀸 Ti 웍", count: 3, category: "home", img: "/media/products/%EC%95%94%EC%9B%A8%EC%9D%B4%ED%80%B8Ti%EC%9B%8D_YOrtEPL.jpg" },
-  { id: 2392, name: "뉴트리 파이토 푸로틴", count: 3, category: "food", img: "/media/products/%EB%89%B4%ED%8A%B8%EB%A6%AC%ED%8C%8C%EC%9D%B4%ED%86%A0%ED%91%B8%EB%A1%9C%ED%8B%B4%EC%8A%A4%EB%A7%88%ED%8A%B8%EC%98%A4%EB%8D%94%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%A890.jpg" },
-  { id: 2429, name: "화이버 비츠 플러스", count: 3, category: "food", img: "/media/products/%ED%99%94%EC%9D%B4%EB%B2%84%EB%B9%84%EC%B8%A0%ED%94%8C%EB%9F%AC%EC%8A%A4408g.jpg" },
-  { id: 2506, name: "엔자임 바이옴 (30포)", count: 3, category: "wellness", img: "/media/products/%EC%97%94%EC%9E%90%EC%9E%84%EB%B0%94%EC%9D%B4%EC%98%B430%ED%8F%AC.jpg" },
-  // 뷰티
-  { id: 3001, name: "아티스트리 더마아키텍트", count: 8, category: "beauty", img: "" },
-  { id: 3002, name: "아티스트리 스튜디오 립스틱", count: 5, category: "beauty", img: "" },
-  { id: 3003, name: "아티스트리 하이드라매틱스 크림", count: 4, category: "beauty", img: "" },
-  // 퍼스널케어
-  { id: 4001, name: "G&H 오리지널 바디워시", count: 6, category: "kitchen", img: "" },
-  { id: 4002, name: "사티니크 모이스처 샴푸", count: 5, category: "kitchen", img: "" },
-  { id: 4003, name: "아티스트리 하이드라매틱스 클렌저", count: 4, category: "kitchen", img: "" },
-  { id: 4004, name: "글리스터 멀티액션 치약", count: 3, category: "kitchen", img: "" },
-  // 웰니스
-  { id: 5001, name: "뉴트리라이트 더블엑스", count: 7, category: "wellness", img: "" },
-  { id: 5002, name: "바디키 식사대용 쉐이크", count: 4, category: "wellness", img: "" },
-  { id: 5003, name: "아티스트리 오가닉 라벤더 에센셜 오일", count: 3, category: "wellness", img: "" },
-  // 원포원
-  { id: 6001, name: "뉴트리라이트 원포원 프로그램", count: 12, category: "one4one", img: "" },
-  { id: 6002, name: "원포원 한정판 에코백", count: 5, category: "one4one", img: "" },
-  { id: 6003, name: "뉴트리라이트 키즈 츄어블", count: 4, category: "one4one", img: "" },
-];
+// MISSION_ICONS lookup 을 감싸는 작은 presentational 컴포넌트
 
-const POPULAR_TAGS = ["다이어트","푸로틴","비타민","더마아키텍트","바디워시","샴푸","원포원","나눔","힐링","무수분요리","명상","면역"];
 
-const MOODS = [
-  { key: "love", Icon: Star,      label: "최고",     strong: true,  color: "text-amber-500" },
-  { key: "good", Icon: Smile,     label: "좋아요",   strong: false, color: "text-emerald-500" },
-  { key: "save", Icon: Bookmark,  label: "기억할것", strong: false, color: "text-sky-500" },
-  { key: "wow",  Icon: Lightbulb, label: "영감",     strong: true,  color: "text-violet-500" },
-];
 
-const CATEGORIES = {
-  food:    { label: "뉴트리션",   color: "from-amber-400 to-orange-500",   chip: "bg-amber-50 text-amber-700",     dchip: "bg-amber-900/40 text-amber-300" },
-  wellness:{ label: "웰니스",     color: "from-violet-400 to-purple-500",  chip: "bg-violet-50 text-violet-700",   dchip: "bg-violet-900/40 text-violet-300" },
-  beauty:  { label: "뷰티",       color: "from-pink-400 to-rose-500",      chip: "bg-pink-50 text-pink-700",       dchip: "bg-pink-900/40 text-pink-300" },
-  kitchen: { label: "퍼스널케어", color: "from-cyan-400 to-teal-500",      chip: "bg-cyan-50 text-cyan-700",       dchip: "bg-cyan-900/40 text-cyan-300" },
-  home:    { label: "홈리빙",     color: "from-sky-400 to-blue-500",       chip: "bg-sky-50 text-sky-700",         dchip: "bg-sky-900/40 text-sky-300" },
-  one4one: { label: "원포원",     color: "from-lime-400 to-green-500",     chip: "bg-lime-50 text-green-700",      dchip: "bg-green-900/40 text-green-300" },
-};
-
-const CAT_SOLID = {
-  food: "#f59e0b", wellness: "#8b5cf6", beauty: "#ec4899", kitchen: "#06b6d4", home: "#0ea5e9", one4one: "#22c55e",
-};
-const CAT_ICON = { food: Apple, wellness: Leaf, beauty: Wand2, kitchen: Droplets, home: Home, one4one: Gift };
-
-const SIGNATURES = {
-  food: "영양으로 건강을 챙기는",
-  wellness: "마음의 균형을 찾는",
-  beauty: "아름다움을 큐레이션하는",
-  kitchen: "나를 정성껏 가꾸는",
-  home: "일상을 정성껏 가꾸는",
-  one4one: "나눔으로 세상을 바꾸는",
-};
-
-const AVATAR_OPTIONS = [
-  { id: "flower",   Icon: Flower2,  color: "from-pink-400 to-rose-500" },
-  { id: "coffee",   Icon: Coffee,   color: "from-amber-600 to-orange-700" },
-  { id: "leaf",     Icon: Leaf,     color: "from-emerald-400 to-green-500" },
-  { id: "heart",    Icon: Heart,    color: "from-rose-400 to-pink-500" },
-  { id: "star",     Icon: Star,     color: "from-amber-400 to-yellow-500" },
-  { id: "moon",     Icon: Moon,     color: "from-violet-500 to-purple-600" },
-  { id: "sparkles", Icon: Sparkles, color: "from-cyan-400 to-blue-500" },
-  { id: "flame",    Icon: Flame,    color: "from-rose-500 to-orange-500" },
-  { id: "music",    Icon: Music,    color: "from-pink-500 to-fuchsia-500" },
-  { id: "palette",  Icon: Palette,  color: "from-purple-400 to-pink-500" },
-  { id: "feather",  Icon: Feather,  color: "from-sky-400 to-indigo-500" },
-  { id: "cat",      Icon: Cat,      color: "from-amber-500 to-orange-600" },
-];
-
-const getAvatarOpt = (id) => AVATAR_OPTIONS.find((a) => a.id === id) || AVATAR_OPTIONS[0];
-
-const Avatar = ({ id, size = 24, className = "", rounded = "rounded-full" }) => {
-  if (id && typeof id === "string" && id.startsWith("data:")) {
-    return (
-      <div className={cls("overflow-hidden bg-gray-200", rounded, className)}>
-        <img src={id} alt="" className="w-full h-full object-cover"/>
-      </div>
-    );
-  }
-  const opt = id ? AVATAR_OPTIONS.find((a) => a.id === id) : null;
-  if (opt) {
-    return (
-      <div className={cls("bg-gradient-to-br flex items-center justify-center text-white shrink-0", opt.color, rounded, className)}>
-        <opt.Icon size={Math.floor(size * 0.6)} strokeWidth={2.2}/>
-      </div>
-    );
-  }
-  return (
-    <div className={cls("bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-end justify-center text-gray-400 dark:text-gray-500 shrink-0 overflow-hidden", rounded, className)}>
-      <User size={Math.floor(size * 1.1)} strokeWidth={2} className="translate-y-[8%]" fill="currentColor"/>
-    </div>
-  );
-};
-
-const SEED_COMMENTS = {
-  142: [
-    { id: 1, author: "요리초보", createdAt: Date.now() - 2 * 60 * 60 * 1000, text: "오 양조간장 비율 어떻게 되나요?", likedBy: [] },
-    { id: 2, author: "건강한엄마", createdAt: Date.now() - 60 * 60 * 1000, text: "저도 이거 사야겠어요 🙏", likedBy: [] },
-  ],
-  150: [{ id: 1, author: "피부고민중", createdAt: Date.now() - 26 * 60 * 60 * 1000, text: "사용 순서가 어떻게 되세요??", likedBy: [] }],
-};
-
-// ---------- CHALLENGE CONSTANTS ----------
-const CHALLENGE_WEEKS = 8;
-const CHALLENGE_DAYS = CHALLENGE_WEEKS * 7;
-
-const MISSION_ICONS = {
-  water: Droplets, shake: Coffee, photo: Camera, walk: Wind, stretch: Leaf,
-  protein: Apple, snack: Leaf, clock: Clock, fiber: Leaf,
-  cardio: Activity, core: Dumbbell, calorie: BarChart3, sleep: Moon,
-  inbody: Activity, review: BookOpen, strength: Dumbbell, cheat: Gift, community: Users,
-  hiit: Zap, carb: Utensils, tea: Coffee, pill: Plus, scale: Activity,
-  meat: Utensils, camera: Camera, fire: Flame, vitamin: Plus, selfie: User,
-  compare: Eye, write: PenLine, plan: Target, trophy: Trophy,
-  run: Activity, yoga: Leaf, home: Home, free: Star,
-};
-
-const CHALLENGE_MISSIONS = [
-  { week: 1, title: "습관 형성 주간", missions: [
-    { id: "w1m1", label: "아침 공복에 물 500ml 마시기", icon: "water" },
-    { id: "w1m2", label: "바디키 쉐이크로 한 끼 대체하기", icon: "shake" },
-    { id: "w1m3", label: "식단 사진 3끼 기록하기", icon: "photo" },
-    { id: "w1m4", label: "30분 이상 걷기", icon: "walk" },
-    { id: "w1m5", label: "취침 전 스트레칭 10분", icon: "stretch" },
-  ]},
-  { week: 2, title: "식단 조절 주간", missions: [
-    { id: "w2m1", label: "단백질 위주 아침 식사하기", icon: "protein" },
-    { id: "w2m2", label: "간식을 과일/견과류로 바꾸기", icon: "snack" },
-    { id: "w2m3", label: "물 2L 이상 마시기", icon: "water" },
-    { id: "w2m4", label: "저녁 8시 이후 금식", icon: "clock" },
-    { id: "w2m5", label: "화이버 비츠 섭취하기", icon: "fiber" },
-  ]},
-  { week: 3, title: "운동 강화 주간", missions: [
-    { id: "w3m1", label: "유산소 운동 40분", icon: "cardio" },
-    { id: "w3m2", label: "코어 운동 15분", icon: "core" },
-    { id: "w3m3", label: "식단 기록 + 칼로리 체크", icon: "calorie" },
-    { id: "w3m4", label: "푸로틴 쉐이크 마시기", icon: "shake" },
-    { id: "w3m5", label: "수면 7시간 이상 확보", icon: "sleep" },
-  ]},
-  { week: 4, title: "중간 점검 주간", missions: [
-    { id: "w4m1", label: "인바디 측정하기", icon: "inbody" },
-    { id: "w4m2", label: "1~3주 식단 돌아보기", icon: "review" },
-    { id: "w4m3", label: "근력 운동 30분", icon: "strength" },
-    { id: "w4m4", label: "보상 치팅 데이 (1끼)", icon: "cheat" },
-    { id: "w4m5", label: "커뮤니티에 중간 후기 공유", icon: "community" },
-  ]},
-  { week: 5, title: "체지방 공략 주간", missions: [
-    { id: "w5m1", label: "HIIT 운동 20분", icon: "hiit" },
-    { id: "w5m2", label: "탄수화물 줄이기 (밥 반 공기)", icon: "carb" },
-    { id: "w5m3", label: "녹차/블랙커피 마시기", icon: "tea" },
-    { id: "w5m4", label: "엔자임 바이옴 섭취", icon: "pill" },
-    { id: "w5m5", label: "체중 기록하기", icon: "scale" },
-  ]},
-  { week: 6, title: "근육량 UP 주간", missions: [
-    { id: "w6m1", label: "단백질 체중 x 1.5g 섭취", icon: "meat" },
-    { id: "w6m2", label: "근력 운동 45분", icon: "strength" },
-    { id: "w6m3", label: "바디키 쉐이크 + 푸로틴 콤보", icon: "shake" },
-    { id: "w6m4", label: "충분한 수분 섭취 (2.5L)", icon: "water" },
-    { id: "w6m5", label: "운동 인증 사진 촬영", icon: "camera" },
-  ]},
-  { week: 7, title: "마무리 스퍼트 주간", missions: [
-    { id: "w7m1", label: "유산소 + 근력 복합 운동 50분", icon: "fire" },
-    { id: "w7m2", label: "식단 완벽 기록 (3끼+간식)", icon: "photo" },
-    { id: "w7m3", label: "인바디 측정 (중간 비교)", icon: "inbody" },
-    { id: "w7m4", label: "더블엑스 비타민 섭취", icon: "vitamin" },
-    { id: "w7m5", label: "내 변화 셀피 찍기", icon: "selfie" },
-  ]},
-  { week: 8, title: "완주 주간", missions: [
-    { id: "w8m1", label: "최종 인바디 측정", icon: "inbody" },
-    { id: "w8m2", label: "8주 전후 비교 사진 촬영", icon: "compare" },
-    { id: "w8m3", label: "완주 후기 작성하기", icon: "write" },
-    { id: "w8m4", label: "유지 식단 플랜 세우기", icon: "plan" },
-    { id: "w8m5", label: "커뮤니티에 완주 인증", icon: "trophy" },
-  ]},
-];
-
-const MissionIcon = ({ iconKey, size = 14, className }) => {
-  const Icon = MISSION_ICONS[iconKey] || Target;
-  return <Icon size={size} className={className}/>;
-};
-
-const EXERCISE_TYPES = [
-  { key: "walking", label: "걷기", Icon: Wind, calPerMin: { low: 3, mid: 4.5, high: 6.5 } },
-  { key: "running", label: "달리기", Icon: Activity, calPerMin: { low: 7, mid: 10, high: 14 } },
-  { key: "yoga", label: "요가", Icon: Leaf, calPerMin: { low: 2.5, mid: 4, high: 6 } },
-  { key: "strength", label: "근력", Icon: Dumbbell, calPerMin: { low: 4, mid: 6.5, high: 9 } },
-  { key: "home", label: "홈트", Icon: Home, calPerMin: { low: 3.5, mid: 5.5, high: 8 } },
-  { key: "free", label: "자유", Icon: Star, calPerMin: { low: 3, mid: 5, high: 7 } },
-];
-
-const AI_COACH_TONES = [
-  { key: "cheerful", label: "열정 코치", Icon: Flame, color: "from-rose-400 to-orange-500", desc: "에너지 넘치는 응원 스타일", example: "오늘도 최고! 한 걸음 더 가보자!" },
-  { key: "gentle", label: "따뜻한 멘토", Icon: Heart, color: "from-emerald-400 to-teal-500", desc: "부드럽고 공감하는 스타일", example: "잘하고 있어요. 당신의 속도가 맞아요." },
-  { key: "strict", label: "엄격한 트레이너", Icon: Dumbbell, color: "from-sky-400 to-blue-500", desc: "냉철하고 정확한 스타일", example: "목표까지 남은 칼로리 200kcal. 마무리 운동 하세요." },
-  { key: "funny", label: "유머 친구", Icon: Sparkles, color: "from-amber-400 to-yellow-500", desc: "재미있게 동기부여하는 스타일", example: "야식 먹으면 내일의 너가 울어~ 참아봐!" },
-];
 
 // ---------- CLAUDE AI API ----------
-// 프록시 경로: /api/claude → https://api.anthropic.com (vite.config.js에서 설정)
-// 프로덕션 배포 시 Firebase Cloud Functions로 마이그레이션 필요
+// 서버측 Supabase Edge Function(`claude`)이 Anthropic API 키를 보유한다.
+// 클라이언트 번들에는 Anthropic 키가 포함되지 않는다.
+// 배포: supabase/functions/claude/README.md 참조.
 const callClaude = async (prompt, maxTokens = 500) => {
+  if (!supabase) {
+    console.warn("Supabase 미설정 - Claude 폴백 사용");
+    return null;
+  }
   try {
-    const res = await fetch("/api/claude/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    const { data, error } = await supabase.functions.invoke("claude", {
+      body: { prompt, max_tokens: maxTokens },
     });
-    if (!res.ok) throw new Error(`API ${res.status}`);
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || "claude_failed");
+    return data.text || "";
   } catch (e) {
-    console.warn("Claude API 호출 실패, 폴백 사용:", e.message);
+    console.warn("Claude API 호출 실패, 폴백 사용:", e?.message || e);
     return null;
   }
 };
@@ -355,7 +161,10 @@ const aiMealAnalysis = async (mealType) => {
 const aiCoachMessage = async (tone, dayNum, completedMissions, totalMissions) => {
   const rate = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
   const toneDesc = { cheerful: "열정적이고 에너지 넘치는", gentle: "따뜻하고 공감하는", strict: "냉철하고 엄격한", funny: "유머러스하고 재미있는" }[tone] || "친근한";
-  const text = await callClaude(
+  // 같은 Day+tone+달성률이면 하루 동안 같은 코칭 메시지 — 캐시로 비용 절감
+  const cacheKey = `coach:${tone}:${dayNum}:${rate}`;
+  const text = await cachedCallClaude(
+    cacheKey,
     `당신은 ${toneDesc} 피트니스 코치입니다. 사용자의 챌린지 Day ${dayNum}/56, 오늘 미션 달성률 ${rate}%입니다. 한국어로 1-2문장 짧은 코칭 멘트를 해주세요. 이모지 1개 포함. 텍스트만 응답하세요.`,
     150
   );
@@ -372,7 +181,11 @@ const aiCoachMessage = async (tone, dayNum, completedMissions, totalMissions) =>
 
 const aiDailyReport = async (totalCal, totalBurned, completedMissions, totalMissions, targetCal) => {
   const rate = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
-  const text = await callClaude(
+  const today = new Date().toISOString().slice(0, 10);
+  // 같은 날짜·수치면 동일 리포트 → 캐시
+  const cacheKey = `report:${today}:${totalCal}:${totalBurned}:${rate}:${targetCal}`;
+  const text = await cachedCallClaude(
+    cacheKey,
     `피트니스 일일 리포트 코멘트를 한국어 1-2문장으로 작성해주세요. 오늘 섭취 ${totalCal}kcal (목표 ${targetCal}kcal), 소비 ${totalBurned}kcal, 미션 달성률 ${rate}%. 격려와 구체적 조언을 포함. 텍스트만 응답.`,
     150
   );
@@ -380,16 +193,82 @@ const aiDailyReport = async (totalCal, totalBurned, completedMissions, totalMiss
   return rate >= 80 ? "오늘 하루 정말 잘 보냈어요! 내일도 이 기세로!" : rate >= 50 ? "절반 이상 달성! 조금만 더 힘내봐요." : "내일은 더 좋은 하루가 될 거예요. 화이팅!"
 };
 
-const calcBMR = (weight, height, age, gender) => {
-  if (gender === "male") return Math.round(10 * weight + 6.25 * height - 5 * age + 5);
-  return Math.round(10 * weight + 6.25 * height - 5 * age - 161);
+// AI 호출 결과 캐시 (동일 입력 → 동일 응답, 비용/지연 절감).
+// 메모리 LRU(최대 50) + IndexedDB(window.storage) 영속.
+// 기본 TTL 24h — 코치/리포트는 하루 단위라 충분.
+const _aiMem = new Map();
+
+// Map 의 삽입 순서를 LRU 로 유지하려면, 읽을 때마다 delete→set 으로 재삽입해야 한다.
+// 그래야 keys().next() 가 '가장 오래 참조되지 않은' 항목이 된다.
+const _aiCacheTouch = (key, entry) => {
+  _aiMem.delete(key);
+  _aiMem.set(key, entry);
 };
 
-const calcTargetCalories = (bmr, goal) => {
-  if (goal === "lose") return Math.round(bmr * 1.3 - 500);
-  if (goal === "muscle") return Math.round(bmr * 1.5 + 200);
-  return Math.round(bmr * 1.4);
+const _aiCacheGet = async (key) => {
+  const memHit = _aiMem.get(key);
+  if (memHit && memHit.expires > Date.now()) {
+    _aiCacheTouch(key, memHit); // access 시 최신 위치로
+    return memHit.value;
+  }
+  if (memHit) _aiMem.delete(key); // 만료된 항목 정리
+  try {
+    const r = await window.storage?.get(`waylog:ai-cache:${key}`);
+    if (r?.value) {
+      const parsed = JSON.parse(r.value);
+      if (parsed.expires > Date.now()) {
+        _aiCacheTouch(key, parsed);
+        return parsed.value;
+      }
+    }
+  } catch {}
+  return null;
 };
+
+const _aiCacheSet = async (key, value, ttl = AI_CACHE_TTL_MS) => {
+  const entry = { value, expires: Date.now() + ttl };
+  _aiCacheTouch(key, entry);
+  // 용량 초과 시 가장 오래된 항목(삽입 순서 1번째) 제거 — 이제 진짜 LRU
+  while (_aiMem.size > AI_CACHE_MAX) {
+    const oldest = _aiMem.keys().next().value;
+    _aiMem.delete(oldest);
+  }
+  try { await window.storage?.set(`waylog:ai-cache:${key}`, JSON.stringify(entry)); } catch {}
+};
+
+const cachedCallClaude = async (cacheKey, prompt, maxTokens = 500, ttl = AI_CACHE_TTL_MS) => {
+  const cached = await _aiCacheGet(cacheKey);
+  if (cached) return cached;
+  const text = await callClaude(prompt, maxTokens);
+  if (text) await _aiCacheSet(cacheKey, text, ttl);
+  return text;
+};
+
+// 제품별 AI 리뷰 요약 (pros/cons/summary). null 반환 시 호출측이 폴백 표시.
+const summarizeProduct = async (product, reviews) => {
+  if (!product || !Array.isArray(reviews) || reviews.length < 5) return null;
+  const sample = reviews.slice(0, 30).map((r) => ({
+    title: (r.title || "").slice(0, 80),
+    body: (r.body || "").slice(0, 400),
+    tags: (r.tags || []).slice(0, 5),
+  }));
+  const prompt = `다음은 "${product.name}" 제품에 대한 한국어 사용자 리뷰들입니다.
+장점 3개, 단점 2개, 전반 요약 1-2문장을 JSON으로만 응답하세요. 형식:
+{"pros":[{"text":"...","count":n},{"text":"...","count":n},{"text":"...","count":n}],"cons":[{"text":"...","count":n},{"text":"...","count":n}],"summary":"..."}
+리뷰 JSON: ${JSON.stringify(sample)}`;
+  const text = await callClaude(prompt, 800);
+  if (!text) return null;
+  try {
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed.pros) && Array.isArray(parsed.cons) && typeof parsed.summary === "string") {
+      return parsed;
+    }
+  } catch {}
+  return null;
+};
+
+// calcBMR / calcTargetCalories 는 src/utils/challenge.js 로 이전됨 (ChallengeStartScreen 이 직접 import).
 
 const getChallengeDay = (startDate) => {
   if (!startDate) return 0;
@@ -401,201 +280,9 @@ const getChallengeDay = (startDate) => {
 const getChallengeWeek = (dayNum) => Math.min(CHALLENGE_WEEKS, Math.ceil(dayNum / 7));
 
 // ---------- HOOKS ----------
-const useStoredState = (key, initial) => {
-  const [val, setVal] = useState(initial);
-  const [loaded, setLoaded] = useState(false);
-  const ref = useRef(initial);
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await window.storage?.get(key);
-        if (r?.value) { const parsed = JSON.parse(r.value); setVal(parsed); ref.current = parsed; }
-      } catch {}
-      setLoaded(true);
-    })();
-  }, [key]);
-  const update = async (next) => {
-    const v = typeof next === "function" ? next(ref.current) : next;
-    ref.current = v;
-    setVal(v);
-    try { await window.storage?.set(key, JSON.stringify(v)); } catch (e) { if (e?.name === "QuotaExceededError" || e?.code === 22) console.warn(`[useStoredState] QuotaExceededError for key "${key}"`, e); }
-  };
-  return [val, update, loaded];
-};
-
-const useNavStack = () => {
-  const [stack, setStack] = useState([]); // each: { type, payload }
-  const push = (s) => setStack((prev) => [...prev, s]);
-  const pop = () => setStack((prev) => prev.slice(0, -1));
-  const reset = () => setStack([]);
-  return { stack, push, pop, reset, top: stack[stack.length - 1] };
-};
-
-const useExit = (onDone) => {
-  const [exiting, setExiting] = useState(false);
-  const close = () => { if (exiting) return; setExiting(true); setTimeout(onDone, 260); };
-  return [exiting, close];
-};
-
-const useTimeGradient = (dark = false) => {
-  const [hour, setHour] = useState(new Date().getHours());
-  useEffect(() => {
-    const t = setInterval(() => setHour(new Date().getHours()), 60000);
-    return () => clearInterval(t);
-  }, []);
-
-  const lightMap = [
-    { range: [5, 8],   gradient: "from-sky-300 via-cyan-300 to-emerald-300",      solid: "from-cyan-500 to-emerald-500",    name: "새벽", text: "고요한 새벽이에요" },
-    { range: [8, 12],  gradient: "from-emerald-400 via-teal-500 to-cyan-500",     solid: "from-emerald-500 to-teal-500",    name: "아침", text: "활기찬 아침이에요" },
-    { range: [12, 17], gradient: "from-amber-300 via-emerald-400 to-teal-500",    solid: "from-emerald-500 to-amber-500",   name: "오후", text: "따스한 오후예요" },
-    { range: [17, 20], gradient: "from-orange-300 via-pink-400 to-violet-500",    solid: "from-pink-500 to-violet-500",     name: "저녁", text: "노을이 물드는 시간" },
-    { range: [20, 24], gradient: "from-indigo-500 via-violet-600 to-purple-700",  solid: "from-violet-500 to-purple-600",   name: "밤",   text: "차분한 밤이에요" },
-    { range: [0, 5],   gradient: "from-slate-700 via-indigo-900 to-purple-900",   solid: "from-indigo-600 to-purple-700",   name: "심야", text: "고요한 심야예요" },
-  ];
-  const darkMap = [
-    { range: [5, 8],   gradient: "from-sky-700 via-cyan-700 to-emerald-700",      solid: "from-cyan-300 to-emerald-300",    name: "새벽", text: "고요한 새벽이에요" },
-    { range: [8, 12],  gradient: "from-emerald-600 via-teal-600 to-cyan-600",     solid: "from-emerald-300 to-teal-300",    name: "아침", text: "활기찬 아침이에요" },
-    { range: [12, 17], gradient: "from-amber-600 via-emerald-600 to-teal-600",    solid: "from-emerald-300 to-amber-300",   name: "오후", text: "따스한 오후예요" },
-    { range: [17, 20], gradient: "from-orange-600 via-pink-600 to-violet-700",    solid: "from-pink-300 to-violet-300",     name: "저녁", text: "노을이 물드는 시간" },
-    { range: [20, 24], gradient: "from-indigo-600 via-violet-700 to-purple-800",  solid: "from-violet-300 to-purple-300",   name: "밤",   text: "차분한 밤이에요" },
-    { range: [0, 5],   gradient: "from-slate-600 via-indigo-700 to-purple-800",   solid: "from-indigo-300 to-purple-300",   name: "심야", text: "고요한 심야예요" },
-  ];
-  const map = dark ? darkMap : lightMap;
-  return map.find((m) => hour >= m.range[0] && hour < m.range[1]) || map[0];
-};
-
 // ---------- TINY UI HELPERS ----------
-const cls = (...a) => a.filter(Boolean).join(" ");
-const formatRelativeTime = (createdAt, fallback = "방금") => {
-  if (!createdAt) return fallback;
-  const now = Date.now();
-  const t = typeof createdAt === "number" ? createdAt : new Date(createdAt).getTime();
-  const diff = Math.floor((now - t) / 1000);
-  if (diff < 60) return "방금";
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
-  if (diff < 86400 * 30) return `${Math.floor(diff / 86400 / 7)}주 전`;
-  return new Date(t).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
-};
 
-const CategoryIcon = ({ cat, size = 22, strokeWidth = 2, className }) => {
-  const Icon = CAT_ICON[cat] || Sparkles;
-  return <Icon size={size} strokeWidth={strokeWidth} className={className}/>;
-};
 
-const CategoryChip = ({ cat, dark }) => {
-  const c = CATEGORIES[cat] || CATEGORIES.food;
-  return <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold ring-1 shadow-sm", dark ? cls(c.dchip, "ring-white/20") : cls(c.chip, "ring-white/90"))}>{c.label}</span>;
-};
-
-const HeartBtn = ({ on, onClick, dark, size = 14 }) => (
-  <button
-    onClick={(e) => { e.stopPropagation(); onClick(); }}
-    aria-label={on ? "좋아요 취소" : "좋아요"}
-    aria-pressed={on}
-    className={cls("min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full backdrop-blur transition-transform active:scale-90",
-      on ? "bg-rose-500/95" : dark ? "bg-black/50" : "bg-white/85")}
-  >
-    <Heart size={size} className={on ? "text-white fill-white" : dark ? "text-white" : "text-gray-700"} />
-  </button>
-);
-
-const ProductImage = ({ src, alt, className, iconSize = 32 }) => {
-  const [error, setError] = useState(false);
-  if (!src || error) {
-    return (
-      <div className={cls("flex items-center justify-center text-gray-300", className)}>
-        <ShoppingBag size={iconSize}/>
-      </div>
-    );
-  }
-  return (
-    <img src={src} alt={alt || ""} className={className} loading="lazy" onError={() => setError(true)}/>
-  );
-};
-
-const FallbackImg = ({ r, className }) => {
-  const c = CATEGORIES[r.category] || CATEGORIES.food;
-  return (
-    <div className={cls("flex items-center justify-center bg-gradient-to-br text-white", c.color, className)}>
-      <CategoryIcon cat={r.category} size={42} strokeWidth={1.8}/>
-    </div>
-  );
-};
-
-const SmartImg = ({ r, className }) => {
-  const [errored, setErrored] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  if (!r.img || errored) return <FallbackImg r={r} className={className}/>;
-  const src = r.img.startsWith("data:") || r.img.startsWith("http") ? r.img : `${BASE}${r.img}`;
-  return (
-    <div className={cls("relative overflow-hidden", className)}>
-      {!loaded && <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 bg-[length:200%_100%] animate-shimmer"/>}
-      <img src={src} alt=""
-        className={cls("w-full h-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
-        onLoad={() => setLoaded(true)} onError={() => setErrored(true)}/>
-    </div>
-  );
-};
-
-const Card = ({ r, onOpen, favs, toggleFav, dark }) => (
-  <button onClick={() => onOpen(r)} className={cls("text-left rounded-2xl shadow-sm overflow-hidden w-full transition active:scale-[0.98]", dark ? "bg-gray-800" : "bg-white")}>
-    <div className="relative">
-      <SmartImg r={r} className="w-full h-44 object-cover"/>
-      <div className="absolute top-2 left-2"><CategoryChip cat={r.category} dark={dark} /></div>
-      <div className="absolute top-2 right-2"><HeartBtn on={favs.has(r.id)} onClick={() => toggleFav(r.id)} dark={dark} /></div>
-      {r.media && r.media.length > 0 && (() => {
-        const hasVideo = r.media.some((m) => m.type === "video");
-        const showBadge = r.media.length > 1 || hasVideo;
-        if (!showBadge) return null;
-        return (
-          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white text-xs font-black tabular-nums shadow-lg ring-1 ring-white/30 inline-flex items-center gap-1">
-            {hasVideo ? (
-              <div className="w-0 h-0 border-l-[5px] border-l-white border-y-[3px] border-y-transparent ml-0.5"/>
-            ) : (
-              <Layers size={10} strokeWidth={2.5}/>
-            )}
-            {r.media.length > 1 && <span>{r.media.length}</span>}
-          </div>
-        );
-      })()}
-    </div>
-    <div className="p-3">
-      <p className={cls("text-sm font-bold leading-snug line-clamp-2", dark ? "text-white" : "text-gray-900")}>{r.title}</p>
-      {r.product && <p className={cls("text-xs font-medium mt-1.5 line-clamp-1 opacity-90", dark ? "text-gray-300" : "text-gray-600")}>{r.product}</p>}
-      <div className={cls("flex items-center gap-2.5 mt-2 text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>
-        <span className="flex items-center gap-1"><Heart size={11}/> {r.likes}</span>
-        <span className="flex items-center gap-1"><Eye size={11}/> {r.views}</span>
-      </div>
-    </div>
-  </button>
-);
-
-const SectionTitle = ({ title, sub, dark, tier = 1 }) => {
-  if (tier === 3) {
-    return (
-      <div className="px-4 mt-10 mb-3">
-        <h2 className={cls("text-xs font-bold uppercase tracking-widest", dark ? "text-gray-500" : "text-gray-500")}>{title}</h2>
-        {sub && <p className={cls("text-xs mt-1", dark ? "text-gray-500" : "text-gray-500")}>{sub}</p>}
-      </div>
-    );
-  }
-  if (tier === 2) {
-    return (
-      <div className="px-4 mt-8 mb-3">
-        <h2 className={cls("text-base font-bold tracking-tight", dark ? "text-gray-200" : "text-gray-800")}>{title}</h2>
-        {sub && <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>{sub}</p>}
-      </div>
-    );
-  }
-  return (
-    <div className="px-4 mt-7 mb-3">
-      <h2 className={cls("text-lg font-extrabold tracking-tight", dark ? "text-white" : "text-gray-900")}>{title}</h2>
-      {sub && <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>{sub}</p>}
-    </div>
-  );
-};
 
 // ---------- SIGNATURE: SWIPE PICK ----------
 const SwipePick = ({ reviews, onLike, onPass, dark }) => {
@@ -668,7 +355,8 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
 };
 
 // ---------- SCREENS ----------
-const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult }) => {
+const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult }) => {
+  const CATALOG = useCatalog();
   const [hotMode, setHotMode] = useState("trending");
   const trending = useMemo(() => {
     const top = [...reviews].sort((a,b) => b.likes - a.likes).slice(0, 8);
@@ -770,11 +458,26 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods, user
   );
 };
 
-const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, following, user }) => {
+// 카드 레이아웃과 같은 크기의 shimmer placeholder
+
+const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onCompose, following, user, loading = false, onLoadMore, hasMore = false, loadingMore = false }) => {
   const [activeCat, setActiveCat] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
   const [sort, setSort] = useState("latest");
   const [feedMode, setFeedMode] = useState("all");
+  const loadMoreRef = useRef(null);
+
+  // IntersectionObserver 로 리스트 하단 sentinel 관찰 → 도달 시 다음 페이지 로드
+  useEffect(() => {
+    if (!onLoadMore || !hasMore) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) onLoadMore();
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onLoadMore, hasMore]);
   const filtered = useMemo(() => {
     let list = [...reviews];
     if (feedMode === "following" && following) list = list.filter((r) => following.has(r.author));
@@ -833,12 +536,15 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, followi
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 px-4 pt-3 pb-4">
+        {loading && filtered.length === 0 && Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCard key={`sk-${i}`} dark={dark}/>
+        ))}
         {filtered.map((r, i) => (
           <div key={r.id} className="animate-card-enter" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
             <Card r={r} onOpen={onOpen} favs={favs} toggleFav={toggleFav} dark={dark} />
           </div>
         ))}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className={cls("col-span-2 text-center py-16", dark ? "text-gray-500" : "text-gray-500")}>
             <Inbox size={56} strokeWidth={1.5} className={cls("mx-auto mb-3 opacity-30", dark ? "text-gray-600" : "text-gray-300")}/>
             {feedMode === "following" ? (
@@ -851,6 +557,18 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose, followi
                 <p className={cls("text-sm font-bold", dark ? "text-gray-300" : "text-gray-700")}>해당 조건의 리뷰가 없어요</p>
                 <p className="text-xs mt-1">필터를 바꿔서 다시 시도해보세요</p>
               </>
+            )}
+          </div>
+        )}
+        {/* 무한 스크롤 sentinel */}
+        {hasMore && !loading && filtered.length > 0 && (
+          <div ref={loadMoreRef} className="col-span-2 py-4 flex items-center justify-center">
+            {loadingMore ? (
+              <span className={cls("inline-flex items-center gap-2 text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>
+                <RefreshCw size={14} className="animate-spin"/> 더 불러오는 중...
+              </span>
+            ) : (
+              <span className={cls("text-xs", dark ? "text-gray-600" : "text-gray-400")}>아래로 스크롤해서 더 보기</span>
             )}
           </div>
         )}
@@ -892,19 +610,24 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
   useEffect(() => {
     if (!product || allReviews.length < 5) return;
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const cacheKey = `waylog:ai-summary:${product.id}`;
+    // 캐시 키에 리뷰 수를 섞어 새 리뷰가 추가되면 자연 무효화
+    const reviewBucket = Math.floor(allReviews.length / 5) * 5;
+    const cacheKey = `waylog:ai-summary:${product.id}:${reviewBucket}`;
+    let cancelled = false;
     (async () => {
+      // 1) 캐시 hit → 즉시 사용
       try {
         const cached = await window.storage?.get(cacheKey);
         if (cached?.value) {
           const parsed = JSON.parse(cached.value);
           if (parsed.month === currentMonth && parsed.data) {
-            setAiSummary(parsed);
+            if (!cancelled) setAiSummary(parsed);
             return;
           }
         }
       } catch {}
-      // API 연동 전까지 더미 데이터 사용
+
+      // 2) 폴백을 먼저 그려서 빈 화면 방지
       const fallback = {
         month: currentMonth,
         generatedAt: new Date().toISOString().slice(0, 10),
@@ -918,21 +641,27 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
             { text: "용량이 빨리 줄어든다", count: Math.max(1, Math.floor(allReviews.length * 0.3)) },
             { text: "호불호가 갈리는 맛", count: Math.max(1, Math.floor(allReviews.length * 0.2)) },
           ],
-          summary: `${allReviews.length}개 리뷰를 종합하면, 대부분의 사용자가 ${product.name}의 효과와 편의성에 높은 만족도를 보이고 있어요. 꾸준한 섭취를 통해 체감 효과를 느꼈다는 후기가 많습니다.`,
+          summary: `${allReviews.length}개 리뷰를 종합하면, 대부분의 사용자가 ${product.name}의 효과와 편의성에 높은 만족도를 보이고 있어요.`,
         },
         isPlaceholder: true,
       };
-      setAiSummary(fallback);
-      // TODO: AI 연동 시 아래 주석 해제
-      // setAiLoading(true);
-      // const data = await summarizeProduct(product, allReviews);
-      // if (data) {
-      //   const result = { month: currentMonth, generatedAt: new Date().toISOString().slice(0, 10), data };
-      //   setAiSummary(result);
-      //   try { await window.storage?.set(cacheKey, JSON.stringify(result)); } catch {}
-      // }
-      // setAiLoading(false);
+      if (!cancelled) setAiSummary(fallback);
+
+      // 3) 실제 AI 호출 → 성공 시 교체 + 캐시 저장
+      const data = await summarizeProduct(product, allReviews);
+      if (cancelled || !data) return;
+      const result = {
+        month: currentMonth,
+        generatedAt: new Date().toISOString().slice(0, 10),
+        data,
+        isPlaceholder: false,
+      };
+      setAiSummary(result);
+      try { await window.storage?.set(cacheKey, JSON.stringify(result)); } catch {}
     })();
+    return () => { cancelled = true; };
+    // product.id / allReviews.length 만 바뀌면 재계산 (객체 참조 바뀐다고 불필요한 재호출 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, allReviews.length]);
 
   if (!product) return null;
@@ -1156,12 +885,15 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
 };
 
 const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, onBrowse, onProductClick }) => {
+  const CATALOG = useCatalog();
+  const catalogLoading = useCatalogLoading();
   const [mainTab, setMainTab] = useState("favs"); // "favs" | "catalog"
   const [view, setView] = useState("grid");
   const [moodPickerFor, setMoodPickerFor] = useState(null);
   const [catalogQ, setCatalogQ] = useState("");
   const [catalogCat, setCatalogCat] = useState("all");
-  const list = reviews.filter((r) => favs.has(r.id));
+  // reviews/favs가 변경될 때만 재필터 (상위 리렌더마다 반복 X)
+  const list = useMemo(() => reviews.filter((r) => favs.has(r.id)), [reviews, favs]);
   const byMonth = useMemo(() => {
     const m = {};
     list.forEach((r) => { const k = r.date.slice(0, 7); (m[k] ||= []).push(r); });
@@ -1184,7 +916,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
       });
     }
     return items;
-  }, [catalogCat, catalogQ]);
+  }, [catalogCat, catalogQ, CATALOG]);
 
   const setMood = (rid, key) => {
     setMoods((prev) => ({ ...prev, [rid]: prev[rid] === key ? null : key }));
@@ -1205,7 +937,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
         <button onClick={() => setMainTab("catalog")}
           className={cls("flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition",
             mainTab === "catalog" ? dark ? "bg-gray-700 text-white shadow" : "bg-white text-gray-900 shadow" : dark ? "text-gray-400" : "text-gray-500")}>
-          <Package size={13} className={mainTab === "catalog" ? "text-emerald-500" : ""}/> 제품 카탈로그 <span className={cls("tabular-nums", mainTab === "catalog" ? "text-emerald-500" : "")}>{CATALOG.length}</span>
+          <Package size={13} className={mainTab === "catalog" ? "text-emerald-500" : ""}/> 제품 카탈로그 <span className={cls("tabular-nums", mainTab === "catalog" ? "text-emerald-500" : "")}>{catalogLoading ? "…" : CATALOG.length}</span>
         </button>
       </div>
 
@@ -1472,11 +1204,14 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
 
 const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents, addRecent, removeRecent, clearRecents, q, setQ, onProductClick }) => {
   const [exiting, close] = useExit(onClose);
+  const CATALOG = useCatalog();
   const [filterCat, setFilterCat] = useState("all");
   const [sortBy, setSortBy] = useState("relevance");
+  // 타이핑 중 재필터 비용 절감 (518 제품 + 리뷰 전체 스캔)
+  const dq = useDebouncedValue(q, 180);
   const results = useMemo(() => {
-    if (!(q || "").trim()) return [];
-    const s = (q || "").toLowerCase();
+    if (!(dq || "").trim()) return [];
+    const s = (dq || "").toLowerCase();
     let list = (reviews || []).filter((r) => {
       if (!r) return false;
       const title = (r.title || "").toLowerCase();
@@ -1490,11 +1225,11 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
     if (sortBy === "popular") list = [...list].sort((a, b) => b.likes - a.likes);
     else if (sortBy === "recent") list = [...list].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     return list;
-  }, [q, reviews, filterCat, sortBy]);
+  }, [dq, reviews, filterCat, sortBy]);
 
   const productResults = useMemo(() => {
-    if (!(q || "").trim()) return [];
-    const s = (q || "").toLowerCase();
+    if (!(dq || "").trim()) return [];
+    const s = (dq || "").toLowerCase();
     return (CATALOG || []).filter((p) => {
       if (!p) return false;
       const name = (p.name || "").toLowerCase();
@@ -1502,12 +1237,12 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
       const tags = (p.tags || []);
       return name.includes(s) || brand.includes(s) || tags.some((t) => (t || "").toLowerCase().includes(s));
     }).slice(0, 10);
-  }, [q]);
+  }, [dq, CATALOG]);
 
   const submit = (term) => { setQ(term); addRecent(term); };
 
   return (
-    <div className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <div className={cls("flex items-center gap-2 p-3 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={20} className={dark ? "text-white" : "text-gray-700"}/></button>
         <div className={cls("flex-1 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-gray-700" : "bg-gray-100")}>
@@ -1640,7 +1375,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   );
 };
 
-const ShareCardModal = ({ review, onClose, dark, user }) => {
+const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const [exiting, close] = useExit(onClose);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1770,9 +1505,29 @@ const ShareCardModal = ({ review, onClose, dark, user }) => {
   );
 };
 
-const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick }) => {
+// 댓글 본문 중 @멘션을 클릭 가능한 버튼으로 렌더.
+
+
+const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick, deleting = false }) => {
   const [exiting, close] = useExit(onBack);
-  const related = (allReviews || SEED_REVIEWS).filter((x) => x.id !== r.id && (x.tags || []).some((t) => (r.tags || []).includes(t))).slice(0, 4);
+  // 신고 액션 시트 — 사용자가 사유를 선택한 뒤 onReport(target, reason) 호출
+  const [reportSheet, setReportSheet] = useState(null); // { type: "review"|"comment", id }
+  const openReportSheet = (type, id) => setReportSheet({ type, id });
+  const submitReport = (reason) => {
+    if (!reportSheet || !onReport) return setReportSheet(null);
+    onReport(reportSheet.type, reportSheet.id, reason);
+    setReportSheet(null);
+  };
+  // 관련 리뷰는 리뷰 수×태그 수가 많을 때 비용이 커짐 → memoize.
+  // 실데이터(allReviews)가 있으면 그것만 사용. 비어있을 때만 SEED_REVIEWS fallback
+  // (온보딩/빈 상태 UX 보장). 사용자 데이터와 시드가 섞여 이상한 추천이 나오는 것 방지.
+  const related = useMemo(() => {
+    const tagSet = new Set(r.tags || []);
+    const pool = (allReviews && allReviews.length > 0) ? allReviews : SEED_REVIEWS;
+    return pool
+      .filter((x) => x.id !== r.id && (x.tags || []).some((t) => tagSet.has(t)))
+      .slice(0, 4);
+  }, [allReviews, r.id, r.tags]);
   const cat = CATEGORIES[r.category] || CATEGORIES.food;
   const [comment, setComment] = useStoredState(`waylog:draft:comment:${r.id}`, "");
   const [replyTo, setReplyTo] = useState(null);
@@ -1808,7 +1563,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   }, [galleryIdx, r.media]);
 
   return (
-    <div className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto overflow-y-auto", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto overflow-y-auto pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <div className="relative">
         {r.media && r.media.length > 0 ? (
           <div className="relative">
@@ -1816,7 +1571,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
               {r.media.map((m) => (
                 <div key={m.id} className="snap-start shrink-0 w-full h-80 bg-gray-200 dark:bg-gray-800">
                   {m.type === "image" ? (
-                    <img src={m.url} alt="" onClick={() => setZoomedImg(m.url)} className="w-full h-full object-cover cursor-zoom-in"/>
+                    <img src={m.url} alt="" loading="lazy" decoding="async" onClick={() => setZoomedImg(m.url)} className="w-full h-full object-cover cursor-zoom-in"/>
                   ) : (
                     <video src={m.url} className="w-full h-full object-cover" controls playsInline/>
                   )}
@@ -1843,13 +1598,20 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none"/>
-        <button onClick={close} aria-label="뒤로" className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+        {/* 상단 floating 버튼은 노치/상태바를 피해 safe-area-inset-top 만큼 내려야 함 */}
+        <button onClick={close} aria-label="뒤로"
+          className="absolute left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <ArrowLeft size={18} className="text-white"/>
         </button>
-        <button onClick={() => toggleFav(r.id)} aria-label="좋아요" className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+        <button onClick={() => toggleFav(r.id)} aria-label="좋아요"
+          className="absolute right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <Heart size={18} className={favs.has(r.id) ? "text-rose-500 fill-rose-500" : "text-white"}/>
         </button>
-        <button onClick={() => setShareOpen(true)} aria-label="공유" className="absolute top-4 right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+        <button onClick={() => setShareOpen(true)} aria-label="공유"
+          className="absolute right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <Share2 size={18} className="text-white"/>
         </button>
         {isMine && (
@@ -1917,6 +1679,13 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         {/* Comments */}
         <div className="mt-6">
           <h3 className={cls("text-sm font-extrabold mb-3", dark ? "text-white" : "text-gray-900")}>댓글 {comments.length}</h3>
+          {comments.length === 0 && (
+            <div className={cls("rounded-2xl py-8 px-4 text-center border-2 border-dashed", dark ? "border-gray-700 bg-gray-800/40" : "border-gray-200 bg-gray-50")}>
+              <MessageCircle size={28} strokeWidth={1.8} className={cls("mx-auto mb-2", dark ? "text-gray-600" : "text-gray-400")}/>
+              <p className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>아직 댓글이 없어요</p>
+              <p className={cls("text-[11px] mt-1", dark ? "text-gray-500" : "text-gray-500")}>첫 댓글을 남겨보세요</p>
+            </div>
+          )}
           <div className="space-y-3">
             {comments.filter((c) => !c.parentId).map((c) => {
               const replies = comments.filter((x) => x.parentId === c.id);
@@ -1927,18 +1696,20 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
               return (
                 <div key={c.id} ref={(el) => { commentRefs.current[c.id] = el; }}>
                   <div className="flex gap-2.5 group">
-                    <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar })} className="active:scale-90 transition shrink-0">
+                    <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className="active:scale-90 transition shrink-0">
                       <Avatar id={c.avatar} size={14} className="w-8 h-8"/>
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
+                        <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
                         {isMyComment && (
                           <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
                         )}
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                       </div>
-                      <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>{c.text}</p>
+                      <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
+                        <MentionText text={c.text} dark={dark} onMentionClick={(name) => onUserClick && onUserClick({ author: name, avatar: "" })}/>
+                      </p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
                           className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
@@ -1946,12 +1717,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                           {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-[10px]", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
                         </button>
                         <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, c.id)}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).includes(user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
-                          <Heart size={11} className={(c.likedBy || []).includes(user?.nickname) ? "fill-rose-500" : ""}/>
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
+                          <Heart size={11} className={(c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-rose-500" : ""}/>
                           {(c.likedBy || []).length > 0 && <span>{(c.likedBy || []).length}</span>}
                         </button>
                         {user && c.author !== user.nickname && (
-                          <button onClick={() => onReport && onReport()}
+                          <button onClick={() => openReportSheet("comment", c.id)}
                             className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
                             신고
                           </button>
@@ -1971,12 +1742,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                         const isMyReply = user && reply.author === user.nickname;
                         return (
                         <div key={reply.id} className="flex gap-2 group">
-                          <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar })} className="active:scale-90 transition shrink-0">
+                          <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className="active:scale-90 transition shrink-0">
                             <Avatar id={reply.avatar} size={12} className="w-6 h-6"/>
                           </button>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2">
-                              <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
+                              <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
                               {isMyReply && (
                                 <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
                               )}
@@ -1984,9 +1755,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                             </div>
                             <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
                               {reply.mentionTo && (
-                                <span className={cls("font-bold mr-1", dark ? "text-emerald-400" : "text-emerald-600")}>@{reply.mentionTo}</span>
+                                <button onClick={() => onUserClick && onUserClick({ author: reply.mentionTo, avatar: "" })}
+                                  className={cls("font-bold mr-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
+                                  @{reply.mentionTo}
+                                </button>
                               )}
-                              {reply.text}
+                              <MentionText text={reply.text} dark={dark} onMentionClick={(name) => onUserClick && onUserClick({ author: name, avatar: "" })}/>
                             </p>
                             <div className="flex items-center gap-3 mt-1">
                               <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
@@ -1994,12 +1768,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                                 답글 달기 <span className="text-[10px]">&#8629;</span>
                               </button>
                               <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, reply.id)}
-                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).includes(user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
-                                <Heart size={10} className={(reply.likedBy || []).includes(user?.nickname) ? "fill-rose-500" : ""}/>
+                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-rose-500" : dark ? "text-gray-500" : "text-gray-400")}>
+                                <Heart size={10} className={(reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-rose-500" : ""}/>
                                 {(reply.likedBy || []).length > 0 && <span>{(reply.likedBy || []).length}</span>}
                               </button>
                               {user && reply.author !== user.nickname && (
-                                <button onClick={() => onReport && onReport()}
+                                <button onClick={() => openReportSheet("comment", reply.id)}
                                   className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
                                   신고
                                 </button>
@@ -2098,14 +1872,47 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             <p className={cls("text-base font-black text-center", dark ? "text-white" : "text-gray-900")}>이 웨이로그를 삭제할까요?</p>
             <p className={cls("text-xs text-center mt-2 opacity-70", dark ? "text-gray-400" : "text-gray-600")}>댓글, 좋아요, 무드 정보가 모두 삭제돼요. 되돌릴 수 없어요.</p>
             <div className="flex gap-2 mt-5">
-              <button onClick={() => setConfirmDelete(false)}
-                className={cls("flex-1 py-3 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600")}>취소</button>
-              <button onClick={() => { setConfirmDelete(false); onDelete && onDelete(r); }}
-                className="flex-1 py-3 bg-rose-500 text-white rounded-2xl font-bold text-sm">삭제</button>
+              <button onClick={() => setConfirmDelete(false)} disabled={deleting}
+                className={cls("flex-1 py-3 rounded-2xl font-bold text-sm border disabled:opacity-50", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600")}>취소</button>
+              <button onClick={async () => {
+                  if (deleting) return;
+                  const promise = onDelete && onDelete(r);
+                  // async onDelete면 끝날 때까지 모달 유지, 동기면 즉시 닫기
+                  if (promise && typeof promise.then === "function") { await promise; }
+                  setConfirmDelete(false);
+                }}
+                disabled={deleting}
+                className="flex-1 py-3 bg-rose-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-70">
+                {deleting && <span className="inline-block w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" aria-hidden="true"/>}
+                {deleting ? "삭제 중..." : "삭제"}
+              </button>
             </div>
           </div>
         </div>
       )}
+      {reportSheet && (
+        <div className="fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end p-0 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setReportSheet(null)}/>
+          <div className={cls("relative w-full rounded-t-3xl p-5 shadow-2xl animate-slide-up pb-safe-plus", dark ? "bg-gray-900" : "bg-white")}>
+            <p className={cls("text-sm font-black text-center", dark ? "text-white" : "text-gray-900")}>신고 사유 선택</p>
+            <p className={cls("text-xs text-center mt-1 opacity-70", dark ? "text-gray-400" : "text-gray-600")}>허위 신고는 계정 제재 사유가 될 수 있어요</p>
+            <div className="mt-4 space-y-2">
+              {REPORT_REASONS.map((r0) => (
+                <button key={r0.key} onClick={() => submitReport(r0.key)}
+                  className={cls("w-full py-3 rounded-2xl text-sm font-bold text-left px-4 active:scale-[0.98] transition",
+                    dark ? "bg-gray-800 text-gray-200 hover:bg-gray-700" : "bg-gray-100 text-gray-800 hover:bg-gray-200")}>
+                  {r0.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setReportSheet(null)}
+              className={cls("w-full mt-3 py-3 rounded-2xl font-bold text-sm", dark ? "text-gray-400" : "text-gray-500")}>
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
       {shareOpen && (
         <ShareCardModal review={r} onClose={() => setShareOpen(false)} dark={dark} user={user}/>
       )}
@@ -2115,20 +1922,48 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
 
 const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => {
   const [exiting, close] = useExit(onClose);
-  const [title, setTitle] = useStoredState("waylog:draft:compose:title", "");
-  const [body, setBody] = useStoredState("waylog:draft:compose:body", "");
-  const [tags, setTags] = useStoredState("waylog:draft:compose:tags", "");
-  const [category, setCategory] = useStoredState("waylog:draft:compose:category", "");
+  const [title, setTitle, titleLoaded] = useStoredState("waylog:draft:compose:title", "");
+  const [body, setBody, bodyLoaded] = useStoredState("waylog:draft:compose:body", "");
+  const [tags, setTags, tagsLoaded] = useStoredState("waylog:draft:compose:tags", "");
+  const [category, setCategory, catLoaded] = useStoredState("waylog:draft:compose:category", "");
   const [mediaItems, setMediaItems] = useState([]);
-  const [selectedProducts, setSelectedProducts] = useStoredState("waylog:draft:compose:products", []);
+  const [selectedProducts, setSelectedProducts, prodLoaded] = useStoredState("waylog:draft:compose:products", []);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productQuery, setProductQuery] = useState("");
   const [pickerCat, setPickerCat] = useState(category || "all");
   const [error, setError] = useState("");
   const [confirmClearDraft, setConfirmClearDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 드래프트 복구 안내 — 수정 모드가 아니고, 저장된 drafts 가 있으면 한 번 노출.
+  // 모든 useStoredState 가 IDB 로부터 로드 완료된 이후에만 체크 (타이머 대신).
+  const [restorePrompt, setRestorePrompt] = useState(false);
+  const restoreCheckedRef = useRef(false);
+  const allLoaded = titleLoaded && bodyLoaded && tagsLoaded && catLoaded && prodLoaded;
+  useEffect(() => {
+    if (restoreCheckedRef.current || editing || !allLoaded) return;
+    restoreCheckedRef.current = true;
+    const hasDraft = !!(title?.trim() || body?.trim() || tags?.trim() || (selectedProducts?.length));
+    if (hasDraft) setRestorePrompt(true);
+    // IDB 로드 완료 시 1회만 검사 — title/body 등을 deps 에 넣으면 사용자 타이핑마다 재실행됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, allLoaded]);
+  const discardDraft = async () => {
+    // 로컬 state 뿐 아니라 IDB 에 저장된 draft 키도 함께 제거 (누적 방지)
+    setTitle(""); setBody(""); setTags(""); setCategory("");
+    setSelectedProducts([]); setMediaItems([]);
+    setRestorePrompt(false);
+    try {
+      await Promise.all([
+        window.storage?.delete("waylog:draft:compose:title"),
+        window.storage?.delete("waylog:draft:compose:body"),
+        window.storage?.delete("waylog:draft:compose:tags"),
+        window.storage?.delete("waylog:draft:compose:category"),
+        window.storage?.delete("waylog:draft:compose:products"),
+      ]);
+    } catch {}
+  };
 
-  // 수정 모드 prefill (한 번만)
+  // 수정 모드 prefill — editing.id 바뀔 때만 trigger (객체 참조 변경은 무시)
   useEffect(() => {
     if (editing) {
       setTitle(editing.title || "");
@@ -2138,8 +1973,11 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       setMediaItems(editing.media || []);
       setSelectedProducts(editing.products || []);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.id]);
 
+  // prefillProduct — 제품 상세에서 "리뷰 쓰기" 진입 시 해당 제품 자동 선택.
+  // 사용자가 직접 수정한 selectedProducts 를 deps 에 넣으면 덮어써버리므로 prefillProduct.id 만 감시.
   useEffect(() => {
     if (prefillProduct && !editing) {
       if (!selectedProducts.find((x) => x.id === prefillProduct.id)) {
@@ -2147,6 +1985,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       }
       if (prefillProduct.category && !category) setCategory(prefillProduct.category);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillProduct?.id]);
 
   const isEditMode = !!editing;
@@ -2239,15 +2078,17 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     });
   };
 
+  const dProductQuery = useDebouncedValue(productQuery, 180);
   const filteredProducts = useMemo(() => {
-    if (productQuery.trim()) {
-      return PRODUCTS.filter((p) => (p.name || "").toLowerCase().includes(productQuery.toLowerCase()));
+    if (dProductQuery.trim()) {
+      const q = dProductQuery.toLowerCase();
+      return PRODUCTS.filter((p) => (p.name || "").toLowerCase().includes(q));
     }
     return pickerCat && pickerCat !== "all" ? PRODUCTS.filter((p) => p.category === pickerCat) : PRODUCTS;
-  }, [productQuery, pickerCat]);
+  }, [dProductQuery, pickerCat]);
 
   return (
-    <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <div className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <div className="flex flex-col items-center">
@@ -2327,7 +2168,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
             {mediaItems.map((m) => (
               <div key={m.id} className="relative aspect-square rounded-xl overflow-hidden bg-gray-200 group">
                 {m.type === "image" ? (
-                  <img src={m.url} alt="" className="w-full h-full object-cover"/>
+                  <img src={m.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
                 ) : (
                   <>
                     <video src={m.url} className="w-full h-full object-cover" muted/>
@@ -2411,6 +2252,26 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
 
         {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
       </div>
+
+      {/* 드래프트 복구 안내 */}
+      {restorePrompt && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setRestorePrompt(false)}/>
+          <div className={cls("relative w-full max-w-xs rounded-3xl p-6 shadow-2xl animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+              <PenLine size={24} className="text-emerald-500"/>
+            </div>
+            <p className={cls("text-base font-black text-center", dark ? "text-white" : "text-gray-900")}>이어서 쓰시겠어요?</p>
+            <p className={cls("text-xs text-center mt-2 opacity-70", dark ? "text-gray-400" : "text-gray-600")}>이전에 작성하다가 중단한 내용이 남아 있어요.</p>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => { discardDraft(); }}
+                className={cls("flex-1 py-3 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600")}>새로 쓰기</button>
+              <button onClick={() => setRestorePrompt(false)}
+                className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold text-sm">이어 쓰기</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 제품 선택 모달 */}
       {confirmClearDraft && (
@@ -2590,8 +2451,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           close();
           return;
         }
-        if (signUpError.message.includes("already registered")) setError("이미 가입된 이메일이에요");
-        else setError(signUpError.message);
+        setError(friendlyError(signUpError, "가입에 실패했어요. 입력 내용을 확인해주세요"));
         return;
       }
       if (data?.user && !data.user.identities?.length) {
@@ -2618,9 +2478,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           close();
           return;
         }
-        if (signInError.message.includes("Invalid")) setError("이메일 또는 비밀번호가 틀렸어요");
-        else if (signInError.message.includes("confirmed")) setError("이메일 인증이 필요해요. 받은 메일을 확인해주세요.");
-        else setError(signInError.message);
+        setError(friendlyError(signInError, "로그인에 실패했어요. 다시 시도해주세요"));
         return;
       }
       const meta = data?.user?.user_metadata;
@@ -2657,7 +2515,10 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
     close();
   };
 
-  const inputCls = cls("w-full text-sm bg-transparent outline-none border-b-2 pb-2 mt-4", dark ? "text-white placeholder-gray-600 border-gray-700 focus:border-emerald-500" : "text-gray-900 placeholder-gray-400 border-gray-200 focus:border-emerald-500");
+  const inputCls = cls("w-full text-sm bg-transparent outline-none border-b-2 pb-2 mt-4 transition-colors", dark ? "text-white placeholder-gray-600 border-gray-700 focus:border-emerald-500" : "text-gray-900 placeholder-gray-400 border-gray-200 focus:border-emerald-500");
+  // valid/invalid 상태용 클래스 — 값이 비어있지 않을 때만 색을 띄운다.
+  const inputInvalid = "!border-rose-400";
+  const inputValid = dark ? "!border-emerald-500/60" : "!border-emerald-500/50";
 
   const isRecover = mode === "forgot-password" || mode === "forgot-email";
   const headerTitle = {
@@ -2734,18 +2595,31 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             <p className={cls("text-xs mt-3 font-medium", dark ? "text-gray-400" : "text-gray-500")}>
               {avatar ? "사진을 변경하려면 카메라 아이콘을 누르세요" : "프로필 사진 추가 (선택)"}
             </p>
-            <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임" className={inputCls}/>
+            <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임 (2~12자)"
+              className={cls(inputCls,
+                nickname && (nickname.trim().length < 2 || nickname.trim().length > 12) && inputInvalid,
+                nickname && nickname.trim().length >= 2 && nickname.trim().length <= 12 && inputValid)}/>
+            {nickname && (nickname.trim().length < 2 || nickname.trim().length > 12) && (
+              <p className="text-xs text-rose-500 mt-1 font-medium">닉네임은 2~12자여야 해요 (현재 {nickname.trim().length}자)</p>
+            )}
           </div>
         )}
 
         {(mode === "signup" || mode === "login") && (
           <>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" type="email" className={inputCls}/>
-            {mode === "signup" && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" type="email" autoComplete="email"
+              className={cls(inputCls,
+                email && !emailRegex.test(email.trim()) && inputInvalid,
+                email && emailRegex.test(email.trim()) && inputValid)}/>
+            {mode === "signup" && email && !emailRegex.test(email.trim()) && (
               <p className="text-xs text-rose-500 -mt-2 font-medium">올바른 이메일 형식이 아니에요</p>
             )}
             <div className="relative">
-              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" type={showPw ? "text" : "password"} className={cls(inputCls, "pr-10")}/>
+              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" type={showPw ? "text" : "password"}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                className={cls(inputCls, "pr-10",
+                  mode === "signup" && password && (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) && inputInvalid,
+                  mode === "signup" && password && password.length >= 8 && /[a-zA-Z]/.test(password) && /[0-9]/.test(password) && inputValid)}/>
               <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
                 className={cls("absolute right-0 top-1/2 -translate-y-1/2 p-2", dark ? "text-gray-500" : "text-gray-400")}>
                 {showPw ? <Eye size={16}/> : <Eye size={16} className="opacity-40"/>}
@@ -3132,7 +3006,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
           <div className="space-y-4">
             {photo && (
               <div className="rounded-2xl overflow-hidden h-40">
-                <img src={photo} alt="" className="w-full h-full object-cover"/>
+                <img src={photo} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
               </div>
             )}
             <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-50")}>
@@ -3296,163 +3170,6 @@ const ExerciseModal = ({ onClose, onSave, dark }) => {
   );
 };
 
-const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
-  const [exiting, close] = useExit(onClose);
-  const [adding, setAdding] = useState(false);
-  const [weight, setWeight] = useState("");
-  const [bodyFat, setBodyFat] = useState("");
-  const [muscle, setMuscle] = useState("");
-  const [bmi, setBmi] = useState("");
-
-  const handleAdd = () => {
-    if (!weight) return;
-    onAdd({
-      id: Date.now(),
-      date: new Date().toISOString(),
-      weight: parseFloat(weight) || 0,
-      bodyFat: parseFloat(bodyFat) || 0,
-      muscle: parseFloat(muscle) || 0,
-      bmi: parseFloat(bmi) || 0,
-    });
-    setWeight(""); setBodyFat(""); setMuscle(""); setBmi("");
-    setAdding(false);
-  };
-
-  const sorted = [...(records || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const latest = sorted[0];
-  const prev = sorted[1];
-
-  const delta = (cur, old) => {
-    if (!cur || !old) return null;
-    const d = cur - old;
-    if (Math.abs(d) < 0.01) return null;
-    return d;
-  };
-
-  // SVG 선 그래프 (체중 변화)
-  const graphData = [...(records || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).filter((r) => r.weight > 0);
-
-  return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>인바디 기록</p>
-        <button onClick={() => setAdding(true)} className="text-emerald-500"><Plus size={22}/></button>
-      </header>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {adding && (
-          <div className={cls("p-4 rounded-2xl space-y-3", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>새 기록 추가</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "체중 (kg)", val: weight, set: setWeight },
-                { label: "체지방 (%)", val: bodyFat, set: setBodyFat },
-                { label: "근육량 (kg)", val: muscle, set: setMuscle },
-                { label: "BMI", val: bmi, set: setBmi },
-              ].map((f) => (
-                <div key={f.label}>
-                  <label className={cls("text-xs font-bold block mb-1", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</label>
-                  <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" inputMode="decimal" step="0.1"
-                    className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setAdding(false)} className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600")}>취소</button>
-              <button onClick={handleAdd} disabled={!weight}
-                className={cls("flex-1 py-2.5 rounded-xl text-sm font-black", weight ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" : dark ? "bg-gray-700 text-gray-600" : "bg-gray-200 text-gray-400")}>
-                저장
-              </button>
-            </div>
-          </div>
-        )}
-
-        {latest && (
-          <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-xs font-bold mb-3", dark ? "text-gray-400" : "text-gray-500")}>최근 기록 vs 이전</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "체중", val: latest.weight, unit: "kg", prev: prev?.weight },
-                { label: "체지방", val: latest.bodyFat, unit: "%", prev: prev?.bodyFat, invert: true },
-                { label: "근육량", val: latest.muscle, unit: "kg", prev: prev?.muscle },
-                { label: "BMI", val: latest.bmi, unit: "", prev: prev?.bmi, invert: true },
-              ].map((item) => {
-                const d = delta(item.val, item.prev);
-                const good = d ? (item.invert ? d < 0 : d > 0) : null;
-                return (
-                  <div key={item.label} className={cls("p-3 rounded-xl", dark ? "bg-gray-700" : "bg-gray-50")}>
-                    <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{item.label}</p>
-                    <p className={cls("text-xl font-black mt-1", dark ? "text-white" : "text-gray-900")}>
-                      {item.val || "-"}<span className="text-xs font-bold ml-0.5">{item.unit}</span>
-                    </p>
-                    {d !== null && (
-                      <p className={cls("text-xs font-bold mt-0.5", good ? "text-emerald-500" : "text-rose-500")}>
-                        {d > 0 ? "+" : ""}{d.toFixed(1)}{item.unit}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {graphData.length >= 2 && (
-          <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-xs font-bold mb-3", dark ? "text-gray-400" : "text-gray-500")}>체중 변화</p>
-            <svg viewBox="0 0 300 120" className="w-full h-28">
-              {(() => {
-                const vals = graphData.map((d) => d.weight);
-                const min = Math.min(...vals) - 1;
-                const max = Math.max(...vals) + 1;
-                const range = max - min || 1;
-                const pts = graphData.map((d, i) => ({
-                  x: graphData.length === 1 ? 150 : 20 + (i / (graphData.length - 1)) * 260,
-                  y: 10 + ((max - d.weight) / range) * 90,
-                }));
-                const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-                return (
-                  <>
-                    <path d={line} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    {pts.map((p, i) => (
-                      <g key={i}>
-                        <circle cx={p.x} cy={p.y} r="4" fill="#10b981"/>
-                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px] font-bold" fill={dark ? "#9ca3af" : "#6b7280"}>{vals[i]}</text>
-                      </g>
-                    ))}
-                  </>
-                );
-              })()}
-            </svg>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <p className={cls("text-xs font-bold px-1", dark ? "text-gray-400" : "text-gray-500")}>기록 히스토리</p>
-          {sorted.length === 0 && (
-            <div className={cls("py-8 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
-              <Activity size={28} className="mx-auto mb-2 opacity-50"/>
-              <p className="text-xs font-medium">아직 기록이 없어요</p>
-            </div>
-          )}
-          {sorted.map((r) => (
-            <div key={r.id} className={cls("p-3 rounded-2xl flex items-center gap-3", dark ? "bg-gray-800" : "bg-white")}>
-              <div className={cls("w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-400 to-teal-500")}>
-                <Activity size={18}/>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
-                <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>
-                  {r.weight}kg · {r.bodyFat}% · {r.muscle}kg
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, dark }) => {
   const [exiting, close] = useExit(onClose);
@@ -3505,9 +3222,9 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
+        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>변화 그래프</p>
-        <button onClick={handleSaveImage} className="text-emerald-500"><Download size={20}/></button>
+        <button onClick={handleSaveImage} aria-label="이미지 저장" className="text-emerald-500"><Download size={20}/></button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className={cls("flex gap-1 p-1 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-100")}>
@@ -3586,113 +3303,35 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
   );
 };
 
-const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAddPost }) => {
-  const [exiting, close] = useExit(onClose);
-  const [composing, setComposing] = useState(false);
-  const [postTitle, setPostTitle] = useState("");
-  const [postBody, setPostBody] = useState("");
-
-  const anonId = challenge?.anonId || "익명";
-  const dayNum = getChallengeDay(challenge?.startDate);
-
-  const handlePost = () => {
-    if (!postBody.trim()) return;
-    onAddPost({
-      id: Date.now(),
-      anonId,
-      dayNum,
-      title: postTitle.trim(),
-      body: postBody.trim(),
-      likes: Math.floor(Math.random() * 15) + 1,
-      createdAt: Date.now(),
-    });
-    setPostTitle(""); setPostBody(""); setComposing(false);
-  };
-
-  const sorted = [...(anonPosts || [])].sort((a, b) => b.createdAt - a.createdAt);
-
-  return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>챌린지 커뮤니티</p>
-        <button onClick={() => setComposing(true)} className="text-emerald-500"><PenLine size={20}/></button>
-      </header>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {composing && (
-          <div className={cls("p-4 rounded-2xl space-y-3", dark ? "bg-gray-800" : "bg-white")}>
-            <div className="flex items-center gap-2 mb-1">
-              <CircleUser size={16} className="text-emerald-500"/>
-              <span className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>{anonId}</span>
-              <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>Day {dayNum}</span>
-            </div>
-            <input value={postTitle} onChange={(e) => setPostTitle(e.target.value)} placeholder="제목 (선택)"
-              className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
-            <textarea value={postBody} onChange={(e) => setPostBody(e.target.value)} placeholder="오늘의 챌린지를 공유해보세요..."
-              rows={3} className={cls("w-full px-3 py-2 rounded-xl text-sm resize-none", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
-            <div className="flex gap-2">
-              <button onClick={() => { setComposing(false); setPostTitle(""); setPostBody(""); }}
-                className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600")}>취소</button>
-              <button onClick={handlePost} disabled={!postBody.trim()}
-                className={cls("flex-1 py-2.5 rounded-xl text-sm font-black",
-                  postBody.trim() ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" : dark ? "bg-gray-700 text-gray-600" : "bg-gray-200 text-gray-400")}>
-                공유하기
-              </button>
-            </div>
-          </div>
-        )}
-
-        {sorted.length === 0 && !composing && (
-          <div className={cls("py-12 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
-            <Users size={32} className="mx-auto mb-2 opacity-50"/>
-            <p className="text-sm font-bold">아직 게시물이 없어요</p>
-            <p className="text-xs mt-1">첫 번째로 챌린지 후기를 공유해보세요!</p>
-          </div>
-        )}
-
-        {sorted.map((p) => (
-          <div key={p.id} className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-            <div className="flex items-center gap-2 mb-2">
-              <CircleUser size={16} className={p.anonId === anonId ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500"}/>
-              <span className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>{p.anonId}</span>
-              <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>Day {p.dayNum}</span>
-              {p.anonId === anonId && <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>나</span>}
-            </div>
-            {p.title && <p className={cls("text-sm font-black mb-1", dark ? "text-white" : "text-gray-900")}>{p.title}</p>}
-            <p className={cls("text-sm leading-relaxed", dark ? "text-gray-300" : "text-gray-700")}>{p.body}</p>
-            <div className={cls("flex items-center gap-2 mt-3 pt-2 border-t", dark ? "border-gray-700" : "border-gray-100")}>
-              <Heart size={14} className="text-rose-500" fill="currentColor"/>
-              <span className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{p.likes} 응원</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
+  // Hooks 는 early return 보다 앞에 와야 한다 (react-hooks/rules-of-hooks).
   const dayNum = getChallengeDay(challenge?.startDate);
   const today = new Date().toISOString().slice(0, 10);
   const todayLog = dailyLogs?.[today];
   const now = new Date().getHours();
 
-  if (now < 22 || !todayLog) return null;
-
-  const totalCal = (todayLog.meals || []).reduce((s, m) => s + (m.cal || 0), 0);
-  const totalBurned = (todayLog.exercises || []).reduce((s, e) => s + (e.calories || 0), 0);
-  const completedMissions = (todayLog.completedMissions || []).length;
+  const totalCal = (todayLog?.meals || []).reduce((s, m) => s + (m.cal || 0), 0);
+  const totalBurned = (todayLog?.exercises || []).reduce((s, e) => s + (e.calories || 0), 0);
+  const completedMissions = (todayLog?.completedMissions || []).length;
   const weekNum = getChallengeWeek(dayNum);
   const totalMissions = CHALLENGE_MISSIONS[weekNum - 1]?.missions?.length || 5;
-  const rate = Math.round((completedMissions / totalMissions) * 100);
+  const rate = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
 
   const [encouragement, setEncouragement] = useState(
     rate >= 80 ? "오늘 하루 정말 잘 보냈어요! 내일도 이 기세로!" : rate >= 50 ? "절반 이상 달성! 조금만 더 힘내봐요." : "내일은 더 좋은 하루가 될 거예요. 화이팅!"
   );
   useEffect(() => {
+    if (now < 22 || !todayLog) return;
+    let alive = true;
     aiDailyReport(totalCal, totalBurned, completedMissions, totalMissions, challenge?.targetCalories || 2000)
-      .then((msg) => setEncouragement(msg));
-  }, []);
+      .then((msg) => { if (alive) setEncouragement(msg); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today, totalCal, totalBurned, completedMissions, totalMissions]);
+
+  // 렌더 skip 은 hooks 호출 이후에
+  if (now < 22 || !todayLog) return null;
 
   return (
     <div className={cls("p-4 rounded-2xl mt-4", dark ? "bg-gray-800" : "bg-white")}>
@@ -3726,296 +3365,10 @@ const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
   );
 };
 
-const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
-  const [exiting, close] = useExit(onClose);
-  const [step, setStep] = useState(0);
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
-  const [bodyFat, setBodyFat] = useState("");
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("female");
-  const [goal, setGoal] = useState("");
-  const [coachTone, setCoachTone] = useState("");
-  const [warning, setWarning] = useState("");
 
-  const bmr = weight && height && age ? calcBMR(parseFloat(weight), parseFloat(height), parseInt(age), gender) : 0;
-  const targetCal = bmr && goal ? calcTargetCalories(bmr, goal) : 0;
-  const bmiVal = weight && height ? (parseFloat(weight) / ((parseFloat(height) / 100) ** 2)).toFixed(1) : 0;
-
-  const checkWarnings = () => {
-    setWarning("");
-    if (parseFloat(bmiVal) < 18.5 && goal === "lose") {
-      setWarning("BMI가 18.5 미만이에요. 감량보다 건강 유지를 추천드려요.");
-      return false;
-    }
-    if (targetCal > 0 && targetCal < 1200) {
-      setWarning("일일 칼로리가 1200 미만이면 건강에 해로울 수 있어요. 목표를 조정해주세요.");
-      return false;
-    }
-    return true;
-  };
-
-  const handleNext = () => {
-    if (step === 1 && (!height || !weight || !age)) return;
-    if (step === 2) {
-      if (!goal) return;
-      if (!checkWarnings()) return;
-    }
-    if (step === 3 && !coachTone) return;
-    if (step === 4) {
-      const anonId = `챌린저${Math.floor(Math.random() * 9000) + 1000}`;
-      onStart({
-        startDate: new Date().toISOString(),
-        height: parseFloat(height),
-        weight: parseFloat(weight),
-        bodyFat: parseFloat(bodyFat) || 0,
-        age: parseInt(age),
-        gender,
-        goal,
-        coachTone,
-        bmr,
-        targetCalories: targetCal,
-        bmi: parseFloat(bmiVal),
-        anonId,
-        status: "active",
-      });
-      close();
-      return;
-    }
-    setStep(step + 1);
-    setWarning("");
-  };
-
-  const canNext = () => {
-    if (step === 0) return true;
-    if (step === 1) return height && weight && age;
-    if (step === 2) return !!goal;
-    if (step === 3) return !!coachTone;
-    if (step === 4) return true;
-    return false;
-  };
-
-  const inputCls = cls("w-full px-4 py-3 rounded-2xl text-sm font-bold", dark ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-900");
-
-  return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-      <header className={cls("flex items-center justify-between p-4")}>
-        <button onClick={close}><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <div className="flex gap-1.5">
-          {[0,1,2,3,4].map((i) => (
-            <div key={i} className={cls("h-1.5 rounded-full transition-all", i === step ? "w-6 bg-emerald-500" : i < step ? "w-3 bg-emerald-300" : "w-3 bg-gray-300 dark:bg-gray-700")}/>
-          ))}
-        </div>
-        <div className="w-6"/>
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-6 pb-8">
-        {step === 0 && (
-          <div className="flex flex-col items-center justify-center text-center pt-8 animate-fade-in">
-            <div className="w-28 h-28 rounded-[2rem] bg-gradient-to-br from-emerald-400 via-teal-500 to-amber-400 flex items-center justify-center shadow-2xl mb-8">
-              <Trophy size={52} className="text-white"/>
-            </div>
-            <h2 className={cls("text-2xl font-black", dark ? "text-white" : "text-gray-900")}>바디키 8주 챌린지</h2>
-            <p className={cls("text-sm mt-3 leading-relaxed max-w-xs", dark ? "text-gray-400" : "text-gray-500")}>
-              8주간의 체계적인 식단 관리와 운동으로{"\n"}
-              건강한 변화를 만들어보세요.{"\n\n"}
-              AI 코치가 매일 맞춤 피드백을 드리고,{"\n"}
-              주차별 미션으로 꾸준함을 만들어요.
-            </p>
-            <div className="flex gap-4 mt-8">
-              {[
-                { Icon: BarChart3, label: "AI 식단분석", color: "from-emerald-400 to-teal-500" },
-                { Icon: Dumbbell, label: "운동 기록", color: "from-amber-400 to-orange-500" },
-                { Icon: TrendingUp, label: "변화 그래프", color: "from-violet-400 to-purple-500" },
-              ].map((f) => (
-                <div key={f.label} className={cls("px-4 py-3 rounded-2xl text-center flex flex-col items-center gap-2", dark ? "bg-gray-800" : "bg-gray-50")}>
-                  <div className={cls("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center", f.color)}>
-                    <f.Icon size={18} className="text-white"/>
-                  </div>
-                  <span className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="pt-4 space-y-4 animate-fade-in">
-            <h2 className={cls("text-xl font-black", dark ? "text-white" : "text-gray-900")}>신체 정보를 알려주세요</h2>
-            <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>맞춤 칼로리와 운동량 계산에 사용돼요</p>
-            <div>
-              <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>키 (cm)</label>
-              <input value={height} onChange={(e) => setHeight(e.target.value)} type="number" inputMode="numeric" placeholder="165" className={inputCls}/>
-            </div>
-            <div>
-              <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>몸무게 (kg)</label>
-              <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" inputMode="numeric" placeholder="65" className={inputCls}/>
-            </div>
-            <div>
-              <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>체지방 (%, 선택)</label>
-              <input value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} type="number" inputMode="numeric" placeholder="25" className={inputCls}/>
-            </div>
-            <div>
-              <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>나이</label>
-              <input value={age} onChange={(e) => setAge(e.target.value)} type="number" inputMode="numeric" placeholder="30" className={inputCls}/>
-            </div>
-            <div>
-              <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>성별</label>
-              <div className="flex gap-2">
-                <button onClick={() => setGender("female")}
-                  className={cls("flex-1 py-3 rounded-2xl text-sm font-bold transition",
-                    gender === "female" ? "bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow" : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-600")}>
-                  여성
-                </button>
-                <button onClick={() => setGender("male")}
-                  className={cls("flex-1 py-3 rounded-2xl text-sm font-bold transition",
-                    gender === "male" ? "bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow" : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-600")}>
-                  남성
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="pt-4 space-y-4 animate-fade-in">
-            <h2 className={cls("text-xl font-black", dark ? "text-white" : "text-gray-900")}>목표를 선택해주세요</h2>
-            <div className="space-y-3">
-              {[
-                { key: "lose", Icon: Flame, color: "from-rose-400 to-orange-500", label: "체중 감량", desc: "체지방 줄이기에 집중" },
-                { key: "muscle", Icon: Dumbbell, color: "from-sky-400 to-blue-500", label: "근력 강화", desc: "근육량 늘리기에 집중" },
-                { key: "health", Icon: Leaf, color: "from-emerald-400 to-teal-500", label: "건강 유지", desc: "균형 잡힌 생활 습관" },
-              ].map((g) => (
-                <button key={g.key} onClick={() => { setGoal(g.key); setWarning(""); }}
-                  className={cls("w-full p-4 rounded-2xl flex items-center gap-4 text-left transition active:scale-[0.98]",
-                    goal === g.key
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg"
-                      : dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700")}>
-                  <div className={cls("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0", goal === g.key ? "bg-white/20" : `bg-gradient-to-br ${g.color}`)}>
-                    <g.Icon size={22} className="text-white"/>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black">{g.label}</p>
-                    <p className={cls("text-xs mt-0.5", goal === g.key ? "text-white/80" : dark ? "text-gray-500" : "text-gray-500")}>{g.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {bmr > 0 && goal && (
-              <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-emerald-50")}>
-                <p className={cls("text-xs font-bold mb-2", dark ? "text-gray-400" : "text-gray-600")}>자동 계산 결과</p>
-                <div className="flex gap-4">
-                  <div>
-                    <p className={cls("text-xs", dark ? "text-gray-500" : "text-gray-500")}>기초대사량</p>
-                    <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{bmr} kcal</p>
-                  </div>
-                  <div>
-                    <p className={cls("text-xs", dark ? "text-gray-500" : "text-gray-500")}>목표 칼로리</p>
-                    <p className="text-lg font-black text-emerald-500">{targetCal} kcal</p>
-                  </div>
-                  <div>
-                    <p className={cls("text-xs", dark ? "text-gray-500" : "text-gray-500")}>BMI</p>
-                    <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{bmiVal}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {warning && (
-              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/30 flex items-start gap-2">
-                <Flame size={16} className="text-rose-500 mt-0.5 shrink-0"/>
-                <p className="text-xs font-bold text-rose-600 dark:text-rose-300">{warning}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="pt-4 space-y-4 animate-fade-in">
-            <h2 className={cls("text-xl font-black", dark ? "text-white" : "text-gray-900")}>AI 코치를 선택하세요</h2>
-            <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>매일 당신의 활동에 맞는 피드백을 보내드려요</p>
-            <div className="space-y-3">
-              {AI_COACH_TONES.map((t) => (
-                <button key={t.key} onClick={() => setCoachTone(t.key)}
-                  className={cls("w-full p-4 rounded-2xl text-left transition active:scale-[0.98]",
-                    coachTone === t.key
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg"
-                      : dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700")}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={cls("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", coachTone === t.key ? "bg-white/20" : `bg-gradient-to-br ${t.color}`)}>
-                      <t.Icon size={18} className="text-white"/>
-                    </div>
-                    <div>
-                      <p className="text-sm font-black">{t.label}</p>
-                      <p className={cls("text-xs", coachTone === t.key ? "text-white/80" : dark ? "text-gray-500" : "text-gray-500")}>{t.desc}</p>
-                    </div>
-                  </div>
-                  <p className={cls("text-xs italic px-2 py-2 rounded-xl", coachTone === t.key ? "bg-white/20" : dark ? "bg-gray-700" : "bg-white")}>
-                    "{t.example}"
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="pt-8 text-center animate-fade-in">
-            <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-emerald-400 via-teal-500 to-amber-400 flex items-center justify-center shadow-2xl mx-auto mb-6">
-              <Check size={44} className="text-white"/>
-            </div>
-            <h2 className={cls("text-2xl font-black", dark ? "text-white" : "text-gray-900")}>준비 완료!</h2>
-            <p className={cls("text-sm mt-3 leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
-              8주간의 여정을 시작합니다.{"\n"}매일 꾸준히 기록하면{"\n"}놀라운 변화가 찾아올 거예요.
-            </p>
-            <div className={cls("mt-6 p-4 rounded-2xl mx-4 text-left", dark ? "bg-gray-800" : "bg-gray-50")}>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>목표</span>
-                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>
-                    {goal === "lose" ? "체중 감량" : goal === "muscle" ? "근력 강화" : "건강 유지"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>목표 칼로리</span>
-                  <span className="text-xs font-bold text-emerald-500">{targetCal} kcal/일</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>AI 코치</span>
-                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>
-                    {AI_COACH_TONES.find((t) => t.key === coachTone)?.label || "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>기간</span>
-                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>56일 (8주)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="px-6 pb-8 pt-2">
-        {step > 0 && (
-          <button onClick={() => { setStep(step - 1); setWarning(""); }}
-            className={cls("w-full py-3 rounded-2xl text-sm font-bold mb-2", dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-600")}>
-            이전
-          </button>
-        )}
-        <button onClick={handleNext} disabled={!canNext()}
-          className={cls("w-full py-4 rounded-2xl font-black text-base shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-2",
-            canNext()
-              ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-500/30"
-              : dark ? "bg-gray-800 text-gray-600" : "bg-gray-200 text-gray-400")}>
-          {step === 4 ? "챌린지 시작!" : step === 0 ? "시작하기" : "다음"}
-          <ChevronRight size={18}/>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, anonPosts, setAnonPosts, onClose, dark, onShowToast }) => {
+const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, anonPosts, setAnonPosts, onClose, dark }) => {
+  // setToast 는 Context 에서 구독 — prop drilling 제거
+  const { setToast: onShowToast } = useAppContext();
   const [exiting, close] = useExit(onClose);
   const [subTab, setSubTab] = useState("today");
   const [mealModal, setMealModal] = useState(null);
@@ -4089,9 +3442,11 @@ const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords
 
   const [coachMsg, setCoachMsg] = useState("");
   useEffect(() => {
+    let alive = true;
     aiCoachMessage(challenge?.coachTone || "cheerful", dayNum, completedCount, weekMissions.missions.length)
-      .then((msg) => setCoachMsg(msg));
-  }, [completedCount]);
+      .then((msg) => { if (alive) setCoachMsg(msg); });
+    return () => { alive = false; };
+  }, [challenge?.coachTone, dayNum, completedCount, weekMissions.missions.length]);
 
   // 원형 진행 차트 SVG
   const circleR = 52;
@@ -4110,7 +3465,7 @@ const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
+        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>바디키 8주 챌린지</p>
         <div className="w-6"/>
       </header>
@@ -4231,7 +3586,7 @@ const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords
                         meal ? dark ? "bg-emerald-900/20" : "bg-emerald-50" : dark ? "bg-gray-700/50" : "bg-gray-50")}>
                       {meal?.photo ? (
                         <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
-                          <img src={meal.photo} alt="" className="w-full h-full object-cover"/>
+                          <img src={meal.photo} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
                         </div>
                       ) : (
                         <div className={cls("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", dark ? "bg-gray-600" : "bg-gray-200")}>
@@ -4328,7 +3683,7 @@ const ChallengeMainScreen = ({ challenge, dailyLogs, setDailyLogs, inbodyRecords
       {exerciseModal && <ExerciseModal onClose={() => setExerciseModal(false)} onSave={addExercise} dark={dark}/>}
       {inbodyOpen && <InbodyScreen records={inbodyRecords} onAdd={(r) => setInbodyRecords((prev) => [...prev, r])} onClose={() => setInbodyOpen(false)} dark={dark}/>}
       {graphOpen && <ChallengeGraphScreen challenge={challenge} dailyLogs={dailyLogs} inbodyRecords={inbodyRecords} onClose={() => setGraphOpen(false)} dark={dark}/>}
-      {anonOpen && <AnonCommunityScreen challenge={challenge} onClose={() => setAnonOpen(false)} dark={dark} anonPosts={anonPosts} onAddPost={(p) => setAnonPosts((prev) => [...prev, p])}/>}
+      {anonOpen && <AnonCommunityScreen challenge={challenge} onClose={() => setAnonOpen(false)} dark={dark} anonPosts={anonPosts} onAddPost={(p) => setAnonPosts((prev) => [...prev, p])} getChallengeDay={getChallengeDay}/>}
 
       {/* Mission toast */}
       {missionToast && (
@@ -4418,72 +3773,11 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, onStart, onOpen, onRes
   );
 };
 
-const OnboardingScreen = ({ onClose, dark }) => {
-  const [step, setStep] = useState(0);
-  const slides = [
-    {
-      Icon: Sparkles,
-      gradient: "from-emerald-400 via-teal-500 to-cyan-500",
-      title: "웨이로그에 오신 걸 환영해요",
-      desc: "나만의 라이프스타일을 한 곳에 기록하고\n매주 자라나는 취향을 발견해보세요",
-    },
-    {
-      Icon: Heart,
-      gradient: "from-rose-400 via-pink-500 to-fuchsia-500",
-      title: "좋아요로 취향을 학습해요",
-      desc: "마음에 드는 카드의 하트를 누르면\n추천이 점점 정교해져요",
-    },
-    {
-      Icon: Star,
-      gradient: "from-amber-400 via-orange-500 to-rose-500",
-      title: "무드를 부여해 보세요",
-      desc: "Love · Good · Save · Wow 4가지 무드로\n내 감정을 카드에 담아요",
-    },
-    {
-      Icon: PenLine,
-      gradient: "from-violet-500 via-purple-500 to-pink-500",
-      title: "매주 시그니처 카드를 받아요",
-      desc: "활동 3개를 모으면 매주 자동으로\n나만의 취향 카드가 생성돼요",
-    },
-  ];
-
-  const cur = slides[step];
-  const isLast = step === slides.length - 1;
-
-  return (
-    <div className={cls("fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-      <div className="flex justify-end p-4 h-12">
-        {!isLast && (
-          <button onClick={onClose} className={cls("text-xs font-bold px-3 py-1.5 rounded-full", dark ? "text-gray-400 bg-gray-800" : "text-gray-500 bg-gray-100")}>
-            건너뛰기
-          </button>
-        )}
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-        <div className={cls("w-32 h-32 rounded-[2.5rem] bg-gradient-to-br flex items-center justify-center shadow-2xl mb-8 transition-all duration-500", cur.gradient)} key={step}>
-          <cur.Icon size={56} className="text-white animate-fade-in" strokeWidth={2}/>
-        </div>
-        <h2 className={cls("text-2xl font-black tracking-tight animate-fade-in", dark ? "text-white" : "text-gray-900")} key={`t-${step}`}>{cur.title}</h2>
-        <p className={cls("text-sm mt-3 leading-relaxed whitespace-pre-line animate-fade-in", dark ? "text-gray-400" : "text-gray-500")} key={`d-${step}`}>{cur.desc}</p>
-      </div>
-      <div className="px-8 pb-10">
-        <div className="flex justify-center gap-2 mb-6">
-          {slides.map((_, i) => (
-            <div key={i} className={cls("rounded-full transition-all duration-300",
-              i === step ? "w-6 h-2 bg-emerald-500" : "w-2 h-2 bg-gray-300 dark:bg-gray-700")}/>
-          ))}
-        </div>
-        <button onClick={() => isLast ? onClose() : setStep(step + 1)}
-          className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-black text-base shadow-xl shadow-emerald-500/30 active:scale-[0.98] transition flex items-center justify-center gap-2">
-          {isLast ? "시작하기" : "다음"}
-          <ChevronRight size={18}/>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onShowToast }) => {
+const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onEnablePush, onOpenAdmin }) => {
+  // setToast 는 Context 에서 구독 — prop drilling 제거
+  const { setToast: onShowToast } = useAppContext();
+  // app_metadata.role 은 Supabase 관리자 콘솔에서 사용자 별로 수동 설정
+  const isAdmin = user?.app_metadata?.role === "admin" || user?.role === "admin";
   const [exiting, close] = useExit(onClose);
   const [confirmClear, setConfirmClear] = useState(false);
   const [blockListOpen, setBlockListOpen] = useState(false);
@@ -4527,7 +3821,16 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       { icon: dark ? Sun : Moon, label: "다크모드", value: dark, type: "toggle", onChange: () => setDark(!dark) },
     ]},
     { group: "알림", rows: [
-      { icon: Bell, label: "알림 받기", value: notifPref, type: "toggle", onChange: () => setNotifPref(!notifPref) },
+      { icon: Bell, label: "앱 내 알림", value: notifPref, type: "toggle", onChange: () => setNotifPref(!notifPref) },
+      // 웹 푸시: Notification 권한 + Service Worker 구독을 요청.
+      // 브라우저가 지원하지 않거나 VAPID 미설정이면 비활성화 상태로 표시.
+      ...(typeof window !== "undefined" && "Notification" in window ? [
+        { icon: Bell, label: "푸시 알림 켜기",
+          sub: Notification.permission === "granted" ? "권한 허용됨 — 탭해서 구독 갱신"
+            : Notification.permission === "denied" ? "브라우저에서 차단됨 — 사이트 설정에서 허용"
+            : "브라우저 알림 받기",
+          type: "action", onClick: () => onEnablePush && onEnablePush() },
+      ] : []),
     ]},
     { group: "계정", rows: [
       { icon: User, label: "이메일", sub: user?.email, type: "info" },
@@ -4546,6 +3849,10 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       { icon: BookOpen, label: "이용약관", type: "action", onClick: () => setDocOpen("terms") },
       { icon: BookOpen, label: "개인정보 처리방침", type: "action", onClick: () => setDocOpen("privacy") },
     ]},
+    // 관리자 전용 모더레이션 큐 (일반 사용자에게는 그룹 자체가 숨겨짐)
+    ...(isAdmin ? [{ group: "관리자", rows: [
+      { icon: Bell, label: "신고 모더레이션", sub: "사용자 신고 큐 관리", type: "action", onClick: () => onOpenAdmin && onOpenAdmin() },
+    ]}] : []),
   ];
 
   return (
@@ -4801,23 +4108,32 @@ const WeeklySignatureCard = ({ user, taste, moods, favs, userReviews, reviews, s
   const [exiting, close] = useExit(onClose);
   const [selectedHistory, setSelectedHistory] = useState(null);
 
-  const totalCats = Object.values(taste.cats).reduce((a,b) => a+b, 0);
-  const sortedCats = Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
-  const topCat = sortedCats[0];
-  const moodCount = Object.values(moods || {}).filter(Boolean).length;
-  const moodCounts = {};
-  Object.values(moods || {}).forEach((m) => { if (m) moodCounts[m] = (moodCounts[m] || 0) + 1; });
-  const topMoodKey = Object.entries(moodCounts).sort((a,b) => b[1]-a[1])[0]?.[0];
-  const topMoodObj = topMoodKey && MOODS.find((m) => m.key === topMoodKey);
-  const favReviews = reviews.filter((r) => favs.has(r.id)).slice(0, 3);
+  // 카테고리/무드 집계 — 리렌더마다 재계산 방지 (의존성 변경 시에만)
+  const { totalCats, sortedCats, topCat, stops } = useMemo(() => {
+    const total = Object.values(taste.cats).reduce((a,b) => a+b, 0);
+    const sorted = Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+    let acc = 0;
+    const s = total > 0 ? sorted.map(([k, v]) => {
+      const start = (acc / total) * 100;
+      acc += v;
+      const end = (acc / total) * 100;
+      return `${CAT_SOLID[k]} ${start}% ${end}%`;
+    }).join(", ") : "#e5e7eb 0% 100%";
+    return { totalCats: total, sortedCats: sorted, topCat: sorted[0], stops: s };
+  }, [taste.cats]);
 
-  let acc = 0;
-  const stops = totalCats > 0 ? sortedCats.map(([k, v]) => {
-    const start = (acc / totalCats) * 100;
-    acc += v;
-    const end = (acc / totalCats) * 100;
-    return `${CAT_SOLID[k]} ${start}% ${end}%`;
-  }).join(", ") : "#e5e7eb 0% 100%";
+  const { moodCount, topMoodObj } = useMemo(() => {
+    const counts = {};
+    Object.values(moods || {}).forEach((m) => { if (m) counts[m] = (counts[m] || 0) + 1; });
+    const total = Object.values(moods || {}).filter(Boolean).length;
+    const topKey = Object.entries(counts).sort((a,b) => b[1]-a[1])[0]?.[0];
+    return { moodCount: total, topMoodObj: topKey && MOODS.find((m) => m.key === topKey) };
+  }, [moods]);
+
+  const favReviews = useMemo(
+    () => reviews.filter((r) => favs.has(r.id)).slice(0, 3),
+    [reviews, favs]
+  );
 
   const today = new Date();
   const onejan = new Date(today.getFullYear(), 0, 1);
@@ -5208,10 +4524,16 @@ function AppInner() {
 
   const pushNotif = (text, extra = {}) => {
     if (!notifPrefRef.current) return;
-    setNotifications((p) => [
-      { id: Date.now() + Math.random(), text, time: "방금", read: false, ...extra },
-      ...p
-    ]);
+    const local = { id: Date.now() + Math.random(), text, time: "방금", read: false, ...extra };
+    setNotifications((p) => [local, ...p]);
+    // 서버 동기화 — 실패해도 로컬 알림은 유지
+    if (supabase && user?.id) {
+      supabaseNotifs.create({ user_id: user.id, text, data: extra }).then(({ data }) => {
+        if (data?.id) {
+          setNotifications((p) => p.map((n) => n.id === local.id ? { ...n, id: data.id } : n));
+        }
+      }).catch(() => {});
+    }
   };
   const unreadCount = notifications.filter((n) => !n.read).length;
   const notifRef = useRef(null);
@@ -5231,40 +4553,88 @@ function AppInner() {
     try { if (u) localStorage.setItem("waylog:user", JSON.stringify(u)); else localStorage.removeItem("waylog:user"); } catch {}
   };
 
+  // 세션 한 번당 profile 은 한 번만 fetch (토큰 리프레시 때마다 재요청 방지)
+  const profileCacheRef = useRef({ userId: null, avatar: "" });
   const buildUserFromSession = async (session) => {
     const meta = session.user.user_metadata || {};
     let avatar = "";
-    try {
-      const { data: profile } = await supabaseAuth.getProfile(session.user.id);
-      if (profile?.avatar_url) avatar = profile.avatar_url;
-    } catch {}
+    if (profileCacheRef.current.userId === session.user.id) {
+      avatar = profileCacheRef.current.avatar;
+    } else {
+      try {
+        const { data: profile } = await supabaseAuth.getProfile(session.user.id);
+        if (profile?.avatar_url) avatar = profile.avatar_url;
+      } catch {}
+      profileCacheRef.current = { userId: session.user.id, avatar };
+    }
     return { id: session.user.id, email: session.user.email, nickname: meta.nickname || session.user.email.split("@")[0], avatar, joinedAt: session.user.created_at };
   };
 
   useEffect(() => {
-    if (!supabase) {
+    let cancelled = false;
+    const loadLocal = () => {
       try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
+    };
+    if (!supabase) {
+      loadLocal();
       setAuthLoading(false);
       return;
     }
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        setUser(await buildUserFromSession(session));
-      } else {
-        try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
-      }
-      setAuthLoading(false);
-    }).catch(() => {
-      try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
-      setAuthLoading(false);
-    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setUser(await buildUserFromSession(session));
+    // getSession을 재시도 (네트워크 플레이크에 대비한 지수 백오프 3회)
+    const fetchSessionWithRetry = async () => {
+      const delays = [0, 500, 1500];
+      for (let i = 0; i < delays.length; i++) {
+        if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (!error) return data?.session || null;
+        } catch { /* 재시도 */ }
       }
-    });
-    return () => subscription.unsubscribe();
+      throw new Error("session_fetch_failed");
+    };
+
+    (async () => {
+      try {
+        const session = await fetchSessionWithRetry();
+        if (cancelled) return;
+        if (session?.user) {
+          setUser(await buildUserFromSession(session));
+        } else {
+          loadLocal();
+        }
+      } catch {
+        if (!cancelled) loadLocal();
+      } finally {
+        if (!cancelled) setAuthLoading(false);
+      }
+    })();
+
+    // onAuthStateChange: 실패/예외를 먹어도 로컬 세션은 유지
+    let subscription = null;
+    try {
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (event === "SIGNED_OUT") {
+            setUser(null);
+            return;
+          }
+          if (session?.user) {
+            setUser(await buildUserFromSession(session));
+          }
+        } catch (e) {
+          console.warn("onAuthStateChange handler error:", e);
+          // 토큰 리프레시 에러는 치명적이지 않으므로 현재 세션 유지
+        }
+      });
+      subscription = data?.subscription || null;
+    } catch (e) {
+      console.warn("onAuthStateChange subscribe 실패:", e);
+    }
+    return () => {
+      cancelled = true;
+      try { subscription?.unsubscribe(); } catch {}
+    };
   }, []);
 
   // --- 좋아요 ---
@@ -5283,22 +4653,137 @@ function AppInner() {
   const [taste, setTaste] = useStoredState("waylog:taste", { cats: {}, tags: {} });
   const [moods, setMoods] = useStoredState("waylog:moods", {});
   const [userReviews, setUserReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsHasMore, setReviewsHasMore] = useState(true);
+  const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
+  const reviewsCursorRef = useRef(null); // 마지막 페이지의 created_at
+
+  // 리뷰 row → UI 모델 매핑 (sanitize 포함)
+  const mapReviewRow = (r) => {
+    const mediaArr = Array.isArray(r.media) ? r.media : [];
+    const firstMedia = mediaArr[0];
+    const rawImg = firstMedia?.url || (typeof firstMedia === "string" ? firstMedia : "") || "";
+    return {
+      id: r.id,
+      title: sanitizeInline(r.title, { maxLength: 200 }),
+      body: sanitizeText(r.content, { maxLength: 5000 }),
+      category: sanitizeInline(r.category, { maxLength: 40 }),
+      tags: (r.tags || []).map((t) => sanitizeInline(t, { maxLength: 40 })).filter(Boolean),
+      author: sanitizeInline(r.profiles?.nickname, { maxLength: 60 }) || "익명",
+      authorId: r.user_id,
+      date: (r.created_at || "").slice(0, 10),
+      createdAt: r.created_at, // 페이지네이션 커서용
+      likes: r.likes_count || 0,
+      views: r.views_count || 0,
+      product: sanitizeInline(r.product_name, { maxLength: 200 }),
+      products: [],
+      media: mediaArr
+        .map((m) => (typeof m === "string"
+          ? { type: "image", url: sanitizeImageUrl(m) }
+          : { ...m, url: sanitizeImageUrl(m?.url) }))
+        .filter((m) => !!m.url),
+      img: sanitizeImageUrl(rawImg),
+    };
+  };
 
   useEffect(() => {
     if (authLoading) return;
+    setReviewsLoading(true);
+    setReviewsHasMore(true);
+    reviewsCursorRef.current = null;
     (async () => {
-      const { data, error } = await supabaseReviews.fetchAll();
-      if (!error && data) {
-        setUserReviews(data.map((r) => ({
-          id: r.id, title: r.title, body: r.content, category: r.category,
-          tags: r.tags || [], author: r.profiles?.nickname || "익명", authorId: r.user_id,
-          date: (r.created_at || "").slice(0, 10), likes: r.likes_count || 0, views: r.views_count || 0,
-          product: r.product_name || "", products: [], media: r.media || [],
-          img: (r.media?.[0]?.url) || (typeof r.media?.[0] === "string" ? r.media[0] : "") || "",
-        })));
+      const { data, error } = await supabaseReviews.fetchPage({ limit: 30 });
+      if (!error && Array.isArray(data)) {
+        const mapped = data.map(mapReviewRow);
+        setUserReviews(mapped);
+        if (mapped.length > 0) reviewsCursorRef.current = mapped[mapped.length - 1].createdAt;
+        if (mapped.length < 30) setReviewsHasMore(false);
       }
+      setReviewsLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
+
+  // 다음 페이지 fetch (무한 스크롤에서 호출)
+  const loadMoreReviews = async () => {
+    if (reviewsLoadingMore || !reviewsHasMore || !reviewsCursorRef.current) return;
+    setReviewsLoadingMore(true);
+    try {
+      const { data, error } = await supabaseReviews.fetchPage({
+        cursor: reviewsCursorRef.current, limit: 30,
+      });
+      if (!error && Array.isArray(data)) {
+        if (data.length === 0) {
+          setReviewsHasMore(false);
+        } else {
+          const mapped = data.map(mapReviewRow);
+          setUserReviews((prev) => {
+            const seen = new Set(prev.map((r) => r.id));
+            const fresh = mapped.filter((r) => !seen.has(r.id));
+            return [...prev, ...fresh];
+          });
+          reviewsCursorRef.current = mapped[mapped.length - 1].createdAt;
+          if (mapped.length < 30) setReviewsHasMore(false);
+        }
+      }
+    } finally {
+      setReviewsLoadingMore(false);
+    }
+  };
+
+  // moods / notifications 하이드레이션 (로그인 시 1회)
+  const moodsNotifsHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || !supabase || moodsNotifsHydratedRef.current) return;
+    moodsNotifsHydratedRef.current = true;
+    (async () => {
+      try {
+        const [{ data: moodRows }, { data: notifRows }] = await Promise.all([
+          supabaseMoods.fetchMine(user.id),
+          supabaseNotifs.fetchMine(user.id, 50),
+        ]);
+        if (Array.isArray(moodRows) && moodRows.length) {
+          const map = {};
+          moodRows.forEach((m) => { map[m.review_id] = m.mood; });
+          // 서버 상태를 기본으로, 로컬 값이 있고 서버에 없으면 유지
+          setMoods((prev) => ({ ...prev, ...map }));
+        }
+        if (Array.isArray(notifRows) && notifRows.length) {
+          setNotifications(notifRows.map((n) => ({
+            id: n.id, text: sanitizeInline(n.text, { maxLength: 200 }),
+            read: !!n.read, time: new Date(n.created_at).toLocaleDateString(),
+            ...(n.data || {}),
+          })));
+        }
+      } catch (e) { console.warn("moods/notifs hydrate 실패", e); }
+    })();
+    // user 변경(로그인)시에만 1회 hydrate — setter 들은 ref 안정적이므로 deps 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // 로그아웃 시 하이드레이션 플래그 리셋 → 재로그인 시 다시 fetch
+  useEffect(() => {
+    if (!user) {
+      moodsNotifsHydratedRef.current = false;
+      challengeHydratedRef.current = false;
+      identify(null);
+    } else {
+      identify(user.id, { nickname: user.nickname });
+    }
+  }, [user]);
+
+  // 앱 시작 이벤트 (세션당 1회)
+  useEffect(() => { analyticsEvents.appOpen(); }, []);
+
+  // SW 새 버전 감지 → 사용자에게 새로고침 안내
+  useEffect(() => {
+    const onUpdate = () => {
+      setToast("새 버전이 있어요. 화면을 당겨 새로고침해주세요");
+      // 자동 활성화 원할 경우 reg.waiting?.postMessage("SKIP_WAITING") (현재는 수동)
+    };
+    window.addEventListener("waylog:sw-update", onUpdate);
+    return () => window.removeEventListener("waylog:sw-update", onUpdate);
+  }, []);
 
   const [recents, setRecents] = useStoredState("waylog:recents", []);
   const [commentsMap, setCommentsMap] = useState(SEED_COMMENTS);
@@ -5312,6 +4797,7 @@ function AppInner() {
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboarded, setOnboarded] = useStoredState("waylog:onboarded", false);
   const [signatureOpen, setSignatureOpen] = useState(false);
@@ -5380,6 +4866,8 @@ function AppInner() {
       ].slice(0, 12));
       setSigWeek(currentWeek);
     }
+    // setSigHistory/setSigWeek/pushNotif 는 안정적. taste/userReviews 는 주간 계산 스냅샷이라 폴링 불필요
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, favs, moods, sigWeek]);
 
   const requireAuth = (fn) => {
@@ -5404,7 +4892,7 @@ function AppInner() {
   }, [userReviews, blocked, refreshKey]);
 
   // ---------- Challenge State ----------
-  // TODO: Firebase 마이그레이션 필요 지점 - challenge 데이터를 Firestore로 이전
+  // localStorage가 오프라인/미로그인 캐시 역할을 하고, 로그인 시 Supabase와 양방향 동기화.
   const [challenge, setChallenge] = useStoredState("waylog:challenge", null);
   const [challengeDailyLogs, setChallengeDailyLogs] = useStoredState("waylog:challengeLogs", {});
   const [challengeInbody, setChallengeInbody] = useStoredState("waylog:challengeInbody", []);
@@ -5412,18 +4900,159 @@ function AppInner() {
   const [challengeStartOpen, setChallengeStartOpen] = useState(false);
   const [challengeMainOpen, setChallengeMainOpen] = useState(false);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
+  const challengeHydratedRef = useRef(false);
 
-  // 챌린지 완료 자동 감지
+  // 챌린지 writable 래퍼 — 로컬 업데이트 후 Supabase 에 diff 동기화
+  // 깊은 비교(JSON.stringify)로 필드 변경을 정확히 감지 — 불필요한 upsert 방지
+  const setChallengeDailyLogsSync = (updater) => {
+    setChallengeDailyLogs((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (supabase && user?.id && challenge?.id) {
+        const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+        keys.forEach((dayKey) => {
+          const before = prev[dayKey];
+          const after = next[dayKey];
+          // 삭제 / 추가 / 내용 변경을 모두 감지
+          if (before === after) return;
+          try {
+            if (JSON.stringify(before) === JSON.stringify(after)) return;
+          } catch { /* stringify 실패 시 upsert 진행 */ }
+          if (after === undefined) {
+            // 키 삭제는 아직 지원 안 함 (서버에 남겨둠) — 필요 시 delete 엔드포인트 추가
+            return;
+          }
+          // jsonb row 크기 제한 (Supabase Postgres row 기본 제한은 넉넉하지만, 사진 base64 가
+          // data 에 섞여 들어오면 MB 단위가 될 수 있음. 512KB 초과 시 업서트 스킵 + 경고).
+          let payloadSize = 0;
+          try { payloadSize = JSON.stringify(after).length; } catch { payloadSize = 0; }
+          if (payloadSize > 512 * 1024) {
+            console.warn(`[challenge_logs] ${dayKey} 페이로드 ${Math.round(payloadSize / 1024)}KB — 서버 저장 스킵. 사진은 Supabase Storage 에 업로드 후 URL 만 저장 권장.`);
+            setToast("일일 로그가 너무 커서 서버 저장을 건너뛰었어요. 사진을 줄여주세요");
+            return;
+          }
+          supabaseChallenges.upsertLog({
+            user_id: user.id, challenge_id: challenge.id, day_key: dayKey, data: after,
+          }).catch(() => {});
+        });
+      }
+      return next;
+    });
+  };
+
+  const setChallengeInbodySync = (updater) => {
+    setChallengeInbody((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (supabase && user?.id && Array.isArray(next)) {
+        const prevIds = new Set(prev.map((i) => i.id));
+        const added = next.filter((i) => !prevIds.has(i.id));
+        added.forEach((rec) => {
+          const { id, measuredAt, ...data } = rec;
+          supabaseChallenges.addInbody({
+            user_id: user.id, challenge_id: challenge?.id || null,
+            measured_at: measuredAt || new Date().toISOString(), data,
+          }).then(({ data: saved }) => {
+            if (saved?.id && saved.id !== id) {
+              // 서버 ID로 로컬 ID 교체
+              setChallengeInbody((cur) => cur.map((r) => r.id === id ? { ...r, id: saved.id } : r));
+            }
+          }).catch(() => {});
+        });
+      }
+      return next;
+    });
+  };
+
+  const setChallengeAnonPostsSync = (updater) => {
+    setChallengeAnonPosts((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (supabase && user?.id && Array.isArray(next)) {
+        const prevIds = new Set(prev.map((p) => p.id));
+        const added = next.filter((p) => !prevIds.has(p.id));
+        added.forEach((post) => {
+          supabaseChallenges.addAnonPost({
+            user_id: user.id,
+            anon_id: post.anonId || challenge?.anonId || "익명",
+            content: post.content,
+            day_num: post.dayNum || null,
+          }).then(({ data: saved }) => {
+            if (saved?.id && saved.id !== post.id) {
+              setChallengeAnonPosts((cur) => cur.map((p) => p.id === post.id ? { ...p, id: saved.id } : p));
+            }
+          }).catch(() => {});
+        });
+      }
+      return next;
+    });
+  };
+
+  // 챌린지 완료 자동 감지 — challenge.status/startDate 변경 시 trigger (setChallenge는 안정)
   useEffect(() => {
     if (!challenge || challenge.status === "completed" || !challenge.startDate) return;
-    const dayNum = getChallengeDay(challenge.startDate);
     const now = new Date();
     const start = new Date(challenge.startDate);
     const elapsed = Math.floor((now - start) / 86400000) + 1;
     if (elapsed > CHALLENGE_DAYS) {
       setChallenge({ ...challenge, status: "completed", completedAt: new Date().toISOString() });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenge]);
+
+  // 로그인 시 Supabase에서 챌린지 데이터 하이드레이션 (한 번만)
+  useEffect(() => {
+    if (!user?.id || !supabase || challengeHydratedRef.current) return;
+    challengeHydratedRef.current = true;
+    (async () => {
+      try {
+        const { data: ch } = await supabaseChallenges.fetchActive(user.id);
+        if (ch) {
+          setChallenge({
+            id: ch.id,
+            status: ch.status,
+            startDate: ch.start_date,
+            completedAt: ch.completed_at,
+            ...(ch.profile || {}),
+          });
+          const [{ data: logs }, { data: inbody }] = await Promise.all([
+            supabaseChallenges.fetchLogs(user.id, ch.id),
+            supabaseChallenges.fetchInbody(user.id),
+          ]);
+          if (Array.isArray(logs) && logs.length) {
+            const logMap = {};
+            logs.forEach((l) => { logMap[l.day_key] = l.data || {}; });
+            setChallengeDailyLogs(logMap);
+          }
+          if (Array.isArray(inbody) && inbody.length) {
+            setChallengeInbody(inbody.map((i) => ({ id: i.id, measuredAt: i.measured_at, ...(i.data || {}) })));
+          }
+        }
+        const { data: anon } = await supabaseChallenges.fetchAnonPosts(100);
+        if (Array.isArray(anon) && anon.length) {
+          setChallengeAnonPosts(anon.map((p) => ({
+            id: p.id, anonId: p.anon_id, content: p.content, dayNum: p.day_num, time: p.created_at,
+          })));
+        }
+      } catch (e) {
+        console.warn("challenge hydrate 실패", e);
+      }
+    })();
+    // hydration은 user.id 최초 로그인 시 1회만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // 챌린지 변경 시 서버 동기화 (디바운스 없이 상태 변경 → upsert)
+  useEffect(() => {
+    if (!user?.id || !supabase || !challenge || !challengeHydratedRef.current) return;
+    const { id, status, startDate, completedAt, ...profile } = challenge;
+    supabaseChallenges.upsert({
+      id, user_id: user.id, status: status || "active", start_date: startDate,
+      completed_at: completedAt || null, profile,
+    }).then(({ data }) => {
+      if (data?.id && data.id !== challenge.id) {
+        setChallenge((prev) => prev ? { ...prev, id: data.id } : prev);
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenge, user?.id]);
 
   const learnFrom = (rev, weight = 1) => {
     if (!rev) return;
@@ -5467,23 +5096,28 @@ function AppInner() {
         } else {
           learnFrom(rev, -1);
         }
+        setToast("좋아요 반영에 실패했어요. 네트워크를 확인해주세요");
       }
     }
   };
 
-  // 무드 변경 시 취향 점수 보너스 (최고/영감은 강한 신호)
+  // 무드 변경 시 취향 점수 보너스 + 서버 동기화
   const setMoodsWithBonus = (updater) => {
     setMoods((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      // diff 추출
-      Object.keys(next).forEach((rid) => {
+      const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+      allKeys.forEach((rid) => {
         if (next[rid] !== prev[rid]) {
           const rev = [...userReviews, ...SEED_REVIEWS].find((x) => x.id === Number(rid));
-          if (!rev) return;
-          // 이전 무드 보너스 제거
-          if (prev[rid] === "love" || prev[rid] === "wow") learnFrom(rev, -2);
-          // 새 무드 보너스 추가
-          if (next[rid] === "love" || next[rid] === "wow") learnFrom(rev, 2);
+          if (rev) {
+            if (prev[rid] === "love" || prev[rid] === "wow") learnFrom(rev, -2);
+            if (next[rid] === "love" || next[rid] === "wow") learnFrom(rev, 2);
+          }
+          // 서버 동기화 (로그인 시에만)
+          if (supabase && user?.id) {
+            if (next[rid]) supabaseMoods.upsert(user.id, rid, next[rid]).catch(() => {});
+            else supabaseMoods.remove(user.id, rid).catch(() => {});
+          }
         }
       });
       return next;
@@ -5492,22 +5126,44 @@ function AppInner() {
 
   const openDetail = (r) => {
     nav.push({ type: "detail", payload: r });
-    // 서버에서 댓글 가져오기 (로컬 seed와 병합)
+    analyticsEvents.reviewOpened(r.id, r.category);
+    // 서버 댓글 fetch → 로컬(미동기화)과 병합.
+    // comment_likes 는 조인 배열이므로 user_id 배열로 변환해 likedBy 로 사용.
     if (supabase && r.id) {
       supabaseComments.fetchByReview(r.id).then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          const serverComments = data.map((c) => ({
-            id: c.id, author: c.profiles?.nickname || "익명", avatar: c.profiles?.avatar_url || "",
-            text: c.content, parentId: c.parent_id || null, mentionTo: c.mention_to || null,
-            createdAt: new Date(c.created_at).getTime(), time: "", likedBy: c.liked_by || [],
-          }));
-          setCommentsMap((prev) => {
-            const local = prev[r.id] || [];
-            const serverIds = new Set(serverComments.map((c) => c.id));
-            const localOnly = local.filter((c) => !serverIds.has(c.id) && typeof c.id === "number");
-            return { ...prev, [r.id]: [...serverComments, ...localOnly] };
-          });
-        }
+        if (error || !Array.isArray(data)) return;
+        const serverComments = data.map((c) => ({
+          id: c.id,
+          authorId: c.user_id, // 프로필 조회 시 nickname 중복을 피하기 위한 고유 ID
+          author: sanitizeInline(c.profiles?.nickname, { maxLength: 60 }) || "익명",
+          avatar: sanitizeImageUrl(c.profiles?.avatar_url || ""),
+          text: sanitizeText(c.content, { maxLength: 2000 }),
+          parentId: c.parent_id || null,
+          mentionTo: c.mention_to ? sanitizeInline(c.mention_to) : null,
+          createdAt: new Date(c.created_at).getTime(),
+          time: "",
+          likedBy: Array.isArray(c.comment_likes)
+            ? c.comment_likes.map((l) => l.user_id).filter(Boolean)
+            : [],
+        }));
+        setCommentsMap((prev) => {
+          const local = prev[r.id] || [];
+          const serverIds = new Set(serverComments.map((c) => c.id));
+          // 아직 서버 ID를 받지 못한(Date.now() 수치 ID) 로컬 댓글만 유지
+          const localOnly = local.filter((c) => typeof c.id === "number" && !serverIds.has(c.id));
+          // LRU: 최근 10개 review 의 댓글만 메모리 유지 (무한 누적 방지)
+          const MAX_CACHE = 10;
+          const merged = { ...prev, [r.id]: [...serverComments, ...localOnly] };
+          const keys = Object.keys(merged);
+          if (keys.length > MAX_CACHE) {
+            // 현재 열린 리뷰 r.id 는 반드시 유지, 나머지 중 오래된 것부터 제거
+            const toKeep = new Set([String(r.id), ...keys.slice(-MAX_CACHE + 1)]);
+            const trimmed = {};
+            keys.forEach((k) => { if (toKeep.has(k)) trimmed[k] = merged[k]; });
+            return trimmed;
+          }
+          return merged;
+        });
       });
     }
   };
@@ -5519,27 +5175,62 @@ function AppInner() {
   const removeRecent = (term) => setRecents((prev) => prev.filter((t) => t !== term));
   const clearRecents = () => { setRecents([]); setToast("최근 검색어를 모두 삭제했어요"); };
 
+  // data URL → Blob (file 객체가 유실된 draft 복원 상황 대비)
+  const dataUrlToBlob = async (dataUrl) => {
+    try {
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    } catch {
+      return null;
+    }
+  };
+
   const uploadMedia = async (mediaItems) => {
     if (!user || !supabase) return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
     const uploaded = [];
     for (const m of mediaItems) {
-      if (m.file) {
-        const ext = m.type === "video" ? "mp4" : "jpg";
-        const { url, error } = await supabaseStorage.uploadMedia(user.id, m.file, `${m.id}.${ext}`);
+      // 1) file 객체가 있으면 그대로 업로드
+      let fileToUpload = m.file;
+      const ext = m.type === "video" ? "mp4" : "jpg";
+
+      // 2) file이 없고 data: URL이면 Blob으로 변환해서 업로드 (이전 버그: 빈 문자열로 날림)
+      if (!fileToUpload && typeof m.url === "string" && m.url.startsWith("data:")) {
+        fileToUpload = await dataUrlToBlob(m.url);
+      }
+
+      if (fileToUpload) {
+        // 이미지인 경우 업로드 전 압축 (장변 1600px, JPEG 82%)
+        // 이 과정에서 EXIF 메타데이터도 제거됨 (프라이버시 + 용량 절감)
+        const toSend = m.type === "image"
+          ? await compressImage(fileToUpload, { maxDimension: 1600, quality: 0.82 })
+          : fileToUpload;
+        const { url, error } = await supabaseStorage.uploadMedia(user.id, toSend, `${m.id}.${ext}`);
         if (url && !error) {
           uploaded.push({ id: m.id, type: m.type, url, duration: m.duration });
           continue;
         }
+        // 업로드 실패는 토스트로 사용자에게 알림 (조용한 손실 방지)
+        setToast("이미지 업로드에 일부 실패했어요");
       }
-      // fallback: file이 없거나 업로드 실패 시 — 이미 URL인 경우 그대로 유지
-      const isDataUrl = (m.url || "").startsWith("data:");
-      uploaded.push({ id: m.id, type: m.type, url: isDataUrl ? "" : (m.url || ""), duration: m.duration });
+
+      // 3) 이미 원격 http(s) URL이면 그대로 재사용, 그 외는 스킵
+      const safeUrl = typeof m.url === "string" && /^https?:/i.test(m.url) ? m.url : "";
+      if (safeUrl) uploaded.push({ id: m.id, type: m.type, url: safeUrl, duration: m.duration });
     }
     return uploaded;
   };
 
   const submitReview = async (data) => {
     try {
+      // 텍스트 필드 sanitize (제어문자 제거 + 길이 제한)
+      data = {
+        ...data,
+        title: sanitizeInline(data.title, { maxLength: 200 }),
+        body: sanitizeText(data.body, { maxLength: 5000 }),
+        product: sanitizeInline(data.product, { maxLength: 200 }),
+        category: sanitizeInline(data.category, { maxLength: 40 }),
+        tags: (data.tags || []).map((t) => sanitizeInline(t, { maxLength: 40 })).filter(Boolean),
+      };
       // 미디어 업로드 (base64 → Supabase Storage URL)
       const uploadedMedia = await uploadMedia(data.media || []);
       const firstImgUrl = uploadedMedia.find((m) => m.type === "image")?.url || "";
@@ -5608,34 +5299,70 @@ function AppInner() {
     }
   };
 
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
   const deleteReview = async (id) => {
-    const backup = userReviews.find((r) => r.id === id);
-    setUserReviews((prev) => prev.filter((r) => r.id !== id));
-    setFavsArr((prev) => prev.filter((x) => x !== id));
-    setMoods((prev) => { const m = { ...prev }; delete m[id]; return m; });
-    setCommentsMap((prev) => { const m = { ...prev }; delete m[id]; return m; });
-    if (user && typeof id === "string") {
-      const { error } = await supabaseReviews.delete(id);
-      if (error && backup) {
-        setUserReviews((prev) => [backup, ...prev]);
-        setToast("삭제 실패. 다시 시도해주세요");
-        return;
+    if (deletingReviewId === id) return false; // 중복 호출 방지
+    setDeletingReviewId(id);
+    try {
+      // 서버 우선 삭제: 성공 후에만 UI 제거 → "사라졌다 돌아오는" UX 방지
+      if (user && typeof id === "string" && supabase) {
+        const { error } = await supabaseReviews.delete(id);
+        if (error) {
+          setToast("삭제 실패. 네트워크를 확인해주세요");
+          return false;
+        }
       }
+      setUserReviews((prev) => prev.filter((r) => r.id !== id));
+      setFavsArr((prev) => prev.filter((x) => x !== id));
+      setMoods((prev) => { const m = { ...prev }; delete m[id]; return m; });
+      setCommentsMap((prev) => { const m = { ...prev }; delete m[id]; return m; });
+      setToast("웨이로그가 삭제됐어요");
+      return true;
+    } finally {
+      setDeletingReviewId(null);
     }
-    setToast("웨이로그가 삭제됐어요");
   };
 
   const addComment = async (rid, text, parentId = null, mentionTo = null) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return false; }
+    const cleanText = sanitizeText(text, { maxLength: 2000 });
+    if (!cleanText.trim()) { setToast("댓글 내용을 입력해주세요"); return false; }
+
+    // parentId 검증 — 존재하지 않거나, 이미 답글(대댓글 깊이 2+)이면 거부
+    const existing = commentsMap[rid] || [];
+    let validParentId = null;
+    if (parentId != null) {
+      const parent = existing.find((c) => c.id === parentId);
+      if (!parent) {
+        // 고아 스레드 방지: 부모가 없으면 최상위 댓글로 변환
+        parentId = null;
+      } else if (parent.parentId != null) {
+        // 이미 답글인 댓글에 또 달면 원래 최상위로 올림 (한 단계 flat)
+        parentId = parent.parentId;
+      } else {
+        // parentId는 local Date.now() 숫자일 수도, 서버 UUID일 수도 있음.
+        // 서버 저장 시엔 서버 UUID만 전달 (로컬 ID는 서버가 모름).
+        validParentId = typeof parent.id === "string" ? parent.id : null;
+      }
+    }
+
     const localId = Date.now();
-    const localComment = { id: localId, author: user.nickname, avatar: user.avatar, time: "방금", createdAt: localId, text, parentId, mentionTo, likedBy: [] };
+    const localComment = {
+      id: localId, author: user.nickname, avatar: user.avatar,
+      time: "방금", createdAt: localId, text: cleanText,
+      parentId, mentionTo: mentionTo ? sanitizeInline(mentionTo) : null, likedBy: [],
+    };
     setCommentsMap((prev) => ({
       ...prev,
       [rid]: [...(prev[rid] || []), localComment],
     }));
     // Supabase 동기화 + 서버 ID로 교체
     if (supabase) {
-      supabaseComments.create({ user_id: user.id, review_id: rid, content: text, parent_id: parentId })
+      supabaseComments.create({
+        user_id: user.id, review_id: rid,
+        content: cleanText, parent_id: validParentId,
+        mention_to: mentionTo ? sanitizeInline(mentionTo, { maxLength: 60 }) : null,
+      })
         .then(({ data }) => {
           if (data?.id) {
             setCommentsMap((prev) => ({
@@ -5649,17 +5376,45 @@ function AppInner() {
     return true;
   };
 
-  const toggleCommentLike = (rid, cid) => {
+  const toggleCommentLike = async (rid, cid) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+    // 현재 상태 조회 후 낙관적 업데이트
+    const current = (commentsMap[rid] || []).find((c) => c.id === cid);
+    if (!current) return;
+    const likedByKey = user.id || user.nickname;
+    const wasLiked = (current.likedBy || []).includes(likedByKey);
     setCommentsMap((prev) => ({
       ...prev,
       [rid]: (prev[rid] || []).map((c) => {
         if (c.id !== cid) return c;
         const likedBy = c.likedBy || [];
-        const has = likedBy.includes(user.nickname);
-        return { ...c, likedBy: has ? likedBy.filter((n) => n !== user.nickname) : [...likedBy, user.nickname] };
+        return {
+          ...c,
+          likedBy: wasLiked ? likedBy.filter((n) => n !== likedByKey) : [...likedBy, likedByKey],
+        };
       }),
     }));
+    // 서버 동기화 (서버 ID인 경우에만)
+    if (supabase && typeof cid === "string" && user.id) {
+      const { error } = wasLiked
+        ? await supabaseComments.unlike(user.id, cid)
+        : await supabaseComments.like(user.id, cid);
+      if (error) {
+        // 롤백
+        setCommentsMap((prev) => ({
+          ...prev,
+          [rid]: (prev[rid] || []).map((c) => {
+            if (c.id !== cid) return c;
+            const likedBy = c.likedBy || [];
+            return {
+              ...c,
+              likedBy: wasLiked ? [...likedBy, likedByKey] : likedBy.filter((n) => n !== likedByKey),
+            };
+          }),
+        }));
+        setToast("좋아요 반영에 실패했어요");
+      }
+    }
   };
 
   const deleteComment = (rid, cid) => {
@@ -5679,12 +5434,24 @@ function AppInner() {
   };
 
   const logout = async () => {
-    await supabaseAuth.signOut();
+    try {
+      const { error } = await supabaseAuth.signOut() || {};
+      if (error) {
+        // 서버 로그아웃 실패해도 클라이언트는 clean up 진행 (로컬 토큰 제거).
+        console.warn("signOut 서버 호출 실패:", error);
+      }
+    } catch (e) {
+      console.warn("signOut 예외:", e);
+    }
     setUser(null);
     setFavsArr([]); setMoods({}); setTaste({ cats: {}, tags: {} });
     setFollowingArr([]); setBlockedArr([]); setNotifications([]);
     setChallenge(null); setChallengeDailyLogs({}); setChallengeInbody([]); setChallengeAnonPosts([]);
     setRecents([]); setSigWeek(0); setSigHistory([]);
+    // 재로그인 시 서버 hydration 을 다시 타도록 플래그 리셋
+    moodsNotifsHydratedRef.current = false;
+    challengeHydratedRef.current = false;
+    profileCacheRef.current = { userId: null, avatar: "" };
     setToast("로그아웃되었어요");
   };
 
@@ -5714,7 +5481,7 @@ function AppInner() {
       onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
       onChallengeOpen={() => setChallengeMainOpen(true)}
       onChallengeResult={() => setChallengeMainOpen(true)}/>,
-    feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} />,
+    feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} />,
     fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct}/>,
     comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={setSelectedUser}
       user={user}
@@ -5735,7 +5502,21 @@ function AppInner() {
     }}/>,
   };
 
+  // 앱 전역 Context — 화면들이 useAppContext 로 구독.
+  // setter 들은 안정적이므로 deps 에서 제외 (user/dark 가 실제 변동 요인).
+  // requireAuth 는 user 변경 시 재계산 필요.
+  const appCtx = useMemo(() => ({
+    user, dark, supabase,
+    setToast, setAuthOpen, setTab,
+    requireAuth: (fn) => {
+      if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+      fn();
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [user, dark]);
+
   return (
+    <AppProvider value={appCtx}>
     <div className={cls("min-h-screen max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto pb-20 font-sans relative", dark ? "bg-gray-900" : "bg-gray-50")}
       style={{
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -5768,6 +5549,7 @@ function AppInner() {
                 setNotifOpen(!notifOpen);
                 if (!notifOpen && unreadCount > 0) {
                   setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                  if (supabase && user?.id) supabaseNotifs.markAllRead(user.id).catch(() => {});
                 }
               }}
               aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : "알림"}
@@ -5850,7 +5632,8 @@ function AppInner() {
         </div>
       </header>
 
-      {screens[tab]}
+      {/* 탭 전환 시 살짝 fade-in — tab key 로 remount 트리거하지 않도록 wrapper 만 애니 */}
+      <div key={tab} className="animate-fade-in">{screens[tab]}</div>
 
       {/* FAB - 글쓰기 (max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl 컨테이너 우측에 정렬) */}
       <div className="fixed inset-x-0 bottom-0 pointer-events-none z-20 flex justify-center">
@@ -5886,9 +5669,15 @@ function AppInner() {
         <DetailScreen key={`${s.payload.id}-${i}`} r={s.payload} onBack={back} onOpen={openDetail}
           reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
           comments={(commentsMap[s.payload.id] || []).filter((c) => !blocked.has(c.author))} addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike} user={user}
+          deleting={deletingReviewId === s.payload.id}
           onEdit={(r) => { setEditingReview(r); back(); setTimeout(() => setCompose(true), 280); }}
-          onDelete={(r) => { deleteReview(r.id); back(); }}
-          onReport={() => setToast("신고가 접수됐어요. 검토 후 조치할게요")}
+          onDelete={async (r) => { const ok = await deleteReview(r.id); if (ok) back(); }}
+          onReport={(targetType = "review", targetId = s.payload.id, reason = "inappropriate") => {
+            if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+            supabaseReports.create({ reporterId: user.id, targetType, targetId, reason })
+              .then(({ error }) => setToast(error ? "신고 접수 실패. 잠시 후 다시 시도해주세요" : "신고가 접수됐어요. 검토 후 조치할게요"))
+              .catch(() => setToast("신고 접수 실패"));
+          }}
           onHashtagClick={(tag) => { back(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
           onUserClick={setSelectedUser}/>
       ))}
@@ -5918,8 +5707,18 @@ function AppInner() {
         onLogout={logout}
         onClearData={clearAllData}
         onReplayOnboarding={() => { setSettingsOpen(false); setTimeout(() => setOnboardingOpen(true), 200); }}
-        onShowToast={setToast}/>}
+        onOpenAdmin={() => { setSettingsOpen(false); setTimeout(() => setAdminOpen(true), 200); }}
+        onEnablePush={async () => {
+          if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+          if (!pushSupported()) { setToast("이 브라우저는 푸시 알림을 지원하지 않아요"); return; }
+          const perm = await requestPushPermission();
+          if (perm === "denied") { setToast("브라우저에서 알림이 차단돼 있어요. 사이트 설정에서 허용해주세요"); return; }
+          if (perm !== "granted") { setToast("알림 권한을 허용해주세요"); return; }
+          const sub = await subscribePush(user.id);
+          setToast(sub ? "푸시 알림을 켰어요" : "푸시 구독 설정을 완료하지 못했어요. VAPID 키 설정 확인 필요");
+        }}/>}
       {onboardingOpen && <OnboardingScreen onClose={() => { setOnboardingOpen(false); setOnboarded(true); }} dark={dark}/>}
+      {adminOpen && <AdminModerationScreen dark={dark} onClose={() => setAdminOpen(false)}/>}
       {selectedUser && <UserMiniSheet author={selectedUser.author} avatar={selectedUser.avatar}
         onClose={() => setSelectedUser(null)} onOpen={openDetail}
         onOpenProfile={(u) => setProfileUser(u)}
@@ -5970,14 +5769,13 @@ function AppInner() {
       {challengeMainOpen && challenge && <ChallengeMainScreen
         challenge={challenge}
         dailyLogs={challengeDailyLogs}
-        setDailyLogs={setChallengeDailyLogs}
+        setDailyLogs={setChallengeDailyLogsSync}
         inbodyRecords={challengeInbody}
-        setInbodyRecords={setChallengeInbody}
+        setInbodyRecords={setChallengeInbodySync}
         anonPosts={challengeAnonPosts}
-        setAnonPosts={setChallengeAnonPosts}
+        setAnonPosts={setChallengeAnonPostsSync}
         onClose={() => setChallengeMainOpen(false)}
-        dark={dark}
-        onShowToast={setToast}/>}
+        dark={dark}/>}
 
       <nav className={cls("fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl border-t grid grid-cols-4 z-20 backdrop-blur-xl",
         dark ? "bg-gray-900/85 border-gray-800" : "bg-white/85 border-gray-100")}
@@ -6007,6 +5805,7 @@ function AppInner() {
         })}
       </nav>
     </div>
+    </AppProvider>
   );
 }
 

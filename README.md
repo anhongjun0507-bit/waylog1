@@ -30,13 +30,33 @@ npm run dev
 
 ## 환경변수
 
-`.env` 파일을 생성하고 다음 변수를 설정하세요:
+`.env.example` 를 복사해 `.env` 로 만든 뒤 값을 채우세요:
 
+```bash
+cp .env.example .env
 ```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+
+필요한 값:
+
+- `VITE_SUPABASE_URL` — Supabase 프로젝트 URL
+- `VITE_SUPABASE_ANON_KEY` — Supabase anon (public) 키
+
+> **Anthropic API 키는 `.env`에 두지 마세요.**
+> 브라우저에 번들되면 유출 위험이 있습니다. 대신 Supabase Edge Function 비밀로 등록합니다:
+>
+> ```bash
+> supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+> supabase functions deploy claude --no-verify-jwt
+> ```
+>
+> 자세한 배포 절차: [`supabase/functions/claude/README.md`](supabase/functions/claude/README.md)
+
+### 키 로테이션 (과거에 커밋/노출된 경우)
+
+1. [Anthropic Console](https://console.anthropic.com/settings/keys) 에서 기존 키 revoke
+2. 새 키 발급 후 `supabase secrets set ANTHROPIC_API_KEY=...` 로만 등록
+3. Supabase anon 키도 과거 저장소에 노출됐다면 Dashboard → Project Settings → API 에서 재발급
 
 ## 배포
 
-Vercel로 자동 배포됩니다.
+Vercel로 자동 배포됩니다. Vercel 프로젝트 환경변수에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 를 설정해야 합니다 (Anthropic 키는 설정하지 않습니다).
