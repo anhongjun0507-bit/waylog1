@@ -2109,14 +2109,27 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     });
   };
 
+  const composeCatalog = useCatalog();
+  const composeCatalogLoading = useCatalogLoading();
   const dProductQuery = useDebouncedValue(productQuery, 180);
   const filteredProducts = useMemo(() => {
-    if (dProductQuery.trim()) {
-      const q = dProductQuery.toLowerCase();
-      return PRODUCTS.filter((p) => (p.name || "").toLowerCase().includes(q));
+    const source = composeCatalog && composeCatalog.length > 0 ? composeCatalog : PRODUCTS;
+    let items = source;
+    if (pickerCat && pickerCat !== "all") {
+      items = items.filter((p) => p && p.category === pickerCat);
     }
-    return pickerCat && pickerCat !== "all" ? PRODUCTS.filter((p) => p.category === pickerCat) : PRODUCTS;
-  }, [dProductQuery, pickerCat]);
+    const q = dProductQuery.trim().toLowerCase();
+    if (q) {
+      items = items.filter((p) => {
+        const name = (p?.name || "").toLowerCase();
+        const brand = (p?.brand || "").toLowerCase();
+        const tags = Array.isArray(p?.tags) ? p.tags.join(" ").toLowerCase() : "";
+        return name.includes(q) || brand.includes(q) || tags.includes(q);
+      });
+    }
+    // 검색어 없을 땐 너무 길지 않게 60개로 제한 (성능 + UX)
+    return q ? items.slice(0, 200) : items.slice(0, 60);
+  }, [dProductQuery, pickerCat, composeCatalog]);
 
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
@@ -2353,8 +2366,14 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
             </div>
             <div className={cls("flex items-center gap-2 px-3 py-2 rounded-full mb-2", dark ? "bg-gray-800" : "bg-gray-100")}>
               <Search size={14} className={dark ? "text-gray-500" : "text-gray-400"}/>
-              <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="제품명 검색"
+              <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="제품명 · 브랜드 · 태그 검색"
                 className={cls("flex-1 text-sm bg-transparent outline-none", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
+              {productQuery && (
+                <button onClick={() => setProductQuery("")} aria-label="검색어 지우기"
+                  className={cls("w-5 h-5 rounded-full flex items-center justify-center", dark ? "bg-gray-700" : "bg-gray-300")}>
+                  <X size={11} className="text-white"/>
+                </button>
+              )}
             </div>
             <div className="flex gap-1.5 overflow-x-auto mb-3 pb-1 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
               {[{ key: "all", label: "전체" }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label }))].map((c) => (
@@ -2368,7 +2387,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               ))}
             </div>
             <div className="flex-1 overflow-y-auto -mx-1 px-1">
-              {filteredProducts.length === 0 ? (
+              {composeCatalogLoading && filteredProducts.length === 0 ? (
+                <div className={cls("text-center py-10", dark ? "text-gray-500" : "text-gray-400")}>
+                  <RefreshCw size={28} strokeWidth={1.5} className="mx-auto mb-2 animate-spin opacity-40"/>
+                  <p className="text-xs">제품 카탈로그를 불러오는 중…</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div className={cls("text-center py-10", dark ? "text-gray-500" : "text-gray-400")}>
                   <Search size={32} strokeWidth={1.5} className="mx-auto mb-2 opacity-40"/>
                   <p className="text-xs">검색 결과가 없어요</p>
@@ -2376,24 +2400,34 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               ) : (
                 <div className="space-y-2">
                   {filteredProducts.map((p) => {
-                    const selected = selectedProducts.find((x) => x.id === p.id);
+                    const selected = !!selectedProducts.find((x) => x.id === p.id);
+                    const imgSrc = p.imageUrl || (p.img ? `${BASE}${p.img}` : null);
                     return (
                       <button key={p.id} onClick={() => toggleProduct(p)}
-                        className={cls("w-full flex items-center gap-3 p-2 rounded-2xl transition active:scale-[0.98]",
-                          selected ? dark ? "bg-emerald-900/40 ring-2 ring-emerald-500" : "bg-emerald-50 ring-2 ring-emerald-500" : dark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100")}>
-                        <ProductImage
-                          src={p.img ? `${BASE}${p.img}` : null}
-                          alt={p.name}
-                          className="w-14 h-14 rounded-xl object-cover shrink-0"
-                          iconSize={22}
-                          fallbackGradient={CATEGORIES[p.category]?.color || "from-gray-300 to-gray-400"}/>
-                        <div className="flex-1 min-w-0 text-left">
-                          <p className={cls("text-xs font-bold line-clamp-2", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className={cls("text-xs opacity-70", dark ? "text-gray-400" : "text-gray-500")}>후기 {p.count}개</span>
-                            {category && p.category !== category && (
-                              <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-600")}>
-                                {CATEGORIES[p.category]?.label || "기타"}
+                        className={cls("w-full flex items-center gap-3 p-2.5 rounded-2xl transition active:scale-[0.98] text-left",
+                          selected
+                            ? dark ? "bg-emerald-900/40 ring-2 ring-emerald-500" : "bg-emerald-50 ring-2 ring-emerald-500"
+                            : dark ? "bg-gray-800/60 hover:bg-gray-800" : "bg-white hover:bg-gray-50 border border-gray-100")}>
+                        <div className={cls("w-16 h-16 rounded-xl shrink-0 overflow-hidden flex items-center justify-center", dark ? "bg-gray-900" : "bg-gray-50")}>
+                          <ProductImage
+                            src={imgSrc}
+                            alt={p.name}
+                            className="max-w-full max-h-full object-contain p-1"
+                            iconSize={24}
+                            fallbackGradient={CATEGORIES[p.category]?.color || "from-gray-300 to-gray-400"}/>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {p.brand && (
+                            <p className={cls("text-[10px] font-bold mb-0.5 truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand}</p>
+                          )}
+                          <p className={cls("text-xs font-bold line-clamp-2 leading-tight", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", CATEGORIES[p.category]?.[dark ? "dchip" : "chip"] || (dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500"))}>
+                              {CATEGORIES[p.category]?.label || "기타"}
+                            </span>
+                            {typeof p.price === "number" && p.price > 0 && (
+                              <span className={cls("text-[10px] font-semibold opacity-70", dark ? "text-gray-400" : "text-gray-500")}>
+                                {p.price.toLocaleString()}원
                               </span>
                             )}
                           </div>
@@ -5260,6 +5294,8 @@ function AppInner() {
   const uploadMedia = async (mediaItems) => {
     if (!user || !supabase) return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
     const uploaded = [];
+    let failures = 0;
+    let lastError = null;
     for (const m of mediaItems) {
       // 1) file 객체가 있으면 그대로 업로드
       let fileToUpload = m.file;
@@ -5271,23 +5307,39 @@ function AppInner() {
       }
 
       if (fileToUpload) {
-        // 이미지인 경우 업로드 전 압축 (장변 1600px, JPEG 82%)
-        // 이 과정에서 EXIF 메타데이터도 제거됨 (프라이버시 + 용량 절감)
-        const toSend = m.type === "image"
-          ? await compressImage(fileToUpload, { maxDimension: 1600, quality: 0.82 })
-          : fileToUpload;
+        let toSend = fileToUpload;
+        if (m.type === "image") {
+          try {
+            toSend = await compressImage(fileToUpload, { maxDimension: 1600, quality: 0.82 });
+          } catch (e) {
+            console.warn("[upload] compressImage failed, using original", e);
+            toSend = fileToUpload;
+          }
+        }
         const { url, error } = await supabaseStorage.uploadMedia(user.id, toSend, `${m.id}.${ext}`);
         if (url && !error) {
           uploaded.push({ id: m.id, type: m.type, url, duration: m.duration });
           continue;
         }
-        // 업로드 실패는 토스트로 사용자에게 알림 (조용한 손실 방지)
-        setToast("이미지 업로드에 일부 실패했어요");
+        failures++;
+        lastError = error;
+        console.warn("[upload] supabase upload failed", { name: `${m.id}.${ext}`, type: m.type, error });
+      } else {
+        console.warn("[upload] no file blob available for media item", m);
       }
 
       // 3) 이미 원격 http(s) URL이면 그대로 재사용, 그 외는 스킵
       const safeUrl = typeof m.url === "string" && /^https?:/i.test(m.url) ? m.url : "";
       if (safeUrl) uploaded.push({ id: m.id, type: m.type, url: safeUrl, duration: m.duration });
+    }
+    if (failures > 0) {
+      const reason = lastError?.message || lastError?.error || "";
+      const hint = /bucket|not found/i.test(reason)
+        ? " (Supabase 'review-media' 버킷 확인 필요)"
+        : /policy|permission|row.level|rls/i.test(reason)
+          ? " (Storage RLS 정책 확인 필요)"
+          : reason ? ` (${reason})` : "";
+      setToast(`업로드 ${failures}개 실패${hint}`);
     }
     return uploaded;
   };
