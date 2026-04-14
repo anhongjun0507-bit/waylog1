@@ -76,31 +76,55 @@ export const auth = {
   },
 }
 
+// reviews → profiles 사이에 직접 FK 가 없으면 PostgREST 가 임베드 join 을
+// 거부해 쿼리 전체가 실패한다 (둘 다 auth.users 만 참조하기 때문).
+// fallback: join 없이 reviews 만 가져온 뒤 user_id 들을 모아 profiles 를
+// 한 번 더 fetch 해서 클라이언트 사이드로 합친다.
+async function enrichWithProfiles(rows) {
+  if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || []
+  const ids = [...new Set(rows.map((r) => r?.user_id).filter(Boolean))]
+  if (ids.length === 0) return rows
+  try {
+    const { data: profs } = await supabase.from('profiles')
+      .select('id, nickname, avatar_url').in('id', ids)
+    const byId = new Map((profs || []).map((p) => [p.id, p]))
+    return rows.map((r) => ({ ...r, profiles: byId.get(r.user_id) || null }))
+  } catch {
+    return rows
+  }
+}
+
 export const reviews = {
   // limit 기본 30 으로 상향 조정 — UI 에서 무한 스크롤로 추가 fetch.
   // 하위호환: 기존 호출은 limit 파라미터 없이 fetchAll() 로 첫 페이지만 가져온다.
   async fetchAll(limit = 30) {
     if (!supabase) return noopArr
     try {
-      return await supabase.from('reviews').select('*, profiles (nickname, avatar_url)')
+      const { data, error } = await supabase.from('reviews').select('*')
         .order('created_at', { ascending: false }).limit(limit)
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
     } catch (e) { return { data: [], error: e } }
   },
   // 커서(마지막 created_at) 이후 페이지 fetch. UI 무한 스크롤용.
   async fetchPage({ cursor = null, limit = 30 } = {}) {
     if (!supabase) return noopArr
     try {
-      let q = supabase.from('reviews').select('*, profiles (nickname, avatar_url)')
+      let q = supabase.from('reviews').select('*')
         .order('created_at', { ascending: false }).limit(limit)
       if (cursor) q = q.lt('created_at', cursor)
-      return await q
+      const { data, error } = await q
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
     } catch (e) { return { data: [], error: e } }
   },
   async fetchMine(userId) {
     if (!supabase) return noopArr
     try {
-      return await supabase.from('reviews').select('*, profiles (nickname, avatar_url)')
+      const { data, error } = await supabase.from('reviews').select('*')
         .eq('user_id', userId).order('created_at', { ascending: false })
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
     } catch (e) { return { data: [], error: e } }
   },
   async create(review) {
