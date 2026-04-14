@@ -5295,6 +5295,14 @@ function AppInner() {
 
   const uploadMedia = async (mediaItems) => {
     if (!user || !supabase) return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
+    // 실제 Supabase 인증 세션이 있는지 검증. 로컬 폴백 모드(user.id 가 Date.now())일 때는
+    // storage 업로드가 RLS 에 의해 거부됨 → 사용자에게 재로그인 안내.
+    const { data: { session } = {} } = await supabase.auth.getSession();
+    if (!session?.user?.id || session.user.id !== user.id) {
+      console.warn("[upload] no active supabase session — user is in local fallback mode", { localUserId: user.id, sessionUserId: session?.user?.id });
+      setToast("Supabase 세션이 없어요. 로그아웃 후 다시 로그인해주세요");
+      return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
+    }
     const uploaded = [];
     let failures = 0;
     let lastError = null;
