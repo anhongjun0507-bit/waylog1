@@ -2013,7 +2013,8 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   const resizeImage = (file, maxSize = 1600, quality = 0.85) => new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const img = new Image();
+      // window.Image — lucide-react 의 Image 아이콘이 모듈 스코프에서 전역 Image 를 가림
+      const img = new window.Image();
       img.onload = () => {
         let { width, height } = img;
         if (width > maxSize || height > maxSize) {
@@ -4303,7 +4304,8 @@ const WeeklySignatureCard = ({ user, taste, moods, favs, userReviews, reviews, s
     try {
       const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
       const svgUrl = URL.createObjectURL(svgBlob);
-      const img = new Image();
+      // window.Image — lucide-react 의 Image 가 전역 Image 를 가림
+      const img = new window.Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         try {
