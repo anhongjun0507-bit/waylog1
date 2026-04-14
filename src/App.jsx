@@ -2341,10 +2341,10 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       {productPickerOpen && (
         <div className="absolute inset-0 z-50 flex items-end animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setProductPickerOpen(false)}/>
-          <div className={cls("relative w-full rounded-t-3xl p-5 max-h-[80%] flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-            <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
-            <div className="flex items-center justify-between mb-3">
-              <div>
+          <div className={cls("relative w-full rounded-t-3xl px-5 pt-3 pb-2 max-h-[85%] flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
+            <div className={cls("w-12 h-1 rounded-full mx-auto mb-3 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <div className="min-w-0">
                 <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>제품 선택</p>
                 {productQuery.trim() ? (
                   <p className={cls("text-xs font-bold mt-0.5", dark ? "text-emerald-400" : "text-emerald-600")}>
@@ -2356,7 +2356,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                   </p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <span className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>최대 3개 ({selectedProducts.length}/3)</span>
                 <button onClick={() => setProductPickerOpen(false)}
                   className={cls("w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition", dark ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200")}>
@@ -2364,18 +2364,18 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 </button>
               </div>
             </div>
-            <div className={cls("flex items-center gap-2 px-3 py-2 rounded-full mb-2", dark ? "bg-gray-800" : "bg-gray-100")}>
+            <div className={cls("flex items-center gap-2 px-3 py-2 rounded-full mb-2 shrink-0", dark ? "bg-gray-800" : "bg-gray-100")}>
               <Search size={14} className={dark ? "text-gray-500" : "text-gray-400"}/>
               <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="제품명 · 브랜드 · 태그 검색"
-                className={cls("flex-1 text-sm bg-transparent outline-none", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
+                className={cls("flex-1 min-w-0 text-sm bg-transparent outline-none", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
               {productQuery && (
                 <button onClick={() => setProductQuery("")} aria-label="검색어 지우기"
-                  className={cls("w-5 h-5 rounded-full flex items-center justify-center", dark ? "bg-gray-700" : "bg-gray-300")}>
+                  className={cls("w-5 h-5 rounded-full flex items-center justify-center shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}>
                   <X size={11} className="text-white"/>
                 </button>
               )}
             </div>
-            <div className="flex gap-1.5 overflow-x-auto mb-3 pb-1 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-1.5 overflow-x-auto mb-3 pb-1 scrollbar-hide shrink-0" style={{ scrollbarWidth: "none" }}>
               {[{ key: "all", label: "전체" }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label }))].map((c) => (
                 <button key={c.key} onClick={() => { setPickerCat(c.key); setProductQuery(""); }}
                   className={cls("shrink-0 px-3 py-1 rounded-full text-xs font-bold transition",
