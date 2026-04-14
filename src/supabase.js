@@ -322,15 +322,23 @@ export const storage = {
     if (!supabase) return { url: null, error: null }
     try {
       const path = `${userId}/${Date.now()}-${fileName}`
+      const contentType = file?.type || (fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
       const { data, error } = await supabase.storage
         .from('review-media')
-        .upload(path, file, { cacheControl: '31536000', upsert: false })
-      if (error) return { url: null, error }
+        .upload(path, file, { cacheControl: '31536000', upsert: false, contentType })
+      if (error) {
+        // 디버깅을 위해 raw 에러 그대로 노출
+        console.warn('[storage.uploadMedia] supabase error', { path, contentType, size: file?.size, error })
+        return { url: null, error }
+      }
       const { data: urlData } = supabase.storage
         .from('review-media')
         .getPublicUrl(data.path)
       return { url: urlData.publicUrl, error: null }
-    } catch (e) { return { url: null, error: e } }
+    } catch (e) {
+      console.warn('[storage.uploadMedia] threw', e)
+      return { url: null, error: e }
+    }
   },
   async deleteMedia(path) {
     if (!supabase) return noop

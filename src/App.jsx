@@ -5325,7 +5325,20 @@ function AppInner() {
         }
         failures++;
         lastError = error;
-        console.warn("[upload] supabase upload failed", { name: `${m.id}.${ext}`, type: m.type, error });
+        const sizeKb = toSend?.size ? Math.round(toSend.size / 1024) : "?";
+        console.warn("[upload] supabase upload failed", {
+          name: `${m.id}.${ext}`,
+          type: m.type,
+          sizeKb,
+          mimeType: toSend?.type,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorStatus: error?.status || error?.statusCode,
+          errorCause: error?.cause,
+          errorOriginal: error?.originalError,
+          errorJson: (() => { try { return JSON.stringify(error); } catch { return null; } })(),
+          rawError: error,
+        });
       } else {
         console.warn("[upload] no file blob available for media item", m);
       }
