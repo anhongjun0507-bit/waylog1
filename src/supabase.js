@@ -10,11 +10,25 @@ if (!isConfigured) {
   console.warn('Supabase 환경변수 미설정 - 로컬 모드로 동작합니다.')
 }
 
+// 네이티브 앱(Capacitor) 에서는 URL 스킴으로 OAuth 콜백을 받으므로
+// detectSessionInUrl 을 꺼서 hash fragment 파싱 충돌을 피한다.
+// 대신 utils/platform.js 의 initDeepLinkHandler 가 명시적으로 setSession 호출.
+const isNativeApp = typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.()
+
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: !isNativeApp,
+      },
     })
   : null
+
+// 네이티브에서는 OAuth 리다이렉트 URL 로 이 값을 Supabase 로그인 옵션에 넘겨야 함
+export const OAUTH_REDIRECT_URL = isNativeApp
+  ? "com.waylog.app://auth-callback"
+  : (typeof window !== "undefined" ? window.location.origin : undefined)
 
 const noop = { data: null, error: null }
 const noopArr = { data: [], error: null }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- safe zone: 중앙 66% 영역 안에 로고 -->
+  <g transform="translate(170, 170) scale(0.68)">
+    <path d="M 280 760 Q 380 620, 480 620 T 744 380"
+          stroke="white" stroke-width="44" fill="none"
+          stroke-linecap="round"/>
+    <circle cx="280" cy="760" r="56" fill="white"/>
+    <circle cx="512" cy="540" r="56" fill="white"/>
+    <circle cx="744" cy="380" r="70" fill="white"/>
+  </g>
+</svg>

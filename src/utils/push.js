@@ -8,10 +8,14 @@
 //   3) push_subscriptions 테이블 생성 (migrations 참조)
 
 import { supabase } from "../supabase.js";
+import { isNative, registerNativePush } from "./platform.js";
 
 const PUB = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
 
 export function pushSupported() {
+  // 네이티브(iOS/Android) 에서는 항상 지원
+  if (isNative()) return true;
+  // 웹에서는 Notification + PushManager + SW 모두 필요
   return typeof window !== "undefined"
     && "serviceWorker" in navigator
     && "PushManager" in window
@@ -20,12 +24,16 @@ export function pushSupported() {
 
 export async function requestPushPermission() {
   if (!pushSupported()) return "unsupported";
+  // 네이티브에서는 Capacitor 플러그인이 자체적으로 권한 다이얼로그 처리 (subscribePush 에서)
+  if (isNative()) return "granted";
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
   return Notification.requestPermission();
 }
 
 export async function subscribePush(userId) {
+  // 네이티브는 Capacitor 플러그인으로 FCM/APNs 토큰 획득 + 서버 저장
+  if (isNative()) return registerNativePush(userId);
   if (!pushSupported() || !PUB || !userId) return null;
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();

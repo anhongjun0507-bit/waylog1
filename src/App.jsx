@@ -677,8 +677,14 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
         <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2", dark ? "bg-gray-700" : "bg-gray-300")}/>
 
         {/* 이미지 */}
-        <div className={cls("w-full h-56 flex items-center justify-center p-6", dark ? "bg-gray-800" : "bg-gradient-to-b from-gray-50 to-white")}>
+        <div className={cls("w-full h-56 flex items-center justify-center p-6 relative", dark ? "bg-gray-800" : "bg-gradient-to-b from-gray-50 to-white")}>
           <ProductImage src={product.imageUrl} alt={product.name} className="max-w-full max-h-full object-contain drop-shadow-lg" iconSize={56}/>
+          {/* 이미지 출처 명시 — 제3자 상표/저작물임을 명확히 */}
+          {product.imageUrl && (
+            <span className={cls("absolute bottom-2 right-3 text-[10px] font-bold opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
+              이미지: amway.co.kr
+            </span>
+          )}
         </div>
 
         <div className="p-5 space-y-4">
@@ -3844,7 +3850,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
     ]},
     { group: "정보", rows: [
       { icon: Sparkles, label: "버전", sub: "5.5.0", type: "info" },
-
+      { icon: BookOpen, label: "앱 안내 (비공식 앱)", sub: "상표·저작권 안내", type: "action", onClick: () => setDocOpen("about") },
       { icon: BookOpen, label: "온보딩 다시 보기", type: "action", onClick: () => onReplayOnboarding && onReplayOnboarding() },
       { icon: BookOpen, label: "이용약관", type: "action", onClick: () => setDocOpen("terms") },
       { icon: BookOpen, label: "개인정보 처리방침", type: "action", onClick: () => setDocOpen("privacy") },
@@ -3928,14 +3934,39 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
             <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
             <div className="px-6 py-2 flex items-center justify-between shrink-0">
               <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>
-                {docOpen === "terms" ? "이용약관" : "개인정보 처리방침"}
+                {docOpen === "terms" ? "이용약관" : docOpen === "privacy" ? "개인정보 처리방침" : "앱 안내"}
               </p>
               <button onClick={() => setDocOpen(null)} aria-label="닫기" className={cls("w-8 h-8 rounded-full flex items-center justify-center", dark ? "bg-gray-800" : "bg-gray-100")}>
                 <X size={14} className={dark ? "text-gray-400" : "text-gray-500"}/>
               </button>
             </div>
             <div className={cls("flex-1 overflow-y-auto px-6 pb-8 text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-600")}>
-              {docOpen === "terms" ? (
+              {docOpen === "about" ? (
+                <div className="space-y-4">
+                  <div className={cls("p-3 rounded-2xl border-l-4 border-emerald-500", dark ? "bg-emerald-900/20" : "bg-emerald-50")}>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-emerald-300" : "text-emerald-700")}>비공식 앱 안내</p>
+                    <p className={cls(dark ? "text-emerald-200" : "text-emerald-800")}>
+                      웨이로그는 <b>Amway Corp. / 암웨이 코리아와 관련이 없는 독립 앱</b>입니다. 개인 사용자가 자신이 사용한 제품에 대한 후기를 기록하고 공유할 수 있도록 돕는 비영리 도구로 운영됩니다.
+                    </p>
+                  </div>
+                  <div>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>상표·브랜드 사용</p>
+                    <p>이 앱에 표시되는 제품명, 브랜드명(예: Artistry, Nutrilite, 퀸, 바디키 등)은 해당 상표권자의 것이며, 사용자가 후기를 작성할 때 해당 제품을 지칭하기 위한 <b>지명적 공정 사용</b> 목적으로만 사용됩니다.</p>
+                  </div>
+                  <div>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제품 이미지</p>
+                    <p>카탈로그에 표시되는 제품 이미지는 <b>amway.co.kr 공식 미디어 서버</b>에서 실시간으로 불러옵니다. 앱이 이미지를 복제하거나 저장하지 않으며, 상표권자의 요청이 있을 경우 즉시 제거합니다.</p>
+                  </div>
+                  <div>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>구매 경로</p>
+                    <p>모든 제품의 구매는 <b>amway.co.kr 공식 사이트</b>에서만 이뤄지며, 이 앱 내에서는 결제·주문·수익 창출이 일절 발생하지 않습니다.</p>
+                  </div>
+                  <div>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>문의 / 삭제 요청</p>
+                    <p>상표권·저작권 관련 문의나 콘텐츠 삭제 요청은 앱 설정의 개인정보 처리방침에 기재된 연락처로 보내주시면 지체 없이 대응합니다.</p>
+                  </div>
+                </div>
+              ) : docOpen === "terms" ? (
                 <div className="space-y-4">
                   <div>
                     <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제1조 (목적)</p>
@@ -4541,6 +4572,8 @@ function AppInner() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", !!dark);
+    // 네이티브(Capacitor)에서는 상태바 톤도 동기화 — 웹에서는 no-op
+    import("./utils/platform.js").then(({ setNativeStatusBar }) => setNativeStatusBar(!!dark));
   }, [dark]);
 
   // --- 인증 (Supabase 우선, 실패 시 로컬 폴백) ---

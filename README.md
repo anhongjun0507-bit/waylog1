@@ -1,6 +1,12 @@
 # 웨이로그 (Waylog)
 
-암웨이 ABO 커뮤니티를 위한 라이프스타일 리뷰 앱
+개인 사용자를 위한 **라이프스타일 제품 리뷰 기록 앱** (비공식 독립 앱).
+
+> ⚠️ **비공식 앱 공지**
+> 웨이로그는 Amway Corp. / 암웨이 코리아와 관련이 없으며, 어떤 공식 지위나 후원도 받지 않습니다.
+> 사용자가 자신이 사용한 제품의 후기를 개인적으로 기록할 수 있도록 돕는 비영리 도구입니다.
+> 제품명, 상표, 이미지는 모두 해당 소유자의 것이며, 지명적 공정 사용(nominative fair use) 목적으로만 참조됩니다.
+> 제품 구매는 반드시 [공식 사이트 amway.co.kr](https://www.amway.co.kr) 를 이용해주세요.
 
 ## 기술 스택
 
@@ -59,4 +65,18 @@ cp .env.example .env
 
 ## 배포
 
+### 웹 (Vercel)
 Vercel로 자동 배포됩니다. Vercel 프로젝트 환경변수에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 를 설정해야 합니다 (Anthropic 키는 설정하지 않습니다).
+
+### Android (Capacitor)
+자세한 빌드/서명/Play Console 제출 가이드는 [`ANDROID.md`](ANDROID.md) 참조.
+
+```bash
+npm install
+npm run build
+npx cap add android         # 1회
+npm run android:open        # Android Studio 로 열기
+npm run android:release     # Play Store 용 AAB 빌드
+```
+
+패키지명: `com.waylog.app` · 앱 이름: "웨이로그" (`capacitor.config.json`)

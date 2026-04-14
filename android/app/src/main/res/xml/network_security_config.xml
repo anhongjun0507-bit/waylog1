@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  기본적으로 cleartext(HTTP) 는 모두 차단 (보안).
+  Supabase, Amway 이미지 CDN 등 TLS 인증서 체이닝은 시스템 기본 CA 신뢰.
+  10.0.2.2(에뮬레이터 localhost) 는 개발 중에만 허용하고 싶다면 dev/ 폴더에 별도 config 두는 걸 권장.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

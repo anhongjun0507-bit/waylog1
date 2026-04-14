@@ -4,6 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import './supabase.js'
 import './storage-shim.js'
+import { isNative, initNativeChrome, initDeepLinkHandler } from './utils/platform.js'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -11,10 +12,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 )
 
-// Service Worker 등록 (프로덕션 빌드에서만)
-// 새 버전(waiting SW)이 발견되면 window 에 커스텀 이벤트를 발생시켜
-// 앱 UI(예: 토스트)에서 사용자에게 리로드를 안내할 수 있다.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// 네이티브(Capacitor) 초기화 — 웹에서는 no-op
+if (isNative()) {
+  // 초기 다크모드 상태는 localStorage 에서 가져와 상태바 톤 맞춤
+  let dark = false
+  try { dark = JSON.parse(localStorage.getItem('waylog:dark') || 'false') } catch {}
+  initNativeChrome(dark)
+  initDeepLinkHandler()
+}
+
+// Service Worker 등록 — 웹 프로덕션에서만. 네이티브에서는 Capacitor 가 HTTP 캐시 제공.
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js')
