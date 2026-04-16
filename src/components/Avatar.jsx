@@ -7,7 +7,7 @@ export const Avatar = ({ id, size = 24, className = "", rounded = "rounded-full"
   if (id && typeof id === "string" && id.startsWith("data:")) {
     return (
       <div className={cls("overflow-hidden bg-gray-200", rounded, className)}>
-        <img src={id} alt="" className="w-full h-full object-cover"/>
+        <img src={id} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export const Avatar = ({ id, size = 24, className = "", rounded = "rounded-full"
     );
   }
   return (
-    <div className={cls("bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-end justify-center text-gray-400 dark:text-gray-500 shrink-0 overflow-hidden", rounded, className)}>
+    <div className={cls("bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-end justify-center text-gray-500 dark:text-gray-400 shrink-0 overflow-hidden", rounded, className)}>
       <User size={Math.floor(size * 1.1)} strokeWidth={2} className="translate-y-[8%]" fill="currentColor"/>
     </div>
   );

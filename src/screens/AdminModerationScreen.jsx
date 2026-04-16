@@ -89,10 +89,10 @@ export const AdminModerationScreen = ({ dark, onClose }) => {
 
       <div className="flex-1 overflow-y-auto px-3 pb-6 space-y-2">
         {loading && items.length === 0 && (
-          <div className={cls("text-center py-12 text-xs", dark ? "text-gray-500" : "text-gray-400")}>불러오는 중...</div>
+          <div className={cls("text-center py-12 text-xs", dark ? "text-gray-400" : "text-gray-500")}>불러오는 중...</div>
         )}
         {!loading && items.length === 0 && (
-          <div className={cls("text-center py-16", dark ? "text-gray-500" : "text-gray-400")}>
+          <div className={cls("text-center py-16", dark ? "text-gray-400" : "text-gray-500")}>
             <Shield size={40} strokeWidth={1.5} className="mx-auto opacity-30 mb-2"/>
             <p className="text-xs font-bold">처리할 신고가 없어요</p>
           </div>

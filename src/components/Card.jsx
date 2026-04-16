@@ -5,8 +5,11 @@ import { CategoryChip } from "./CategoryIcon.jsx";
 import { HeartBtn } from "./HeartBtn.jsx";
 
 // 리뷰 카드 — 피드/검색/즐겨찾기 공용
-export const Card = ({ r, onOpen, favs, toggleFav, dark }) => (
-  <button onClick={() => onOpen(r)} className={cls("text-left rounded-2xl shadow-sm overflow-hidden w-full transition active:scale-[0.98]", dark ? "bg-gray-800" : "bg-white")}>
+export const Card = ({ r, onOpen, favs, toggleFav, dark, highlight = false }) => (
+  <button onClick={() => onOpen(r)} data-rid={r.id}
+    className={cls("text-left rounded-2xl shadow-sm overflow-hidden w-full transition active:scale-[0.98]",
+      dark ? "bg-gray-800" : "bg-white",
+      highlight && "ring-2 ring-emerald-500 ring-offset-2 ring-offset-transparent shadow-xl shadow-emerald-500/30")}>
     <div className="relative">
       <SmartImg r={r} className="w-full h-44 object-cover"/>
       <div className="absolute top-2 left-2"><CategoryChip cat={r.category} dark={dark} /></div>
@@ -28,8 +31,10 @@ export const Card = ({ r, onOpen, favs, toggleFav, dark }) => (
       })()}
     </div>
     <div className="p-3">
-      <p className={cls("text-sm font-bold leading-snug line-clamp-2", dark ? "text-white" : "text-gray-900")}>{r.title}</p>
-      {r.product && <p className={cls("text-xs font-medium mt-1.5 line-clamp-1 opacity-90", dark ? "text-gray-300" : "text-gray-600")}>{r.product}</p>}
+      <p className={cls("text-sm font-bold leading-snug line-clamp-2 min-h-[2.5rem]", dark ? "text-white" : "text-gray-900")}>{r.title}</p>
+      <p className={cls("text-xs font-medium mt-1.5 line-clamp-1 opacity-90", dark ? "text-gray-300" : "text-gray-600")}>
+        {r.product || "\u00A0"}
+      </p>
       <div className={cls("flex items-center gap-2.5 mt-2 text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>
         <span className="flex items-center gap-1"><Heart size={11}/> {r.likes}</span>
         <span className="flex items-center gap-1"><Eye size={11}/> {r.views}</span>

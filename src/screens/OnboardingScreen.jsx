@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Heart, Star, PenLine, ChevronRight } from "lucide-react";
+import { Sparkles, Heart, Star, ChevronRight } from "lucide-react";
 import { cls } from "../utils/ui.js";
 
 // 첫 실행 시 4-step 온보딩. dark 는 props, 나머지 상태는 자체 관리.
@@ -23,12 +23,6 @@ export const OnboardingScreen = ({ onClose, dark }) => {
       gradient: "from-amber-400 via-orange-500 to-rose-500",
       title: "무드를 부여해 보세요",
       desc: "Love · Good · Save · Wow 4가지 무드로\n내 감정을 카드에 담아요",
-    },
-    {
-      Icon: PenLine,
-      gradient: "from-violet-500 via-purple-500 to-pink-500",
-      title: "매주 시그니처 카드를 받아요",
-      desc: "활동 3개를 모으면 매주 자동으로\n나만의 취향 카드가 생성돼요",
     },
   ];
 

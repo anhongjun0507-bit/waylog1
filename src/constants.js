@@ -56,26 +56,16 @@ export const MOODS = [
 export const CATEGORIES = {
   food:    { label: "뉴트리션",   color: "from-amber-400 to-orange-500",   chip: "bg-amber-50 text-amber-700",     dchip: "bg-amber-900/40 text-amber-300" },
   wellness:{ label: "웰니스",     color: "from-violet-400 to-purple-500",  chip: "bg-violet-50 text-violet-700",   dchip: "bg-violet-900/40 text-violet-300" },
-  beauty:  { label: "뷰티",       color: "from-pink-400 to-rose-500",      chip: "bg-pink-50 text-pink-700",       dchip: "bg-pink-900/40 text-pink-300" },
+  beauty:  { label: "뷰티",       color: "from-rose-400 to-rose-600",      chip: "bg-rose-50 text-rose-700",       dchip: "bg-rose-900/40 text-rose-300" },
   kitchen: { label: "퍼스널케어", color: "from-cyan-400 to-teal-500",      chip: "bg-cyan-50 text-cyan-700",       dchip: "bg-cyan-900/40 text-cyan-300" },
   home:    { label: "홈리빙",     color: "from-sky-400 to-blue-500",       chip: "bg-sky-50 text-sky-700",         dchip: "bg-sky-900/40 text-sky-300" },
   one4one: { label: "원포원",     color: "from-lime-400 to-green-500",     chip: "bg-lime-50 text-green-700",      dchip: "bg-green-900/40 text-green-300" },
 };
 
 export const CAT_SOLID = {
-  food: "#f59e0b", wellness: "#8b5cf6", beauty: "#ec4899", kitchen: "#06b6d4", home: "#0ea5e9", one4one: "#22c55e",
+  food: "#f59e0b", wellness: "#8b5cf6", beauty: "#f43f5e", kitchen: "#06b6d4", home: "#0ea5e9", one4one: "#22c55e",
 };
 export const CAT_ICON = { food: Apple, wellness: Leaf, beauty: Wand2, kitchen: Droplets, home: Home, one4one: Gift };
-
-// 시그니처 카드 소개 문구
-export const SIGNATURES = {
-  food: "영양으로 건강을 챙기는",
-  wellness: "마음의 균형을 찾는",
-  beauty: "아름다움을 큐레이션하는",
-  kitchen: "나를 정성껏 가꾸는",
-  home: "일상을 정성껏 가꾸는",
-  one4one: "나눔으로 세상을 바꾸는",
-};
 
 // 아바타 옵션
 export const AVATAR_OPTIONS = [

@@ -1,3 +1,5 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,7 +20,10 @@
   }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+    /* 한국어 본문 리듬: 자간 살짝 좁히고 행간 넉넉히 */
+    letter-spacing: -0.01em;
+    line-height: 1.6;
     /* 다크모드에서 시스템 기본 text 색 */
     color: #111827;
   }
@@ -26,10 +31,15 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  /* 포커스 표시가 필요한 interactive 요소 전반 (기존 focus-visible 룰 보강) */
+  /* 포커스 표시 — 키보드 탐색 (Tab) 시에만 노출, 마우스/터치 탭 시엔 숨김 */
   input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: 2px solid #10b981;
     outline-offset: 1px;
+  }
+  button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+    border-radius: 6px;
   }
 }
 
@@ -57,7 +67,6 @@
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes toastIn { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
-@keyframes signatureEnter { 0% { transform: scale(0.85) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes cardEnter { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
 
@@ -66,7 +75,6 @@
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
 .animate-fade-out { animation: fadeOut 0.2s ease-out forwards; }
 .animate-toast { animation: toastIn 2.2s ease-out; }
-.animate-signature-enter { animation: signatureEnter 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
 .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 .animate-card-enter { animation: cardEnter 0.4s ease-out backwards; }
 .tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
