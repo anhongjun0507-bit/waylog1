@@ -144,6 +144,52 @@ export const reviews = {
   },
 }
 
+export const follows = {
+  // 내가 팔로우한 사용자들의 user_id 배열
+  async fetchMine(userId) {
+    if (!supabase) return noopArr
+    try {
+      const { data, error } = await supabase.from('follows')
+        .select('followee_id').eq('follower_id', userId)
+      return { data: data?.map((f) => f.followee_id) || [], error }
+    } catch (e) { return { data: [], error: e } }
+  },
+  async add(followerId, followeeId) {
+    if (!supabase) return noop
+    if (followerId === followeeId) return { data: null, error: new Error('cannot follow self') }
+    try {
+      return await supabase.from('follows')
+        .insert({ follower_id: followerId, followee_id: followeeId })
+    } catch (e) { return { error: e } }
+  },
+  async remove(followerId, followeeId) {
+    if (!supabase) return noop
+    try {
+      return await supabase.from('follows').delete()
+        .eq('follower_id', followerId).eq('followee_id', followeeId)
+    } catch (e) { return { error: e } }
+  },
+}
+
+export const profilesApi = {
+  // 닉네임 → user_id 매핑. 시드(가짜 author) 는 null 을 돌려준다.
+  async findByNickname(nickname) {
+    if (!supabase || !nickname) return { data: null, error: null }
+    try {
+      return await supabase.from('profiles')
+        .select('id, nickname, avatar_url').eq('nickname', nickname).maybeSingle()
+    } catch (e) { return { data: null, error: e } }
+  },
+  // 여러 user_id 를 한 번에 → profiles 매핑
+  async fetchByIds(ids) {
+    if (!supabase || !Array.isArray(ids) || ids.length === 0) return { data: [], error: null }
+    try {
+      return await supabase.from('profiles')
+        .select('id, nickname, avatar_url').in('id', ids)
+    } catch (e) { return { data: [], error: e } }
+  },
+}
+
 export const favorites = {
   async fetchMine(userId) {
     if (!supabase) return noopArr

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { useCatalog, useCatalogLoading } from "./catalog.js";
-import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage } from "./supabase.js";
+import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage, follows as supabaseFollows, profilesApi as supabaseProfiles } from "./supabase.js";
 import { sanitizeImageUrl, sanitizeText, sanitizeInline } from "./utils/sanitize.js";
 import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
@@ -547,7 +547,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
   }, [onLoadMore, hasMore]);
   const filtered = useMemo(() => {
     let list = [...reviews];
-    if (feedMode === "following" && following) list = list.filter((r) => following.has(r.author));
+    if (feedMode === "following" && following) list = list.filter((r) => r.user_id && following.has(r.user_id));
     if (activeCat) list = list.filter((r) => r.category === activeCat);
     if (activeTag) list = list.filter((r) => (r.tags || []).includes(activeTag));
     list.sort((a,b) => sort === "likes" ? (b.likes || 0) - (a.likes || 0) : (b.date || "").localeCompare(a.date || ""));
@@ -1246,7 +1246,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
       const isOpen = !!expanded[p.id];
       return (
       <div key={p.id} className={cls("rounded-2xl p-4 shadow-sm", dark ? "bg-gray-800" : "bg-white")}>
-        <button onClick={() => onUserClick({ author: p.author, avatar: p.avatar })}
+        <button onClick={() => onUserClick({ author: p.author, avatar: p.avatar, userId: p.user_id || p.userId })}
           className="flex items-center gap-2.5 mb-3 active:scale-[0.98] transition">
           <Avatar id={p.avatar} size={18} className="w-10 h-10"/>
           <div className="text-left">
@@ -1602,7 +1602,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   );
 };
 
-const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick, onProductClick, deleting = false }) => {
+const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick, onProductClick, deleting = false, following, onToggleFollow }) => {
   const [exiting, close] = useExit(onBack);
   // 신고 액션 시트 — 사용자가 사유를 선택한 뒤 onReport(target, reason) 호출
   const [reportSheet, setReportSheet] = useState(null); // { type: "review"|"comment", id }
@@ -1747,12 +1747,41 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         )}
       </div>
       <div className="p-5">
+        {(() => {
+          const authorNick = r.profiles?.nickname || r.author;
+          const authorAvatar = r.profiles?.avatar_url || r.avatar || "";
+          const authorUserId = r.user_id || null;
+          const canFollowAuthor = !!authorUserId && !!user && !isMine;
+          const isFollowingAuthor = canFollowAuthor && following && following.has(authorUserId);
+          return (
+            <div className="flex items-center gap-3 mb-3">
+              <button
+                onClick={() => onUserClick && onUserClick({ author: authorNick, avatar: authorAvatar, userId: authorUserId })}
+                className="flex items-center gap-2.5 active:scale-[0.98] transition flex-1 min-w-0">
+                <Avatar id={authorAvatar} size={18} className="w-10 h-10 shrink-0"/>
+                <div className="text-left min-w-0">
+                  <p className={cls("text-sm font-bold truncate", dark ? "text-white" : "text-gray-900")}>{authorNick}</p>
+                  <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{formatRelativeTime(r.date)}</p>
+                </div>
+              </button>
+              {canFollowAuthor && (
+                <button
+                  onClick={() => onToggleFollow && onToggleFollow(authorUserId, authorNick)}
+                  className={cls("px-3.5 py-1.5 rounded-full text-xs font-black transition active:scale-95 inline-flex items-center gap-1 shrink-0",
+                    isFollowingAuthor
+                      ? dark ? "bg-gray-800 text-gray-300 border border-gray-700" : "bg-gray-100 text-gray-700"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow")}>
+                  {isFollowingAuthor ? <><Check size={12}/> 팔로잉</> : <><Plus size={12}/> 팔로우</>}
+                </button>
+              )}
+            </div>
+          );
+        })()}
         <CategoryChip cat={r.category} dark={dark}/>
         <h1 className={cls("text-2xl font-black tracking-tight mt-2 leading-tight", dark ? "text-white" : "text-gray-900")}>{r.title}</h1>
         <div className={cls("flex items-center gap-3 mt-2 text-xs", dark ? "text-gray-400" : "text-gray-500")}>
           <span className="flex items-center gap-1"><Heart size={12}/> {r.likes}</span>
           <span className="flex items-center gap-1"><Eye size={12}/> {r.views}</span>
-          <span>{formatRelativeTime(r.date)}</span>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
           {(r.tags || []).map((t) => (
@@ -2065,7 +2094,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
 
 // 해시태그 칩 입력 — 띄어쓰기 자동완성에 방해받지 않도록 Enter/쉼표로 추가, 클릭/Backspace 로 제거.
 // 외부와는 공백 구분 string 으로 호환 (기존 submit/draft 저장 그대로 사용).
-const UserProfileScreen = ({ author, avatar, reviews, currentUser, isFollowing, onToggleFollow, onClose, onOpen, dark }) => {
+const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFollowing, onToggleFollow, onClose, onOpen, dark }) => {
   const [exiting, close] = useExit(onClose);
   const userData = SEED_USERS[author];
   const seedReviews = userData ? userData.reviewIds.map((id) => SEED_REVIEWS.find((r) => r.id === id)).filter(Boolean) : [];
@@ -2073,6 +2102,7 @@ const UserProfileScreen = ({ author, avatar, reviews, currentUser, isFollowing, 
   const allReviews = [...userReviews, ...seedReviews];
   const finalAvatar = avatar || userData?.avatar || "";
   const isMe = currentUser && currentUser.nickname === author;
+  const canFollow = !!userId && !isMe && !!currentUser;
 
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
@@ -2106,8 +2136,8 @@ const UserProfileScreen = ({ author, avatar, reviews, currentUser, isFollowing, 
             </div>
           </div>
 
-          {!isMe && currentUser && (
-            <button onClick={() => onToggleFollow(author)}
+          {canFollow && (
+            <button onClick={() => onToggleFollow()}
               className={cls("mt-4 px-8 py-2.5 rounded-full font-black text-sm transition active:scale-95 inline-flex items-center gap-2",
                 isFollowing
                   ? dark ? "bg-gray-800 text-gray-300 border border-gray-700" : "bg-white text-gray-700 border border-gray-200"
@@ -3167,12 +3197,14 @@ const SEED_USERS = {
   "요가맘": { avatar: "feather", reviewIds: [147, 311], bio: "매일 아침 명상과 요가" },
 };
 
-const UserMiniSheet = ({ author, avatar, onClose, onOpen, onOpenProfile, isFollowing, onToggleFollow, isBlocked, onToggleBlock, currentUser, dark }) => {
+const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile, isFollowing, onToggleFollow, isBlocked, onToggleBlock, currentUser, dark }) => {
   const [exiting, close] = useExit(onClose);
   const userData = SEED_USERS[author];
   const reviews = userData ? userData.reviewIds.map((id) => SEED_REVIEWS.find((r) => r.id === id)).filter(Boolean) : [];
   const finalAvatar = avatar || userData?.avatar || "";
   const isMe = currentUser && currentUser.nickname === author;
+  // user_id 가 있어야 Supabase 팔로우가 가능. 시드 author 는 user_id 없음.
+  const canFollow = !!userId && !isMe && !!currentUser;
 
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
@@ -3206,8 +3238,8 @@ const UserMiniSheet = ({ author, avatar, onClose, onOpen, onOpenProfile, isFollo
           </div>
         )}
         <div className="flex gap-2 mt-5">
-          {!isMe && currentUser && (
-            <button onClick={() => onToggleFollow(author)}
+          {canFollow && (
+            <button onClick={() => onToggleFollow()}
               className={cls("flex-1 py-3 rounded-2xl text-sm font-black transition active:scale-95 inline-flex items-center justify-center gap-1.5",
                 isFollowing
                   ? dark ? "bg-gray-800 text-gray-300 border border-gray-700" : "bg-gray-100 text-gray-700"
@@ -3215,7 +3247,7 @@ const UserMiniSheet = ({ author, avatar, onClose, onOpen, onOpenProfile, isFollo
               {isFollowing ? <><Check size={14}/> 팔로잉</> : <><Plus size={14}/> 팔로우</>}
             </button>
           )}
-          <button onClick={() => { close(); setTimeout(() => onOpenProfile && onOpenProfile({ author, avatar: finalAvatar }), 280); }}
+          <button onClick={() => { close(); setTimeout(() => onOpenProfile && onOpenProfile({ author, avatar: finalAvatar, userId }), 280); }}
             className={cls("flex-1 py-3 rounded-2xl text-sm font-bold border", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-700")}>
             프로필 보기
           </button>
@@ -3622,12 +3654,27 @@ function AppInner() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboarded, setOnboarded] = useStoredState("waylog:onboarded", false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [followingArr, setFollowingArr] = useStoredState("waylog:following", []);
+  // following: 내가 팔로우한 사용자들의 user_id (uuid) Set.
+  // 닉네임 기반(v1) 과 분리하기 위해 v2 키 사용.
+  const [followingArr, setFollowingArr] = useStoredState("waylog:following:v2", []);
   const following = useMemo(() => new Set(followingArr), [followingArr]);
   const [blockedArr, setBlockedArr] = useStoredState("waylog:blocked", []);
   const blocked = useMemo(() => new Set(blockedArr), [blockedArr]);
   const [profileUser, setProfileUser] = useState(null);
   const tg = useTimeGradient(dark);
+
+  // 로그인 시 Supabase 에서 follows 동기화 (single source of truth).
+  // 로컬 캐시는 offline/instant boot 용 fallback.
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabaseFollows.fetchMine(user.id);
+      if (cancelled || error) return;
+      setFollowingArr(data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const toggleBlock = (author) => {
     setBlockedArr((prev) => {
@@ -3635,29 +3682,45 @@ function AppInner() {
         setToast(`${author}님 차단을 해제했어요`);
         return prev.filter((a) => a !== author);
       }
-      // 차단 시 팔로우도 자동 해제
-      setFollowingArr((f) => f.filter((a) => a !== author));
       setToast(`${author}님을 차단했어요. 글과 댓글이 더 이상 표시되지 않아요`);
       return [...prev, author];
     });
   };
 
-  const toggleFollow = (author) => {
+  // 호출자가 author/avatar/userId 또는 author/avatar/authorId(과거 prop)
+  // 어느 쪽으로 넘기든 selectedUser 객체에 userId 필드로 통일된다.
+  const openUser = (u) => setSelectedUser(u && {
+    author: u.author,
+    avatar: u.avatar || "",
+    userId: u.userId || u.authorId || null,
+  });
+
+  // (targetUserId: uuid, targetNickname: string) — UUID 기반.
+  // 시드 author 처럼 user_id 가 없으면 진입점에서 호출 자체를 차단해야 한다.
+  const toggleFollow = async (targetUserId, targetNickname = "") => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
-    setFollowingArr((prev) => {
-      if (prev.includes(author)) {
-        setToast(`${author}님 팔로우를 취소했어요`);
-        return prev.filter((a) => a !== author);
+    if (!targetUserId) { setToast("이 사용자는 팔로우할 수 없어요"); return; }
+    if (targetUserId === user.id) { setToast("자기 자신은 팔로우할 수 없어요"); return; }
+    const wasFollowing = following.has(targetUserId);
+    // optimistic update — 실패 시 rollback
+    setFollowingArr((prev) => wasFollowing
+      ? prev.filter((id) => id !== targetUserId)
+      : [...prev, targetUserId]);
+    if (supabase) {
+      const { error } = wasFollowing
+        ? await supabaseFollows.remove(user.id, targetUserId)
+        : await supabaseFollows.add(user.id, targetUserId);
+      if (error) {
+        // rollback
+        setFollowingArr((prev) => wasFollowing
+          ? [...prev, targetUserId]
+          : prev.filter((id) => id !== targetUserId));
+        setToast(wasFollowing ? "팔로우 취소에 실패했어요" : "팔로우에 실패했어요");
+        return;
       }
-      setToast(`${author}님을 팔로우했어요`);
-      pushNotif(`${author}님을 팔로우하기 시작했어요`);
-      // 그 사용자의 최신 글이 있으면 알림 추가 (팔로우 피드 시뮬레이션)
-      const latest = [...userReviews, ...SEED_REVIEWS].find((r) => r.author === author);
-      if (latest) {
-        setTimeout(() => pushNotif(`${author}님의 새 웨이로그: "${latest.title}"`, { targetReviewId: latest.id }), 1500);
-      }
-      return [...prev, author];
-    });
+    }
+    const label = targetNickname || "사용자";
+    setToast(wasFollowing ? `${label}님 팔로우를 취소했어요` : `${label}님을 팔로우했어요`);
   };
 
   // 모달 상태 추적 (풀 투 리프레시 비활성화용)
@@ -4379,7 +4442,7 @@ function AppInner() {
       onChallengeResult={() => setChallengeMainOpen(true)}/>,
     feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} highlightId={highlightId} />,
     fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct}/>,
-    comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={setSelectedUser}
+    comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={openUser}
       user={user}
       onAddPost={addCommunityPost}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
@@ -4585,7 +4648,9 @@ function AppInner() {
           }}
           onHashtagClick={(tag) => { back(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
           onProductClick={setSelectedCatalogProduct}
-          onUserClick={setSelectedUser}/>
+          onUserClick={openUser}
+          following={following}
+          onToggleFollow={toggleFollow}/>
       ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
@@ -4638,18 +4703,20 @@ function AppInner() {
       <Suspense fallback={null}>{onboardingOpen && <OnboardingScreen onClose={() => { setOnboardingOpen(false); setOnboarded(true); }} dark={dark}/>}</Suspense>
       <Suspense fallback={null}>{adminOpen && <AdminModerationScreen dark={dark} onClose={() => setAdminOpen(false)}/>}</Suspense>
       {selectedUser && <UserMiniSheet author={selectedUser.author} avatar={selectedUser.avatar}
+        userId={selectedUser.userId}
         onClose={() => setSelectedUser(null)} onOpen={openDetail}
         onOpenProfile={(u) => setProfileUser(u)}
-        isFollowing={following.has(selectedUser.author)}
-        onToggleFollow={toggleFollow}
+        isFollowing={!!selectedUser.userId && following.has(selectedUser.userId)}
+        onToggleFollow={() => toggleFollow(selectedUser.userId, selectedUser.author)}
         isBlocked={blocked.has(selectedUser.author)}
         onToggleBlock={toggleBlock}
         currentUser={user}
         dark={dark}/>}
       {profileUser && <UserProfileScreen author={profileUser.author} avatar={profileUser.avatar}
+        userId={profileUser.userId}
         reviews={reviews} currentUser={user}
-        isFollowing={following.has(profileUser.author)}
-        onToggleFollow={toggleFollow}
+        isFollowing={!!profileUser.userId && following.has(profileUser.userId)}
+        onToggleFollow={() => toggleFollow(profileUser.userId, profileUser.author)}
         onClose={() => setProfileUser(null)} onOpen={openDetail} dark={dark}/>}
 
       <Suspense fallback={null}>{challengeStartOpen && <ChallengeStartScreen
