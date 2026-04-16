@@ -11,7 +11,7 @@ import { Avatar } from "../components/index.js";
 
 const AuthScreen = ({ onClose, onAuth, dark }) => {
   const [exiting, close] = useExit(onClose);
-  const [mode, setMode] = useState("signup"); // signup | login | forgot-password | forgot-email
+  const [mode, setMode] = useState("login"); // signup | login | forgot-password | forgot-email
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
