@@ -1,11 +1,14 @@
+import { memo } from "react";
 import { Heart, Eye, Layers } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { SmartImg } from "./SmartImg.jsx";
 import { CategoryChip } from "./CategoryIcon.jsx";
 import { HeartBtn } from "./HeartBtn.jsx";
 
-// 리뷰 카드 — 피드/검색/즐겨찾기 공용
-export const Card = ({ r, onOpen, favs, toggleFav, dark, highlight = false }) => (
+// 리뷰 카드 — 피드/검색/즐겨찾기 공용.
+// favs Set을 통째로 받지 않고 isFav 불리언만 받아야 React.memo 가
+// 다른 카드들의 리렌더를 실제로 차단할 수 있다.
+const CardImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => (
   <button onClick={() => onOpen(r)} data-rid={r.id}
     className={cls("text-left rounded-2xl shadow-sm overflow-hidden w-full transition active:scale-[0.98]",
       dark ? "bg-gray-800" : "bg-white",
@@ -13,7 +16,7 @@ export const Card = ({ r, onOpen, favs, toggleFav, dark, highlight = false }) =>
     <div className="relative">
       <SmartImg r={r} className="w-full h-44 object-cover"/>
       <div className="absolute top-2 left-2"><CategoryChip cat={r.category} dark={dark} /></div>
-      <div className="absolute top-2 right-2"><HeartBtn on={favs.has(r.id)} onClick={() => toggleFav(r.id)} dark={dark} /></div>
+      <div className="absolute top-2 right-2"><HeartBtn on={isFav} onClick={() => toggleFav(r.id)} dark={dark} /></div>
       {r.media && r.media.length > 0 && (() => {
         const hasVideo = r.media.some((m) => m.type === "video");
         const showBadge = r.media.length > 1 || hasVideo;
@@ -42,3 +45,5 @@ export const Card = ({ r, onOpen, favs, toggleFav, dark, highlight = false }) =>
     </div>
   </button>
 );
+
+export const Card = memo(CardImpl);
