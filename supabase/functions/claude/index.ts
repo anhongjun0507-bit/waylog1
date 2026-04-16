@@ -18,9 +18,13 @@ const CORS = {
 const ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
+// content 는 text 외에 vision(image) 블록 배열도 허용한다.
+type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 type Body = {
   prompt?: string;
-  messages?: Array<{ role: "user" | "assistant"; content: string }>;
+  messages?: Array<{ role: "user" | "assistant"; content: string | ContentBlock[] }>;
   model?: string;
   max_tokens?: number;
   system?: string;

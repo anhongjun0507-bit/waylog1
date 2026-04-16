@@ -4,13 +4,24 @@ import {
 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
-import { AI_COACH_TONES } from "../constants.js";
+import { AI_COACH_TONES, CHALLENGE_DAYS } from "../constants.js";
 import { calcBMR, calcTargetCalories } from "../utils/challenge.js";
+
+// YYYY-MM-DD 에 일수 더하기
+const addDays = (ymd, days) => {
+  const d = new Date(`${ymd}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 
 // 8주 챌린지 시작 - 5-step 온보딩 (소개 → 신체정보 → 목표 → AI 코치 → 확인)
 export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
   const [exiting, close] = useExit(onClose);
   const [step, setStep] = useState(0);
+  const today = new Date().toISOString().slice(0, 10);
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(addDays(today, CHALLENGE_DAYS - 1));
+  const [endDateTouched, setEndDateTouched] = useState(false);
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -47,7 +58,8 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
     if (step === 4) {
       const anonId = `챌린저${Math.floor(Math.random() * 9000) + 1000}`;
       onStart({
-        startDate: new Date().toISOString(),
+        startDate: new Date(`${startDate}T00:00:00`).toISOString(),
+        endDate: new Date(`${endDate}T23:59:59`).toISOString(),
         height: parseFloat(height),
         weight: parseFloat(weight),
         bodyFat: parseFloat(bodyFat) || 0,
@@ -125,6 +137,34 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
           <div className="pt-4 space-y-4 animate-fade-in">
             <h2 className={cls("text-xl font-black", dark ? "text-white" : "text-gray-900")}>신체 정보를 알려주세요</h2>
             <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>맞춤 칼로리와 운동량 계산에 사용돼요</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>시작일</label>
+                <input value={startDate} type="date"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStartDate(v);
+                    if (!endDateTouched) setEndDate(addDays(v, CHALLENGE_DAYS - 1));
+                  }}
+                  className={inputCls}/>
+              </div>
+              <div>
+                <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>종료일</label>
+                <input value={endDate} type="date" min={startDate}
+                  onChange={(e) => { setEndDate(e.target.value); setEndDateTouched(true); }}
+                  className={inputCls}/>
+              </div>
+            </div>
+            <p className={cls("text-[11px] -mt-2", dark ? "text-gray-400" : "text-gray-500")}>
+              {(() => {
+                const days = Math.max(0, Math.round((new Date(`${endDate}T00:00:00`) - new Date(`${startDate}T00:00:00`)) / 86400000) + 1);
+                const weeks = Math.floor(days / 7);
+                const rest = days % 7;
+                const label = weeks > 0 ? (rest > 0 ? `${weeks}주 ${rest}일` : `${weeks}주`) : `${days}일`;
+                const note = days === CHALLENGE_DAYS ? " (기본 8주)" : days < CHALLENGE_DAYS ? " · 주차 미션이 일부 건너뛰어요" : " · 마지막 주 미션이 반복돼요";
+                return `총 ${label} (${days}일)${note}`;
+              })()}
+            </p>
             <div>
               <label className={cls("text-xs font-bold block mb-1.5", dark ? "text-gray-300" : "text-gray-600")}>키 (cm)</label>
               <input value={height} onChange={(e) => setHeight(e.target.value)} type="number" inputMode="numeric" placeholder="165" className={inputCls}/>
@@ -252,6 +292,14 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
             <div className={cls("mt-6 p-4 rounded-2xl mx-4 text-left", dark ? "bg-gray-800" : "bg-gray-50")}>
               <div className="space-y-2">
                 <div className="flex justify-between">
+                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>시작일</span>
+                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>{startDate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>종료일</span>
+                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>{endDate}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>목표</span>
                   <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>
                     {goal === "lose" ? "체중 감량" : goal === "muscle" ? "근력 강화" : "건강 유지"}
@@ -269,7 +317,14 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                 </div>
                 <div className="flex justify-between">
                   <span className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>기간</span>
-                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>56일 (8주)</span>
+                  <span className={cls("text-xs font-bold", dark ? "text-white" : "text-gray-900")}>
+                    {(() => {
+                      const days = Math.max(1, Math.round((new Date(`${endDate}T00:00:00`) - new Date(`${startDate}T00:00:00`)) / 86400000) + 1);
+                      const weeks = Math.floor(days / 7);
+                      const rest = days % 7;
+                      return weeks > 0 ? (rest > 0 ? `${days}일 (${weeks}주 ${rest}일)` : `${days}일 (${weeks}주)`) : `${days}일`;
+                    })()}
+                  </span>
                 </div>
               </div>
             </div>
