@@ -158,7 +158,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       {docOpen && (
         <div className="absolute inset-0 z-10 flex items-end animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setDocOpen(null)}/>
-          <div className={cls("relative w-full rounded-t-3xl shadow-2xl animate-slide-up max-h-[80vh] flex flex-col", dark ? "bg-gray-900" : "bg-white")}>
+          <div className={cls("relative w-full rounded-t-3xl shadow-2xl animate-slide-up max-h-[80vh] flex flex-col pb-safe", dark ? "bg-gray-900" : "bg-white")}>
             <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
             <div className="px-6 py-2 flex items-center justify-between shrink-0">
               <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>
@@ -250,7 +250,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       {blockListOpen && (
         <div className="absolute inset-0 z-10 flex items-end animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setBlockListOpen(false)}/>
-          <div className={cls("relative w-full rounded-t-3xl shadow-2xl animate-slide-up max-h-[70vh] flex flex-col", dark ? "bg-gray-900" : "bg-white")}>
+          <div className={cls("relative w-full rounded-t-3xl shadow-2xl animate-slide-up max-h-[70vh] flex flex-col pb-safe", dark ? "bg-gray-900" : "bg-white")}>
             <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
             <div className="px-6 py-2 flex items-center justify-between shrink-0">
               <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>차단된 사용자</p>

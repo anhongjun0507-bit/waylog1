@@ -733,7 +733,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
+      <div className={cls("relative w-full rounded-t-3xl shadow-2xl pb-safe max-h-[90vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2", dark ? "bg-gray-700" : "bg-gray-300")}/>
 
         {/* 이미지 */}
@@ -2205,7 +2205,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
+      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe max-h-[85vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
         <h3 className={cls("text-lg font-black mb-1", dark ? "text-white" : "text-gray-900")}>
           {mealLabels[mealType] || "식사"} 기록
@@ -2347,7 +2347,7 @@ const ExerciseModal = ({ onClose, onSave, dark }) => {
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
+      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
         <h3 className={cls("text-lg font-black mb-4", dark ? "text-white" : "text-gray-900")}>운동 기록</h3>
 
@@ -2635,7 +2635,7 @@ const MissionEditModal = ({ weekNum, title, missions, hasCustom, onSave, onReset
   return (
     <div className="fixed inset-0 z-[60] flex items-end max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto">
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "animate-fade-in")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl max-h-[88vh] overflow-y-auto",
+      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe max-h-[88vh] overflow-y-auto",
         dark ? "bg-gray-900" : "bg-white",
         exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
@@ -2927,14 +2927,14 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   const done = todayLog.completedMissions.includes(m.id);
                   return (
                     <button key={m.id} onClick={() => toggleMission(m.id)}
-                      className={cls("w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition active:scale-[0.98]",
+                      className={cls("w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition active:scale-[0.98]",
                         done ? dark ? "bg-emerald-900/30" : "bg-emerald-50" : dark ? "bg-gray-700/50" : "bg-gray-50")}>
-                      <div className={cls("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                      <div className={cls("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all",
                         done ? "border-emerald-500 bg-emerald-500 scale-110" : dark ? "border-gray-600" : "border-gray-300")}>
                         {done && <Check size={14} className="text-white"/>}
                       </div>
-                      <MissionIcon iconKey={m.icon} size={14} className={done ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500"}/>
-                      <span className={cls("text-sm font-bold flex-1", done ? "line-through opacity-60" : "", dark ? "text-white" : "text-gray-900")}>
+                      <MissionIcon iconKey={m.icon} size={14} className={cls("shrink-0 mt-1.5", done ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500")}/>
+                      <span className={cls("text-sm font-bold flex-1 min-w-0 break-words leading-snug", done ? "line-through opacity-60" : "", dark ? "text-white" : "text-gray-900")}>
                         {m.label}
                       </span>
                     </button>
@@ -3029,7 +3029,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
       </div>
 
       {/* 하단 탭 */}
-      <nav className={cls("border-t grid grid-cols-3 py-2.5", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
+      <nav className={cls("border-t grid grid-cols-3 pt-2.5 pb-safe-plus", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         {[
           { k: "today", icon: Target, label: "오늘" },
           { k: "graphTab", icon: BarChart3, label: "그래프" },
@@ -3177,7 +3177,7 @@ const UserMiniSheet = ({ author, avatar, onClose, onOpen, onOpenProfile, isFollo
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
+      <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-5", dark ? "bg-gray-700" : "bg-gray-300")}/>
         <div className="flex items-center gap-4">
           <Avatar id={finalAvatar} size={36} className="w-20 h-20 shadow-lg" rounded="rounded-full"/>

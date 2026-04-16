@@ -240,6 +240,17 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                     <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{bmiVal}</p>
                   </div>
                 </div>
+                <div className={cls("mt-3 pt-3 border-t text-[11px] leading-relaxed space-y-1.5",
+                  dark ? "border-gray-700 text-gray-400" : "border-emerald-100 text-gray-600")}>
+                  <p><span className="font-bold">기초대사량</span>은 아무 활동 없이도 하루에 소비되는 최소 칼로리예요.</p>
+                  <p>
+                    <span className="font-bold">목표 칼로리</span>는 하루에 섭취하길 권장하는 양이에요.
+                    {goal === "lose" && " 기초대사량 + 활동량에서 약 500kcal를 빼서 건강하게 감량을 도와줍니다."}
+                    {goal === "muscle" && " 근육 성장에 필요한 잉여 칼로리를 더해 충분히 먹어야 할 양을 알려줘요."}
+                    {goal === "health" && " 현재 체중을 유지하면서 균형잡힌 생활을 지원하는 양이에요."}
+                  </p>
+                  <p><span className="font-bold">BMI</span>는 체질량 지수예요. 정상 범위는 18.5~24.9입니다.</p>
+                </div>
               </div>
             )}
             {warning && (

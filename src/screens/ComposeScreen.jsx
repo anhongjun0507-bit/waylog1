@@ -470,7 +470,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       {productPickerOpen && (
         <div className="absolute inset-0 z-50 flex items-end animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setProductPickerOpen(false)}/>
-          <div className={cls("relative w-full rounded-t-3xl px-5 pt-3 pb-2 max-h-[85%] flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
+          <div className={cls("relative w-full rounded-t-3xl px-5 pt-3 pb-safe-plus max-h-[85%] flex flex-col animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
             <div className={cls("w-12 h-1 rounded-full mx-auto mb-3 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="min-w-0">
