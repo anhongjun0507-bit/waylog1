@@ -422,9 +422,10 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
 };
 
 // ---------- SCREENS ----------
-const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult }) => {
+const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult, onProductClick }) => {
   const CATALOG = useCatalog();
   const [hotMode, setHotMode] = useState("trending");
+  const [exploreCat, setExploreCat] = useState("all");
   const trending = useMemo(() => {
     const top = [...reviews].sort((a,b) => b.likes - a.likes).slice(0, 8);
     if (refreshKey > 0) return [...top].sort(() => Math.random() - 0.5).slice(0, 6);
@@ -442,8 +443,72 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moo
     return [...reviews].filter((r) => !favs.has(r.id)).map((r) => ({ r, s: score(r) })).filter((x) => x.s > 0).sort((a,b) => b.s - a.s).slice(0, 6).map((x) => x.r);
   }, [reviews, taste, favs]);
 
+  const filteredCatalog = useMemo(() => {
+    const list = CATALOG || [];
+    if (exploreCat === "all") return list.slice(0, 12);
+    return list.filter((p) => p.category === exploreCat).slice(0, 12);
+  }, [CATALOG, exploreCat]);
+
+  const fadeBg = dark ? "from-gray-900" : "from-gray-50";
+
   return (
-    <div>
+    <div className={dark ? "bg-gray-900" : "bg-gray-50"}>
+      {/* ① 히어로 배너 */}
+      <div className={cls("mx-4 mt-4 rounded-3xl p-6 bg-gradient-to-br text-white relative overflow-hidden shadow-xl tg-trans", tg.gradient)}>
+        <Sparkles className="absolute right-4 top-4 opacity-25" size={64} />
+        <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-white/10"/>
+        <p className="text-xs opacity-80 font-bold tracking-wider uppercase relative">{user ? `${user.nickname}님` : "WELCOME"}</p>
+        <h2 className="text-3xl font-black mt-1 leading-[1.1] relative">{tg.text}</h2>
+        <p className="text-sm font-medium mt-2 opacity-90 relative">{user ? "오늘은 어떤 걸 기록해볼까요?" : "나만의 라이프스타일을 기록하세요"}</p>
+        <button onClick={onPrimary}
+          className="mt-5 inline-flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 rounded-full font-black text-base shadow-2xl shadow-black/20 active:scale-95 transition hover:scale-105 relative">
+          <PenLine size={16}/>
+          {user ? "새 웨이로그 작성" : "둘러보기"}
+          <span className="text-lg">→</span>
+        </button>
+      </div>
+
+      {/* ② 오늘의 픽 (스와이프) */}
+      <SectionTitle dark={dark} title="오늘의 픽" sub="좌우로 스와이프해 취향을 알려주세요" />
+      <SwipePick reviews={trending} onLike={(r) => toggleFav(r.id)} onPass={() => {}} dark={dark}/>
+
+      {/* ③ 개인화 추천 — 2열 그리드 + 특별 배경 */}
+      <div className={cls("mx-4 mt-8 rounded-3xl p-4 pb-2", dark ? "bg-gradient-to-br from-emerald-900/30 to-teal-900/20 border border-emerald-800/40" : "bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100")}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className={cls("text-base font-bold tracking-tight", dark ? "text-white" : "text-gray-900")}>
+              {user ? `${user.nickname}님을 위한 추천` : "맞춤 추천"}
+            </h2>
+            <p className={cls("text-xs mt-0.5", dark ? "text-emerald-400/80" : "text-emerald-600/80")}>
+              {personalized.length > 0 ? "좋아요와 스와이프로 학습된 결과예요" : "좋아요를 누를수록 추천이 정교해져요"}
+            </p>
+          </div>
+          {personalized.length > 0 && (
+            <span className={cls("text-[10px] font-black px-2 py-1 rounded-full", dark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600")}>AI</span>
+          )}
+        </div>
+        {personalized.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2.5 pb-2">
+            {personalized.map((r, i) => (
+              <div key={r.id} className="animate-card-enter" style={{ animationDelay: `${i * 50}ms` }}>
+                <Card r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={cls("flex flex-col items-center py-6 gap-2 text-center")}>
+            <div className={cls("w-14 h-14 rounded-2xl flex items-center justify-center", dark ? "bg-emerald-800/40" : "bg-emerald-100")}>
+              <Heart size={24} className={dark ? "text-emerald-400" : "text-emerald-500"}/>
+            </div>
+            <p className={cls("text-sm font-bold", dark ? "text-gray-200" : "text-gray-800")}>아직 취향 데이터가 부족해요</p>
+            <p className={cls("text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
+              리뷰에 좋아요를 2개 이상 누르면<br/>나만의 맞춤 추천이 시작돼요
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ④ 챌린지 카드 — 자연스러운 브레이크 */}
       <ChallengeEntryCard
           challenge={challenge}
           dailyLogs={dailyLogs}
@@ -453,73 +518,69 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moo
           onResult={onChallengeResult}
         />
 
-      <div className={cls("mx-4 mt-6 rounded-3xl p-6 bg-gradient-to-br text-white relative overflow-hidden shadow-xl tg-trans", tg.gradient)}>
-        <Sparkles className="absolute right-4 top-4 opacity-25" size={64} />
-        <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-white/10"/>
-        <p className="text-xs opacity-80 font-bold tracking-wider uppercase relative">{user ? `${user.nickname}님` : "WELCOME"}</p>
-        <h2 className="text-3xl font-black mt-1 leading-[1.1] relative">{tg.text}</h2>
-        <p className="text-sm font-medium mt-2 opacity-90 relative">{user ? "오늘은 어떤 걸 기록해볼까요?" : "나만의 라이프스타일을 기록하세요"}</p>
-        <button onClick={onPrimary}
-          className="mt-5 inline-flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 rounded-full font-black text-base shadow-2xl shadow-black/20 active:scale-95 transition hover:scale-105 relative">
-          {user ? "새 웨이로그 작성" : "가입하고 시작하기"}
-          <span className="text-lg">→</span>
-        </button>
-      </div>
-
-      <SectionTitle dark={dark} title="오늘의 픽" sub="좌우로 스와이프해 취향을 알려주세요" />
-      <SwipePick reviews={trending} onLike={(r) => toggleFav(r.id)} onPass={() => {}} dark={dark}/>
-
-      {personalized.length > 0 && (
-        <>
-          <SectionTitle dark={dark} tier={2} title="당신을 위한 추천" sub="스와이프와 좋아요로 학습된 결과예요" />
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-            {personalized.map((r) => (
-              <div key={r.id} className="snap-start shrink-0 w-44">
-                <Card r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
+      {/* ⑤ 인기/최신 — 가로 스크롤 (히어로 카드 + 일반 카드) */}
       <div className="px-4 mt-8 mb-3 flex items-center justify-between">
-        <h2 className={cls("text-base font-bold tracking-tight", dark ? "text-gray-200" : "text-gray-800")}>
+        <h2 className={cls("text-lg font-extrabold tracking-tight", dark ? "text-white" : "text-gray-900")}>
           {hotMode === "trending" ? "요즘 뜨는 웨이로그" : "따끈따끈한 새 글"}
         </h2>
         <div className={cls("flex gap-1 text-xs rounded-full p-1", dark ? "bg-gray-800" : "bg-gray-100")}>
           <button onClick={() => setHotMode("trending")}
-            className={cls("px-3 py-1 rounded-full font-bold transition", hotMode === "trending" ? "bg-white text-emerald-600 shadow" : dark ? "text-gray-400" : "text-gray-500")}>
+            className={cls("px-3 py-1 rounded-full font-bold transition", hotMode === "trending" ? (dark ? "bg-gray-700 text-emerald-400 shadow" : "bg-white text-emerald-600 shadow") : dark ? "text-gray-400" : "text-gray-500")}>
             인기
           </button>
           <button onClick={() => setHotMode("fresh")}
-            className={cls("px-3 py-1 rounded-full font-bold transition", hotMode === "fresh" ? "bg-white text-emerald-600 shadow" : dark ? "text-gray-400" : "text-gray-500")}>
+            className={cls("px-3 py-1 rounded-full font-bold transition", hotMode === "fresh" ? (dark ? "bg-gray-700 text-emerald-400 shadow" : "bg-white text-emerald-600 shadow") : dark ? "text-gray-400" : "text-gray-500")}>
             최신
           </button>
         </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto px-5 pb-2 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-        {(hotMode === "trending" ? trending : fresh).map((r, i) => (
-          <div key={`${hotMode}-${r.id}`} className="snap-start shrink-0 w-44 animate-card-enter" style={{ animationDelay: `${i * 60}ms` }}>
-            <Card r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark} />
-          </div>
-        ))}
+      <div className="relative">
+        <div className="flex gap-3 overflow-x-auto px-4 pb-3 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+          {(hotMode === "trending" ? trending : fresh).map((r, i) => (
+            <div key={`${hotMode}-${r.id}`} className={cls("snap-start shrink-0 animate-card-enter", i === 0 ? "w-64" : "w-48")} style={{ animationDelay: `${i * 60}ms` }}>
+              <Card r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark} highlight={i === 0} />
+            </div>
+          ))}
+        </div>
+        <div className={cls("absolute right-0 top-0 bottom-3 w-8 pointer-events-none bg-gradient-to-l", fadeBg)} />
       </div>
 
-      <SectionTitle dark={dark} tier={3} title="탐색하기" />
-      <div className="flex gap-3 overflow-x-auto px-4 pb-4 snap-x scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-        {(CATALOG || []).slice(0, 10).map((p, i) => (
-          <a key={p.id} href={p.officialUrl || "#"} target="_blank" rel="noopener noreferrer"
-            className={cls("snap-start shrink-0 w-32 rounded-2xl overflow-hidden block active:scale-[0.97] transition animate-card-enter", dark ? "bg-gray-800" : "bg-white shadow-sm")}
-            style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}>
-            <div className={cls("h-32 flex items-center justify-center p-3", dark ? "bg-gray-900" : "bg-gray-50")}>
-              <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={24}/>
+      {/* ⑥ 탐색하기 — 카테고리 필터 + 3열 그리드 */}
+      <div className="px-4 mt-10 mb-2">
+        <h2 className={cls("text-lg font-extrabold tracking-tight", dark ? "text-white" : "text-gray-900")}>탐색하기</h2>
+        <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>카테고리별 인기 제품을 확인해보세요</p>
+      </div>
+      <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+        {[{ key: "all", label: "전체" }, ...Object.entries(CATEGORIES).map(([k, c]) => ({ key: k, label: c.label }))].map((c) => (
+          <button key={c.key} onClick={() => setExploreCat(c.key)}
+            className={cls("shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap",
+              exploreCat === c.key
+                ? (dark ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40" : "bg-emerald-500 text-white shadow-sm")
+                : (dark ? "bg-gray-800 text-gray-400" : "bg-white text-gray-600 border border-gray-200"))}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2.5 px-4 pb-6">
+        {filteredCatalog.map((p, i) => (
+          <button key={p.id} onClick={() => onProductClick && onProductClick(p)}
+            className={cls("rounded-2xl overflow-hidden text-left active:scale-[0.97] transition animate-card-enter", dark ? "bg-gray-800" : "bg-white shadow-sm")}
+            style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+            <div className={cls("aspect-square flex items-center justify-center p-3", dark ? "bg-gray-900/60" : "bg-gray-50")}>
+              <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={20}/>
             </div>
             <div className="p-2">
-              <p className={cls("text-[10px] font-bold", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand || ""}</p>
+              <p className={cls("text-[10px] font-bold truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand || ""}</p>
               <p className={cls("text-[11px] font-bold line-clamp-2 leading-tight mt-0.5", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
+              {p.price > 0 && <p className={cls("text-[10px] mt-1 tabular-nums", dark ? "text-gray-500" : "text-gray-400")}>{p.price.toLocaleString()}원</p>}
             </div>
-          </a>
+          </button>
         ))}
+        {filteredCatalog.length === 0 && (
+          <div className={cls("col-span-3 py-8 text-center text-sm", dark ? "text-gray-500" : "text-gray-400")}>
+            해당 카테고리에 제품이 없어요
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4467,7 +4528,8 @@ function AppInner() {
       challenge={challenge} dailyLogs={challengeDailyLogs}
       onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
       onChallengeOpen={() => setChallengeMainOpen(true)}
-      onChallengeResult={() => setChallengeMainOpen(true)}/>,
+      onChallengeResult={() => setChallengeMainOpen(true)}
+      onProductClick={setSelectedCatalogProduct}/>,
     feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} highlightId={highlightId} />,
     fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct}/>,
     comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={openUser}
