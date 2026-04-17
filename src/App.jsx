@@ -1212,7 +1212,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike }) => {
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, challenge, onOpenChallengeCommunity }) => {
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState({}); // { [postId]: true }
   const submit = () => {
@@ -1226,6 +1226,22 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
   <div className="px-4 pt-4 pb-4 space-y-3">
     <h2 className={cls("text-2xl font-black tracking-tight", dark ? "text-white" : "text-gray-900")}>커뮤니티</h2>
     <p className={cls("text-xs mb-2", dark ? "text-gray-400" : "text-gray-500")}>웨이로거들과 이야기 나눠보세요</p>
+
+    {/* 챌린지 커뮤니티 배너 */}
+    {challenge && (
+      <button onClick={onOpenChallengeCommunity}
+        className={cls("w-full p-4 rounded-2xl flex items-center gap-3 text-left active:scale-[0.98] transition relative overflow-hidden",
+          dark ? "bg-gradient-to-r from-violet-900/50 to-purple-900/40 border border-violet-800/50" : "bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200")}>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
+          <Users size={18} className="text-white"/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>챌린지 커뮤니티</p>
+          <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>8주 챌린지 참가자들과 익명으로 소통해요</p>
+        </div>
+        <ChevronRight size={16} className={dark ? "text-gray-500" : "text-gray-400"}/>
+      </button>
+    )}
 
     {/* 빠른 작성 */}
     <div className={cls("rounded-2xl p-3 shadow-sm", dark ? "bg-gray-800" : "bg-white")}>
@@ -2782,7 +2798,7 @@ const MissionEditModal = ({ weekNum, title, missions, hasCustom, onSave, onReset
   );
 };
 
-const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, anonPosts, setAnonPosts, onClose, dark }) => {
+const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, onClose, dark }) => {
   // setToast 는 Context 에서 구독 — prop drilling 제거
   const { setToast: onShowToast } = useAppContext();
   const [exiting, close] = useExit(onClose);
@@ -2791,7 +2807,6 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
   const [exerciseModal, setExerciseModal] = useState(false);
   const [inbodyOpen, setInbodyOpen] = useState(false);
   const [graphOpen, setGraphOpen] = useState(false);
-  const [anonOpen, setAnonOpen] = useState(false);
   const [missionEditOpen, setMissionEditOpen] = useState(false);
   const [missionToast, setMissionToast] = useState("");
 
@@ -3158,19 +3173,12 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
         ))}
       </nav>
 
-      {/* 커뮤니티 FAB */}
-      <button onClick={() => setAnonOpen(true)}
-        className="absolute right-4 bottom-20 w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl flex items-center justify-center active:scale-90 transition">
-        <Users size={20}/>
-      </button>
-
       {/* Modals */}
       {mealModal && <MealUploadModal mealType={mealModal} onClose={() => setMealModal(null)} onSave={addMeal} dark={dark}/>}
       {exerciseModal && <ExerciseModal onClose={() => setExerciseModal(false)} onSave={addExercise} dark={dark}/>}
       {editingExercise && <ExerciseModal onClose={() => setEditingExercise(null)} onSave={updateExercise} dark={dark} editing={editingExercise.data}/>}
       <Suspense fallback={null}>{inbodyOpen && <InbodyScreen records={inbodyRecords} onAdd={(r) => setInbodyRecords((prev) => [...prev, r])} onClose={() => setInbodyOpen(false)} dark={dark}/>}</Suspense>
       {graphOpen && <ChallengeGraphScreen challenge={challenge} dailyLogs={dailyLogs} inbodyRecords={inbodyRecords} onClose={() => setGraphOpen(false)} dark={dark}/>}
-      <Suspense fallback={null}>{anonOpen && <AnonCommunityScreen challenge={challenge} onClose={() => setAnonOpen(false)} dark={dark} anonPosts={anonPosts} onAddPost={(p) => setAnonPosts((prev) => [...prev, p])} getChallengeDay={getChallengeDay}/>}</Suspense>
       {missionEditOpen && (
         <MissionEditModal
           weekNum={weekNum}
@@ -3867,6 +3875,7 @@ function AppInner() {
   const [challengeAnonPosts, setChallengeAnonPosts] = useStoredState("waylog:challengeAnonPosts", []);
   const [challengeStartOpen, setChallengeStartOpen] = useState(false);
   const [challengeMainOpen, setChallengeMainOpen] = useState(false);
+  const [challengeCommunityOpen, setChallengeCommunityOpen] = useState(false);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const challengeHydratedRef = useRef(false);
 
@@ -4557,6 +4566,8 @@ function AppInner() {
       user={user}
       onAddPost={addCommunityPost}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
+      challenge={challenge}
+      onOpenChallengeCommunity={() => setChallengeCommunityOpen(true)}
       comments={communityComments}
       onAddComment={addCommunityComment}
       onDeleteComment={deleteCommunityComment}
@@ -4866,10 +4877,18 @@ function AppInner() {
         setDailyLogs={setChallengeDailyLogsSync}
         inbodyRecords={challengeInbody}
         setInbodyRecords={setChallengeInbodySync}
-        anonPosts={challengeAnonPosts}
-        setAnonPosts={setChallengeAnonPostsSync}
         onClose={() => setChallengeMainOpen(false)}
         dark={dark}/>}
+
+      <Suspense fallback={null}>{challengeCommunityOpen && challenge && (
+        <AnonCommunityScreen
+          challenge={challenge}
+          onClose={() => setChallengeCommunityOpen(false)}
+          dark={dark}
+          anonPosts={challengeAnonPosts}
+          onAddPost={(p) => setChallengeAnonPostsSync((prev) => [...prev, p])}
+          getChallengeDay={getChallengeDay}/>
+      )}</Suspense>
 
       <nav className={cls("fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl border-t grid grid-cols-4 z-20 backdrop-blur-xl",
         dark ? "bg-gray-900/85 border-gray-800" : "bg-white/85 border-gray-100")}
