@@ -107,7 +107,7 @@ export const AdminModerationScreen = ({ dark, onClose }) => {
                 <p className={cls("text-xs mt-1", dark ? "text-gray-400" : "text-gray-600")}>
                   사유: <b>{r.reason}</b>{r.detail && <> · {r.detail}</>}
                 </p>
-                <p className={cls("text-[11px] mt-1 opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
+                <p className={cls("text-xs mt-1 opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
                   {formatRelativeTime(r.created_at)} · reporter {String(r.reporter_id).slice(0, 8)}
                 </p>
               </div>

@@ -126,7 +126,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                   <div className={cls("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center", f.color)}>
                     <f.Icon size={18} className="text-white"/>
                   </div>
-                  <span className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</span>
+                  <span className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</span>
                 </div>
               ))}
             </div>
@@ -155,7 +155,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                   className={inputCls}/>
               </div>
             </div>
-            <p className={cls("text-[11px] -mt-2", dark ? "text-gray-400" : "text-gray-500")}>
+            <p className={cls("text-xs -mt-2", dark ? "text-gray-400" : "text-gray-500")}>
               {(() => {
                 const days = Math.max(0, Math.round((new Date(`${endDate}T00:00:00`) - new Date(`${startDate}T00:00:00`)) / 86400000) + 1);
                 const weeks = Math.floor(days / 7);
@@ -240,7 +240,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                     <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{bmiVal}</p>
                   </div>
                 </div>
-                <div className={cls("mt-3 pt-3 border-t text-[11px] leading-relaxed space-y-1.5",
+                <div className={cls("mt-3 pt-3 border-t text-xs leading-relaxed space-y-1.5",
                   dark ? "border-gray-700 text-gray-400" : "border-emerald-100 text-gray-600")}>
                   <p><span className="font-bold">기초대사량</span>은 아무 활동 없이도 하루에 소비되는 최소 칼로리예요.</p>
                   <p>

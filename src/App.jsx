@@ -523,9 +523,9 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
               <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={20}/>
             </div>
             <div className="p-2">
-              <p className={cls("text-[10px] font-bold truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand || ""}</p>
-              <p className={cls("text-[11px] font-bold line-clamp-2 leading-tight mt-0.5", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
-              {p.price > 0 && <p className={cls("text-[10px] mt-1 tabular-nums", dark ? "text-gray-500" : "text-gray-400")}>{p.price.toLocaleString()}원</p>}
+              <p className={cls("text-xs font-bold truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand || ""}</p>
+              <p className={cls("text-xs font-bold line-clamp-2 leading-tight mt-0.5", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
+              {p.price > 0 && <p className={cls("text-xs mt-1 tabular-nums", dark ? "text-gray-500" : "text-gray-400")}>{p.price.toLocaleString()}원</p>}
             </div>
           </button>
         ))}
@@ -779,7 +779,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
           <ProductImage src={product.imageUrl} alt={product.name} className="max-w-full max-h-full object-contain drop-shadow-lg" iconSize={56}/>
           {/* 이미지 출처 명시 — 제3자 상표/저작물임을 명확히 */}
           {product.imageUrl && (
-            <span className={cls("absolute bottom-2 right-3 text-[10px] font-bold opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
+            <span className={cls("absolute bottom-2 right-3 text-xs font-bold opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
               이미지: amway.co.kr
             </span>
           )}
@@ -789,7 +789,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
           {/* 카테고리 + 브랜드 */}
           <div className="flex items-center gap-2">
             {cat && (
-              <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full", dark ? cat.dchip : cat.chip)}>
+              <span className={cls("text-xs font-black px-2 py-0.5 rounded-full", dark ? cat.dchip : cat.chip)}>
                 {cat.label}
               </span>
             )}
@@ -822,12 +822,12 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
             <div className={cls("flex items-center gap-3 p-3 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-50")}>
               <div className="flex-1 text-center">
                 <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
-                <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>리뷰</p>
+                <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>리뷰</p>
               </div>
               <div className={cls("w-px h-8", dark ? "bg-gray-700" : "bg-gray-200")}/>
               <div className="flex-1 text-center">
                 <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.reduce((s, r) => s + (r.likes || 0), 0)}</p>
-                <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>총 좋아요</p>
+                <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>총 좋아요</p>
               </div>
               {topTags.length > 0 && (
                 <>
@@ -835,10 +835,10 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                   <div className="flex-1 text-center">
                     <div className="flex flex-wrap justify-center gap-1">
                       {topTags.map((t) => (
-                        <span key={t} className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>#{t}</span>
+                        <span key={t} className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>#{t}</span>
                       ))}
                     </div>
-                    <p className={cls("text-[10px] font-bold mt-1", dark ? "text-gray-400" : "text-gray-500")}>인기 태그</p>
+                    <p className={cls("text-xs font-bold mt-1", dark ? "text-gray-400" : "text-gray-500")}>인기 태그</p>
                   </div>
                 </>
               )}
@@ -860,7 +860,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       <span className={cls("text-[9px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-violet-800/50 text-violet-300" : "bg-violet-100 text-violet-600")}>DEMO</span>
                     )}
                   </div>
-                  <p className={cls("text-[10px] mt-0.5", dark ? "text-violet-400" : "text-violet-500")}>
+                  <p className={cls("text-xs mt-0.5", dark ? "text-violet-400" : "text-violet-500")}>
                     리뷰 {allReviews.length}개 기반 · 마지막 분석: {aiSummary.generatedAt?.replace(/-/g, ".")}
                   </p>
                 </div>
@@ -875,7 +875,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       {aiSummary.data.pros.map((p, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className={cls("text-xs leading-relaxed flex-1", dark ? "text-gray-300" : "text-gray-700")}>• {p.text}</span>
-                          <span className={cls("text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>{p.count}명</span>
+                          <span className={cls("text-xs font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>{p.count}명</span>
                         </div>
                       ))}
                     </div>
@@ -887,7 +887,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       {aiSummary.data.cons.map((c, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className={cls("text-xs leading-relaxed flex-1", dark ? "text-gray-300" : "text-gray-700")}>• {c.text}</span>
-                          <span className={cls("text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-rose-900/40 text-rose-300" : "bg-rose-50 text-rose-700")}>{c.count}명</span>
+                          <span className={cls("text-xs font-bold shrink-0 px-1.5 py-0.5 rounded-full", dark ? "bg-rose-900/40 text-rose-300" : "bg-rose-50 text-rose-700")}>{c.count}명</span>
                         </div>
                       ))}
                     </div>
@@ -898,7 +898,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                     <p className={cls("text-xs leading-relaxed", dark ? "text-gray-300" : "text-gray-600")}>{aiSummary.data.summary}</p>
                   </div>
                   {aiSummary.isPlaceholder && (
-                    <p className={cls("text-[10px] text-center pt-1", dark ? "text-violet-500" : "text-violet-400")}>
+                    <p className={cls("text-xs text-center pt-1", dark ? "text-violet-500" : "text-violet-400")}>
                       이 요약은 데모 데이터예요 · 곧 AI 자동 생성으로 전환됩니다
                     </p>
                   )}
@@ -910,7 +910,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
               <Sparkles size={18} className={dark ? "text-violet-500" : "text-violet-400"}/>
               <div>
                 <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>AI 리뷰 요약</p>
-                <p className={cls("text-[10px] mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>리뷰가 5개 이상 쌓이면 분석을 시작해요 ({allReviews.length}/5)</p>
+                <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>리뷰가 5개 이상 쌓이면 분석을 시작해요 ({allReviews.length}/5)</p>
               </div>
             </div>
           ) : null}
@@ -1100,7 +1100,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       {pCat && <span className={cls("text-[9px] font-black px-1.5 py-0.5 rounded-full", dark ? pCat.dchip : pCat.chip)}>{pCat.label}</span>}
                       <p className={cls("text-sm font-bold line-clamp-1 mt-0.5", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {p.brand && <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{p.brand}</p>}
+                        {p.brand && <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{p.brand}</p>}
                         {p.price > 0 && <p className={cls("text-xs font-bold", dark ? "text-emerald-400" : "text-emerald-600")}>{p.price.toLocaleString()}원</p>}
                       </div>
                     </div>
@@ -1283,7 +1283,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
             <ProductImage src={product.imageUrl} alt={product.name} className="w-10 h-10 object-contain shrink-0" iconSize={16}/>
             <div className="flex-1 min-w-0">
               <p className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-gray-900")}>{product.name}</p>
-              <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{product.brand}</p>
+              <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{product.brand}</p>
             </div>
             <button onClick={() => setProduct(null)} className={cls("p-1 rounded-full", dark ? "text-gray-400" : "text-gray-500")}><X size={14}/></button>
           </div>
@@ -1310,7 +1310,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
                   <ProductImage src={p.imageUrl} alt={p.name} className="w-8 h-8 object-contain shrink-0" iconSize={14}/>
                   <div className="flex-1 min-w-0">
                     <p className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
-                    <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{p.brand}</p>
+                    <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{p.brand}</p>
                   </div>
                 </button>
               ))}
@@ -1323,16 +1323,8 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, challenge, onOpenChallengeCommunity }) => {
-  const [draft, setDraft] = useState("");
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, challenge, onOpenChallengeCommunity, onCompose }) => {
   const [expanded, setExpanded] = useState({}); // { [postId]: true }
-  const submit = () => {
-    const text = draft.trim();
-    if (!text) return;
-    if (!user) { onRequireAuth && onRequireAuth(); return; }
-    onAddPost && onAddPost(text);
-    setDraft("");
-  };
   return (
   <div className="px-4 pt-4 pb-4 space-y-3">
     <h2 className={cls("text-2xl font-black tracking-tight", dark ? "text-white" : "text-gray-900")}>커뮤니티</h2>
@@ -1354,35 +1346,15 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
       </button>
     )}
 
-    {/* 빠른 작성 */}
-    <div className={cls("rounded-2xl p-3 shadow-sm", dark ? "bg-gray-800" : "bg-white")}>
-      <div className="flex gap-2.5 items-start">
-        <Avatar id={user?.avatar || ""} size={14} className="w-9 h-9 shrink-0"/>
-        <textarea value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
-          }}
-          placeholder={user ? "지금 어떤 생각이 드세요?" : "로그인 후 커뮤니티에 참여해보세요"}
-          rows={2}
-          className={cls("flex-1 text-sm bg-transparent outline-none resize-none overflow-hidden", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
-      </div>
-      {(draft || user) && (
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-          <span className={cls("text-xs", draft.length > 280 ? "text-rose-500 font-bold" : dark ? "text-gray-400" : "text-gray-500")}>
-            {draft.length}/300
-          </span>
-          <button onClick={submit} disabled={!draft.trim() || draft.length > 300}
-            className={cls("px-4 py-1.5 rounded-full text-xs font-black transition",
-              draft.trim() && draft.length <= 300
-                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md active:scale-95"
-                : dark ? "bg-gray-700 text-gray-500" : "bg-gray-200 text-gray-400")}>
-            게시
-          </button>
-        </div>
-      )}
-    </div>
+    {/* 글쓰기 진입 */}
+    <button onClick={() => user ? onCompose() : onRequireAuth()}
+      className={cls("w-full rounded-2xl p-3 shadow-sm flex items-center gap-2.5 text-left active:scale-[0.98] transition", dark ? "bg-gray-800" : "bg-white")}>
+      <Avatar id={user?.avatar || ""} size={14} className="w-9 h-9 shrink-0"/>
+      <span className={cls("text-sm flex-1", dark ? "text-gray-500" : "text-gray-400")}>
+        {user ? "지금 어떤 생각이 드세요?" : "로그인 후 커뮤니티에 참여해보세요"}
+      </span>
+      <PenLine size={16} className={dark ? "text-gray-500" : "text-gray-400"}/>
+    </button>
 
     {posts.map((p) => {
       const isOpen = !!expanded[p.id];
@@ -1468,7 +1440,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
-                    {isMine && <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>}
+                    {isMine && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>}
                     <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                   </div>
                   <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
@@ -1477,8 +1449,8 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                   <div className="flex items-center gap-3 mt-1.5">
                     <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
                       className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                      답글 달기 <span className="text-[10px]">&#8629;</span>
-                      {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-[10px]", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
+                      답글 달기 <span className="text-xs">&#8629;</span>
+                      {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
                     </button>
                     <button onClick={() => onToggleLike(postId, c.id)}
                       className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", likedByMe ? "text-rose-500" : dark ? "text-gray-400" : "text-gray-500")}>
@@ -1507,7 +1479,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2">
                             <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
-                            {isMyReply && <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>}
+                            {isMyReply && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>}
                             <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
                           </div>
                           <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
@@ -1522,7 +1494,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                           <div className="flex items-center gap-3 mt-1">
                             <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
                               className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                              답글 달기 <span className="text-[10px]">&#8629;</span>
+                              답글 달기 <span className="text-xs">&#8629;</span>
                             </button>
                             <button onClick={() => onToggleLike(postId, reply.id)}
                               className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", replyLikedByMe ? "text-rose-500" : dark ? "text-gray-400" : "text-gray-500")}>
@@ -1543,7 +1515,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                   {!isExpanded && hiddenCount > 0 && (
                     <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
                       className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                      <span className="text-[10px]">&#8629;</span> 답글 {hiddenCount}개 더보기
+                      <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
                     </button>
                   )}
                   {isExpanded && hiddenCount > 0 && (
@@ -1715,7 +1687,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                           <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {pCat && <span className={cls("text-[9px] font-bold px-1.5 py-0.5 rounded-full", dark ? pCat.dchip : pCat.chip)}>{pCat.label}</span>}
-                            {p.price > 0 && <span className={cls("text-[10px] font-bold", dark ? "text-emerald-400" : "text-emerald-600")}>{p.price.toLocaleString()}원</span>}
+                            {p.price > 0 && <span className={cls("text-xs font-bold", dark ? "text-emerald-400" : "text-emerald-600")}>{p.price.toLocaleString()}원</span>}
                           </div>
                         </div>
                         <ChevronRight size={14} className={dark ? "text-gray-600" : "text-gray-300"}/>
@@ -1971,14 +1943,14 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className={cls("text-[11px] font-bold uppercase tracking-wider", dark ? "text-emerald-400" : "text-emerald-600")}>
+                <p className={cls("text-xs font-bold uppercase tracking-wider", dark ? "text-emerald-400" : "text-emerald-600")}>
                   관련 상품
                 </p>
                 <p className={cls("text-sm font-bold line-clamp-2 mt-0.5", dark ? "text-white" : "text-gray-900")}>
                   {matchedProduct?.name || r.product}
                 </p>
                 {matchedProduct && (
-                  <p className={cls("text-[11px] mt-0.5 font-medium", dark ? "text-gray-400" : "text-gray-500")}>
+                  <p className={cls("text-xs mt-0.5 font-medium", dark ? "text-gray-400" : "text-gray-500")}>
                     {matchedProduct.price ? `${matchedProduct.price.toLocaleString()}원 · ` : ""}
                     카탈로그 보기 · 다른 리뷰 &rsaquo;
                   </p>
@@ -2008,7 +1980,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             <div className={cls("rounded-2xl py-8 px-4 text-center border-2 border-dashed", dark ? "border-gray-700 bg-gray-800/40" : "border-gray-200 bg-gray-50")}>
               <MessageCircle size={28} strokeWidth={1.8} className={cls("mx-auto mb-2", dark ? "text-gray-600" : "text-gray-400")}/>
               <p className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>아직 댓글이 없어요</p>
-              <p className={cls("text-[11px] mt-1", dark ? "text-gray-500" : "text-gray-500")}>첫 댓글을 남겨보세요</p>
+              <p className={cls("text-xs mt-1", dark ? "text-gray-500" : "text-gray-500")}>첫 댓글을 남겨보세요</p>
             </div>
           )}
           <div className="space-y-3">
@@ -2028,7 +2000,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       <div className="flex items-baseline gap-2">
                         <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
                         {isMyComment && (
-                          <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
+                          <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
                         )}
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                       </div>
@@ -2038,8 +2010,8 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       <div className="flex items-center gap-3 mt-1.5">
                         <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
                           className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                          답글 달기 <span className="text-[10px]">&#8629;</span>
-                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-[10px]", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
+                          답글 달기 <span className="text-xs">&#8629;</span>
+                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-emerald-900/40" : "bg-emerald-50")}>{replies.length}</span>}
                         </button>
                         <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, c.id)}
                           className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-rose-500" : dark ? "text-gray-400" : "text-gray-500")}>
@@ -2074,7 +2046,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                             <div className="flex items-baseline gap-2">
                               <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
                               {isMyReply && (
-                                <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
+                                <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-600")}>내 댓글</span>
                               )}
                               <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
                             </div>
@@ -2090,7 +2062,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                             <div className="flex items-center gap-3 mt-1">
                               <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
                                 className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                                답글 달기 <span className="text-[10px]">&#8629;</span>
+                                답글 달기 <span className="text-xs">&#8629;</span>
                               </button>
                               <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, reply.id)}
                                 className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-rose-500" : dark ? "text-gray-400" : "text-gray-500")}>
@@ -2117,7 +2089,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       {!isExpanded && hiddenCount > 0 && (
                         <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
                           className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
-                          <span className="text-[10px]">&#8629;</span> 답글 {hiddenCount}개 더보기
+                          <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
                         </button>
                       )}
                       {isExpanded && hiddenCount > 0 && (
@@ -2574,10 +2546,10 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                     {editMode ? "직접 수정" : "AI 분석 결과"}
                   </p>
                   {result.isFallback && !editMode && (
-                    <p className={cls("text-[10px] mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>AI 분석 실패 — 추천 식단으로 대체했어요. 직접 수정해주세요</p>
+                    <p className={cls("text-xs mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>AI 분석 실패 — 추천 식단으로 대체했어요. 직접 수정해주세요</p>
                   )}
                   {result.source === "vision" && !editMode && (
-                    <p className={cls("text-[10px] mt-0.5", dark ? "text-emerald-400" : "text-emerald-600")}>사진 분석 결과예요. 맞지 않으면 수정해주세요</p>
+                    <p className={cls("text-xs mt-0.5", dark ? "text-emerald-400" : "text-emerald-600")}>사진 분석 결과예요. 맞지 않으면 수정해주세요</p>
                   )}
                 </div>
                 <button onClick={() => setEditMode(!editMode)}
@@ -2597,7 +2569,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                     )}
                   </div>
                   {reanalyzing && (
-                    <p className={cls("text-[10px] font-medium mt-1", dark ? "text-emerald-400" : "text-emerald-600")}>
+                    <p className={cls("text-xs font-medium mt-1", dark ? "text-emerald-400" : "text-emerald-600")}>
                       "{editName}" 영양 정보 재분석 중...
                     </p>
                   )}
@@ -2630,19 +2602,19 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
                       <p className="text-lg font-black text-emerald-500">{result.cal}</p>
-                      <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>kcal</p>
+                      <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>kcal</p>
                     </div>
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
                       <p className="text-lg font-black text-blue-500">{result.protein}g</p>
-                      <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>단백질</p>
+                      <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>단백질</p>
                     </div>
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
                       <p className="text-lg font-black text-amber-500">{result.carb}g</p>
-                      <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>탄수화물</p>
+                      <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>탄수화물</p>
                     </div>
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
                       <p className="text-lg font-black text-rose-500">{result.fat}g</p>
-                      <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>지방</p>
+                      <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>지방</p>
                     </div>
                   </div>
                 </>
@@ -2907,21 +2879,21 @@ const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
         </div>
         <div>
           <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>오늘의 리포트</p>
-          <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>Day {dayNum} · AI 분석</p>
+          <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>Day {dayNum} · AI 분석</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className={cls("p-2 rounded-xl text-center", dark ? "bg-gray-700" : "bg-gray-50")}>
           <p className="text-base font-black text-emerald-500">{totalCal}</p>
-          <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>섭취 kcal</p>
+          <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>섭취 kcal</p>
         </div>
         <div className={cls("p-2 rounded-xl text-center", dark ? "bg-gray-700" : "bg-gray-50")}>
           <p className="text-base font-black text-amber-500">{totalBurned}</p>
-          <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>소비 kcal</p>
+          <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>소비 kcal</p>
         </div>
         <div className={cls("p-2 rounded-xl text-center", dark ? "bg-gray-700" : "bg-gray-50")}>
           <p className="text-base font-black text-violet-500">{rate}%</p>
-          <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>미션 달성</p>
+          <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>미션 달성</p>
         </div>
       </div>
       <p className={cls("text-xs p-3 rounded-xl italic leading-relaxed", dark ? "bg-gray-700 text-gray-300" : "bg-emerald-50 text-emerald-700")}>
@@ -3203,7 +3175,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>D+{dayNum}</p>
                   <p className={cls("text-2xl font-black", dark ? "text-white" : "text-gray-900")}>{Math.round(progress * 100)}%</p>
-                  <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{dayNum}/{CHALLENGE_DAYS}일</p>
+                  <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{dayNum}/{CHALLENGE_DAYS}일</p>
                 </div>
               </div>
             </div>
@@ -3216,7 +3188,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                 { label: "근육량", val: firstInbody && latestInbody ? (latestInbody.muscle - firstInbody.muscle).toFixed(1) : "-", unit: "kg", color: "text-violet-500" },
               ].map((s) => (
                 <div key={s.label} className={cls("p-3 rounded-2xl text-center", dark ? "bg-gray-800" : "bg-white")}>
-                  <p className={cls("text-[10px] font-bold", dark ? "text-gray-400" : "text-gray-500")}>{s.label}</p>
+                  <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{s.label}</p>
                   <p className={cls("text-lg font-black mt-0.5", s.color)}>
                     {s.val !== "-" && parseFloat(s.val) > 0 ? "+" : ""}{s.val}
                     <span className="text-xs">{s.unit}</span>
@@ -3373,7 +3345,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
               <div className="flex items-center gap-2 mb-2">
                 {(() => { const CoachIcon = AI_COACH_TONES.find((t) => t.key === challenge?.coachTone)?.Icon || Sparkles; return <CoachIcon size={18} className="text-emerald-500"/>; })()}
                 <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>AI 코치</p>
-                <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-500")}>베타</span>
+                <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-500")}>베타</span>
               </div>
               <p className={cls("text-sm leading-relaxed", dark ? "text-gray-300" : "text-gray-700")}>
                 {coachMsg}
@@ -3401,7 +3373,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
           }}
             className="flex flex-col items-center gap-1 active:scale-95 transition">
             <Icon size={20} className={subTab === k ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500"}/>
-            <span className={cls("text-[10px] font-bold", subTab === k ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500")}>{label}</span>
+            <span className={cls("text-xs font-bold", subTab === k ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500")}>{label}</span>
           </button>
         ))}
       </nav>
@@ -3449,7 +3421,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, onStart, onOpen, onRes
           <Trophy size={22} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cls("text-[10px] font-black uppercase tracking-widest", dark ? "text-emerald-400" : "text-emerald-600")}>NEW CHALLENGE</p>
+          <p className={cls("text-xs font-black uppercase tracking-widest", dark ? "text-emerald-400" : "text-emerald-600")}>NEW CHALLENGE</p>
           <p className={cls("text-sm font-black mt-0.5", dark ? "text-white" : "text-gray-900")}>바디키 8주 챌린지</p>
           <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>AI 코치와 함께하는 8주 변화 프로그램</p>
         </div>
@@ -3469,7 +3441,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, onStart, onOpen, onRes
           <Trophy size={22} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cls("text-[10px] font-black uppercase tracking-widest", dark ? "text-amber-400" : "text-amber-600")}>COMPLETED</p>
+          <p className={cls("text-xs font-black uppercase tracking-widest", dark ? "text-amber-400" : "text-amber-600")}>COMPLETED</p>
           <p className={cls("text-sm font-black mt-0.5", dark ? "text-white" : "text-gray-900")}>챌린지 완주</p>
           <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>8주간의 여정을 확인해보세요</p>
         </div>
@@ -4769,8 +4741,8 @@ function AppInner() {
     fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct}/>,
     comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={openUser}
       user={user}
-      onAddPost={addCommunityPost}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
+      onCompose={() => setCommunityComposeOpen(true)}
       challenge={challenge}
       onOpenChallengeCommunity={() => setChallengeCommunityOpen(true)}
       comments={communityComments}
@@ -4845,7 +4817,7 @@ function AppInner() {
               className={cls("p-2 rounded-full relative", dark ? "hover:bg-gray-800" : "hover:bg-gray-100")}>
                 <Bell size={18} className={dark ? "text-gray-300" : "text-gray-700"}/>
                 {unreadCount > 0 && (
-                  <span className={cls("absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-rose-500 rounded-full text-[10px] font-black text-white flex items-center justify-center leading-none ring-2 tabular-nums",
+                  <span className={cls("absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-rose-500 rounded-full text-xs font-black text-white flex items-center justify-center leading-none ring-2 tabular-nums",
                     dark ? "ring-gray-900" : "ring-white")}>
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
@@ -5119,7 +5091,7 @@ function AppInner() {
                     active ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500")}/>
                 {active && <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-500"/>}
               </div>
-              <span className={cls("text-[10px] tracking-tight transition-all duration-200",
+              <span className={cls("text-xs tracking-tight transition-all duration-200",
                 active ? "font-black text-emerald-500" : dark ? "font-medium text-gray-500" : "font-medium text-gray-400")}>
                 {label}
               </span>

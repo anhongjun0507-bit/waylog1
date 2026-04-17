@@ -352,7 +352,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                         <div className="w-0 h-0 border-l-[8px] border-l-gray-900 border-y-[6px] border-y-transparent ml-0.5"/>
                       </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 text-[10px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
+                    <span className="absolute bottom-1 right-1 text-xs font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
                   </>
                 )}
                 <button onClick={() => removeMedia(m.id)}
@@ -365,7 +365,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               <label className={cls("aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition active:scale-95",
                 dark ? "border-gray-700 bg-gray-800/50 hover:bg-gray-800" : "border-gray-300 bg-white hover:bg-gray-50")}>
                 <Camera size={20} className={dark ? "text-gray-400" : "text-gray-500"}/>
-                <span className={cls("text-[10px] font-bold mt-1", dark ? "text-gray-400" : "text-gray-500")}>추가</span>
+                <span className={cls("text-xs font-bold mt-1", dark ? "text-gray-400" : "text-gray-500")}>추가</span>
                 <input type="file" accept="image/*,video/*" multiple onChange={handleMediaUpload}
                   className="absolute w-px h-px opacity-0 overflow-hidden -m-px p-0 border-0"/>
               </label>
@@ -547,15 +547,15 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                         </div>
                         <div className="flex-1 min-w-0">
                           {p.brand && (
-                            <p className={cls("text-[10px] font-bold mb-0.5 truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand}</p>
+                            <p className={cls("text-xs font-bold mb-0.5 truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand}</p>
                           )}
                           <p className={cls("text-xs font-bold line-clamp-2 leading-tight", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full", CATEGORIES[p.category]?.[dark ? "dchip" : "chip"] || (dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500"))}>
+                            <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", CATEGORIES[p.category]?.[dark ? "dchip" : "chip"] || (dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500"))}>
                               {CATEGORIES[p.category]?.label || "기타"}
                             </span>
                             {typeof p.price === "number" && p.price > 0 && (
-                              <span className={cls("text-[10px] font-semibold opacity-70", dark ? "text-gray-400" : "text-gray-500")}>
+                              <span className={cls("text-xs font-semibold opacity-70", dark ? "text-gray-400" : "text-gray-500")}>
                                 {p.price.toLocaleString()}원
                               </span>
                             )}

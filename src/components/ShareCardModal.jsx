@@ -147,7 +147,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
               {/* 그라데이션 오버레이 */}
               <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)" }}/>
               {/* 카테고리 칩 */}
-              <div className="absolute top-4 left-4 px-3 py-1 rounded-full text-[11px] font-black text-white" style={{ background: accent }}>
+              <div className="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-black text-white" style={{ background: accent }}>
                 {cat.label}
               </div>
               {/* 제목 + 작성자 오버레이 */}
@@ -185,7 +185,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
                   </div>
                   <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
                 </div>
-                <span className="text-[10px] font-bold text-gray-400">{shareUrl}</span>
+                <span className="text-xs font-bold text-gray-400">{shareUrl}</span>
               </div>
             </div>
           </div>

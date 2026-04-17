@@ -74,7 +74,7 @@ export const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAdd
               <CircleUser size={16} className={p.anonId === anonId ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500"}/>
               <span className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>{p.anonId}</span>
               <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>Day {p.dayNum}</span>
-              {p.anonId === anonId && <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>나</span>}
+              {p.anonId === anonId && <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>나</span>}
             </div>
             {p.title && <p className={cls("text-sm font-black mb-1", dark ? "text-white" : "text-gray-900")}>{p.title}</p>}
             <p className={cls("text-sm leading-relaxed", dark ? "text-gray-300" : "text-gray-700")}>{p.body}</p>
