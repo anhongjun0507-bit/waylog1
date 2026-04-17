@@ -2125,7 +2125,52 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
 
 // 해시태그 칩 입력 — 띄어쓰기 자동완성에 방해받지 않도록 Enter/쉼표로 추가, 클릭/Backspace 로 제거.
 // 외부와는 공백 구분 string 으로 호환 (기존 submit/draft 저장 그대로 사용).
-const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFollowing, onToggleFollow, onClose, onOpen, dark }) => {
+const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onToggleFollow, onClose, onUserClick, dark }) => {
+  const [exiting, close] = useExit(onClose);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetchFn(userId).then(({ data }) => { setList(data || []); setLoading(false); });
+  }, [userId]);
+  return (
+    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
+        <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
+        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{title}</p>
+        <div className="w-6"/>
+      </header>
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {loading && <p className={cls("text-center text-sm py-8", dark ? "text-gray-500" : "text-gray-400")}>불러오는 중...</p>}
+        {!loading && list.length === 0 && <p className={cls("text-center text-sm py-8", dark ? "text-gray-500" : "text-gray-400")}>아직 없어요</p>}
+        {list.map((u) => {
+          const isMe = currentUser?.id === u.id;
+          const isFollowed = following.has(u.id);
+          return (
+            <div key={u.id} className={cls("flex items-center gap-3 p-3 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
+              <button onClick={() => { close(); setTimeout(() => onUserClick({ author: u.nickname, avatar: u.avatar, userId: u.id }), 280); }} className="shrink-0">
+                <Avatar id={u.avatar || ""} size={20} className="w-11 h-11" rounded="rounded-full"/>
+              </button>
+              <button onClick={() => { close(); setTimeout(() => onUserClick({ author: u.nickname, avatar: u.avatar, userId: u.id }), 280); }} className="flex-1 text-left min-w-0">
+                <p className={cls("text-sm font-bold truncate", dark ? "text-white" : "text-gray-900")}>{u.nickname || "사용자"}</p>
+              </button>
+              {!isMe && currentUser && (
+                <button onClick={() => onToggleFollow(u.id, u.nickname)}
+                  className={cls("px-4 py-1.5 rounded-full text-xs font-bold transition active:scale-95 shrink-0",
+                    isFollowed
+                      ? dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600"
+                      : "bg-emerald-500 text-white")}>
+                  {isFollowed ? "팔로잉" : "팔로우"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFollowing, onToggleFollow, following, onClose, onOpen, onUserClick, dark }) => {
   const [exiting, close] = useExit(onClose);
   const userData = SEED_USERS[author];
   const seedReviews = userData ? userData.reviewIds.map((id) => SEED_REVIEWS.find((r) => r.id === id)).filter(Boolean) : [];
@@ -2134,6 +2179,13 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
   const finalAvatar = avatar || userData?.avatar || "";
   const isMe = currentUser && currentUser.nickname === author;
   const canFollow = !!userId && !isMe && !!currentUser;
+
+  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+  const [followListOpen, setFollowListOpen] = useState(null); // "followers" | "following" | null
+
+  useEffect(() => {
+    if (userId) supabaseFollows.counts(userId).then(setCounts);
+  }, [userId, isFollowing]);
 
   return (
     <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
@@ -2156,15 +2208,15 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
               <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Posts</p>
             </div>
             <div className={cls("w-px h-10", dark ? "bg-gray-700" : "bg-gray-200")}/>
-            <div className="text-center">
-              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.reduce((s, r) => s + (r.likes || 0), 0)}</p>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Likes</p>
-            </div>
+            <button onClick={() => userId && setFollowListOpen("followers")} className="text-center active:scale-95 transition">
+              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{counts.followers}</p>
+              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Followers</p>
+            </button>
             <div className={cls("w-px h-10", dark ? "bg-gray-700" : "bg-gray-200")}/>
-            <div className="text-center">
-              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.reduce((s, r) => s + (r.views || 0), 0)}</p>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Views</p>
-            </div>
+            <button onClick={() => userId && setFollowListOpen("following")} className="text-center active:scale-95 transition">
+              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{counts.following}</p>
+              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Following</p>
+            </button>
           </div>
 
           {canFollow && (
@@ -2196,6 +2248,19 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
           )}
         </div>
       </div>
+
+      {followListOpen && userId && (
+        <FollowListModal
+          title={followListOpen === "followers" ? "팔로워" : "팔로잉"}
+          userId={userId}
+          fetchFn={followListOpen === "followers" ? supabaseFollows.listFollowers : supabaseFollows.listFollowing}
+          currentUser={currentUser}
+          following={following}
+          onToggleFollow={onToggleFollow}
+          onClose={() => setFollowListOpen(null)}
+          onUserClick={(u) => { setFollowListOpen(null); close(); setTimeout(() => onUserClick(u), 280); }}
+          dark={dark}/>
+      )}
     </div>
   );
 };
@@ -4838,8 +4903,9 @@ function AppInner() {
         userId={profileUser.userId}
         reviews={reviews} currentUser={user}
         isFollowing={!!profileUser.userId && following.has(profileUser.userId)}
-        onToggleFollow={() => toggleFollow(profileUser.userId, profileUser.author)}
-        onClose={() => setProfileUser(null)} onOpen={openDetail} dark={dark}/>}
+        following={following}
+        onToggleFollow={(id, name) => toggleFollow(id || profileUser.userId, name || profileUser.author)}
+        onClose={() => setProfileUser(null)} onOpen={openDetail} onUserClick={openUser} dark={dark}/>}
 
       <Suspense fallback={null}>{challengeStartOpen && <ChallengeStartScreen
         onClose={() => setChallengeStartOpen(false)}

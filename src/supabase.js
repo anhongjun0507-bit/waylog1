@@ -212,6 +212,37 @@ export const follows = {
         .eq('follower_id', followerId).eq('followee_id', followeeId)
     } catch (e) { return { error: e } }
   },
+  // 팔로워 수 / 팔로잉 수
+  async counts(userId) {
+    if (!supabase) return { followers: 0, following: 0 }
+    try {
+      const [{ count: followers }, { count: followingCount }] = await Promise.all([
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('followee_id', userId),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+      ])
+      return { followers: followers || 0, following: followingCount || 0 }
+    } catch { return { followers: 0, following: 0 } }
+  },
+  // 팔로워 목록 (나를 팔로우한 사람들)
+  async listFollowers(userId) {
+    if (!supabase) return noopArr
+    try {
+      const { data, error } = await supabase.from('follows')
+        .select('follower_id, profiles!follows_follower_id_fkey(id, nickname, avatar_url)')
+        .eq('followee_id', userId)
+      return { data: data?.map((f) => ({ id: f.follower_id, nickname: f.profiles?.nickname, avatar: f.profiles?.avatar_url })) || [], error }
+    } catch (e) { return { data: [], error: e } }
+  },
+  // 팔로잉 목록 (내가 팔로우한 사람들)
+  async listFollowing(userId) {
+    if (!supabase) return noopArr
+    try {
+      const { data, error } = await supabase.from('follows')
+        .select('followee_id, profiles!follows_followee_id_fkey(id, nickname, avatar_url)')
+        .eq('follower_id', userId)
+      return { data: data?.map((f) => ({ id: f.followee_id, nickname: f.profiles?.nickname, avatar: f.profiles?.avatar_url })) || [], error }
+    } catch (e) { return { data: [], error: e } }
+  },
 }
 
 export const profilesApi = {
