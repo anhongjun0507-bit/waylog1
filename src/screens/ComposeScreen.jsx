@@ -127,6 +127,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   const isEditMode = !!editing;
   const valid = title.trim() && body.trim() && category;
 
+  const showValidationError = () => {
+    if (!title.trim()) { setError("제목을 입력해주세요"); return; }
+    if (!body.trim()) { setError("본문을 입력해주세요"); return; }
+    if (!category) { setError("카테고리를 선택해주세요"); return; }
+  };
+
   const clearDraft = async () => {
     setTitle(""); setBody(""); setTags(""); setCategory("");
     setMediaItems([]); setSelectedProducts([]);
@@ -280,8 +286,10 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
             </div>
           )}
         </div>
-        <button disabled={!valid || submitting}
+        <button disabled={submitting}
           onClick={async () => {
+            if (!valid) { showValidationError(); return; }
+            setError("");
             setSubmitting(true);
             const firstImg = mediaItems.find((m) => m.type === "image");
             const ok = await onSubmit({
@@ -301,12 +309,20 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               close();
             }
           }}
-          className={cls("text-sm font-bold inline-flex items-center gap-1", submitting ? "opacity-50" : valid ? "text-emerald-500" : dark ? "text-gray-600" : "text-gray-300")}>
+          className={cls("px-4 py-1.5 rounded-full text-sm font-black transition active:scale-95",
+            submitting ? "opacity-50 cursor-wait" :
+            valid ? "bg-emerald-500 text-white shadow-md" :
+            dark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-500")}>
           {submitting ? <><RefreshCw size={14} className="animate-spin"/> 저장 중</> : isEditMode ? "수정 완료" : "등록"}
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {error && (
+          <div className={cls("p-3 rounded-xl text-xs font-bold flex items-center gap-2", dark ? "bg-rose-900/40 text-rose-300" : "bg-rose-50 text-rose-600")}>
+            <span>⚠️</span> {error}
+          </div>
+        )}
         {/* 카테고리 */}
         <div>
           <p className={cls("text-xs font-bold mb-2", dark ? "text-gray-300" : "text-gray-700")}>
