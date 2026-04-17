@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // Supabase 클라이언트 생성 전, 구버전 세션 키를 정리.
 // GoTrueClient가 stale 토큰을 복구하다 내부 lock에 걸리는 것을 방지.
 try {
-  const AUTH_VER = 3;
+  const AUTH_VER = 4;
   const cur = +(localStorage.getItem('waylog:auth-ver') || 0);
   if (cur < AUTH_VER) {
     for (const key of Object.keys(localStorage)) {
@@ -58,8 +58,34 @@ export const auth = {
   },
   async signIn(email, password) {
     if (!supabase) return noop
-    try { return await supabase.auth.signInWithPassword({ email, password }) }
-    catch (e) { return { data: null, error: e } }
+    try {
+      // GoTrueClient 가 stale 세션 복구 중 내부 lock에 걸릴 수 있으므로
+      // 3초 안에 응답 없으면 REST API 직접 호출로 폴백한다.
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({ email, password }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 3000)),
+      ])
+      return result
+    } catch (e) {
+      if (e.message === '__timeout__') {
+        // GoTrueClient 우회 — Supabase REST API 직접 호출
+        try {
+          const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
+            body: JSON.stringify({ email, password }),
+          })
+          const body = await res.json()
+          if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || 'Login failed' } }
+          // 세션을 GoTrueClient에 주입
+          await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token })
+          return { data: { user: body.user, session: body }, error: null }
+        } catch (fetchErr) {
+          return { data: null, error: fetchErr }
+        }
+      }
+      return { data: null, error: e }
+    }
   },
   async signOut() {
     if (!supabase) return noop

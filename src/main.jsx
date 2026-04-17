@@ -21,48 +21,15 @@ if (isNative()) {
   initDeepLinkHandler()
 }
 
-// Service Worker 등록 — 웹 프로덕션에서만. 네이티브에서는 Capacitor 가 HTTP 캐시 제공.
-if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
-  // 구버전 캐시 즉시 정리 — SW activate 전에도 클라이언트에서 선제 삭제
+// SW 정리 — 기존 SW가 남아있으면 해제하고 캐시 삭제.
+// 새 sw.js(자폭형)가 알아서 처리하지만, 이중 안전장치.
+if ('serviceWorker' in navigator && !isNative()) {
+  navigator.serviceWorker.getRegistrations().then((regs) =>
+    regs.forEach((r) => r.unregister())
+  ).catch(() => {})
   if ('caches' in window) {
     caches.keys().then((names) =>
-      names.filter((n) => !n.startsWith('waylog-v3')).forEach((n) => caches.delete(n))
+      Promise.all(names.map((n) => caches.delete(n)))
     ).catch(() => {})
   }
-
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('/sw.js')
-
-      // 대기 중인 새 SW가 있으면 즉시 활성화 요청
-      if (reg.waiting) {
-        reg.waiting.postMessage('SKIP_WAITING')
-      }
-
-      const notify = () => window.dispatchEvent(new CustomEvent('waylog:sw-update', { detail: { reg } }))
-
-      // 업데이트 발견 → 설치 완료까지 감시
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing
-        if (!newSW) return
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // 새 SW 설치됨 → 즉시 활성화 요청
-            newSW.postMessage('SKIP_WAITING')
-            notify()
-          }
-        })
-      })
-
-      // 활성화된 SW 가 교체되면 페이지 리로드 (한 번만)
-      let reloading = false
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (reloading) return
-        reloading = true
-        window.location.reload()
-      })
-    } catch (err) {
-      console.warn('SW 등록 실패:', err)
-    }
-  })
 }

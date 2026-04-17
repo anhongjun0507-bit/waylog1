@@ -24,14 +24,27 @@
 
     <title>웨이로그 | Waylog</title>
 
-    <!-- Auth fix v3: stale 세션 + SW 캐시 정리. React 로드 전 실행. -->
+    <!-- Auth fix v4: stale 세션 + SW 완전 제거. React 로드 전 실행. -->
     <script>
     (function(){
-      var AUTH_VER = 3;
+      // SW가 남아있으면 무조건 해제 + 캐시 삭제 (매번)
       try {
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.getRegistrations().then(function(regs){
+            regs.forEach(function(r){ r.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(ns){
+            ns.forEach(function(n){ caches.delete(n); });
+          });
+        }
+      } catch(e) {}
+      // stale 인증 데이터 일회성 정리
+      try {
+        var AUTH_VER = 4;
         var cur = +localStorage.getItem('waylog:auth-ver');
         if (cur < AUTH_VER) {
-          // 1) stale 인증 데이터 삭제
           var keys = Object.keys(localStorage);
           for (var i = 0; i < keys.length; i++) {
             if (keys[i].indexOf('sb-') === 0 || keys[i].indexOf('supabase') === 0) {
@@ -39,21 +52,6 @@
             }
           }
           localStorage.setItem('waylog:auth-ver', String(AUTH_VER));
-          // 2) SW 캐시 전부 삭제 + SW 해제 → 리로드로 최신 코드 적용
-          if ('caches' in window) {
-            caches.keys().then(function(ns){
-              return Promise.all(ns.map(function(n){ return caches.delete(n); }));
-            }).then(function(){
-              if (!navigator.serviceWorker) return;
-              return navigator.serviceWorker.getRegistrations();
-            }).then(function(regs){
-              if (!regs) return;
-              return Promise.all(regs.map(function(r){ return r.unregister(); }));
-            }).then(function(){
-              window.location.reload();
-            });
-            return; // reload 대기 — 아래 React 로드하지 않음
-          }
         }
       } catch(e) {}
     })();
