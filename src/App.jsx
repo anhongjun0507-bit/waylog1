@@ -3855,7 +3855,17 @@ function AppInner() {
   // --- 취향/무드/리뷰/댓글 ---
   const [taste, setTaste] = useStoredState("waylog:taste", { cats: {}, tags: {} });
   const [moods, setMoods] = useStoredState("waylog:moods", {});
-  const [userReviews, setUserReviews] = useState([]);
+  const [userReviews, setUserReviewsRaw] = useState([]);
+  // 로컬 pending 리뷰를 IndexedDB에 영속 저장 (서버 동기화 전 새로고침 대비)
+  const setUserReviews = useCallback((updater) => {
+    setUserReviewsRaw((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      // pending 리뷰(숫자 ID = 아직 서버 미동기화)만 IndexedDB에 저장
+      const pending = next.filter((r) => typeof r.id === "number");
+      try { window.storage?.set("waylog:pendingReviews", JSON.stringify(pending)); } catch {}
+      return next;
+    });
+  }, []);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsHasMore, setReviewsHasMore] = useState(true);
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
@@ -3895,12 +3905,29 @@ function AppInner() {
     setReviewsHasMore(true);
     reviewsCursorRef.current = null;
     (async () => {
+      // 1) IndexedDB에서 pending 리뷰 복원 (서버 동기화 안 된 것)
+      let pending = [];
+      try {
+        const stored = await window.storage?.get("waylog:pendingReviews");
+        if (stored?.value) pending = JSON.parse(stored.value);
+      } catch {}
+
+      // 2) 서버에서 fetch
       const { data, error } = await supabaseReviews.fetchPage({ limit: 30 });
       if (!error && Array.isArray(data)) {
         const mapped = data.map(mapReviewRow);
-        setUserReviews(mapped);
+        // pending 중 서버에 이미 있는 건 제거 (중복 방지)
+        const serverIds = new Set(mapped.map((r) => r.id));
+        const stillPending = pending.filter((r) => !serverIds.has(r.id));
+        setUserReviews([...stillPending, ...mapped]);
+        if (stillPending.length === 0) {
+          try { window.storage?.delete("waylog:pendingReviews"); } catch {}
+        }
         if (mapped.length > 0) reviewsCursorRef.current = mapped[mapped.length - 1].createdAt;
         if (mapped.length < 30) setReviewsHasMore(false);
+      } else if (pending.length > 0) {
+        // 서버 실패해도 pending 리뷰는 표시
+        setUserReviews(pending);
       }
       setReviewsLoading(false);
     })();
@@ -4540,23 +4567,30 @@ function AppInner() {
       setTimeout(() => setHighlightId(null), 1800);
     }, 280);
 
-    // 서버 동기화 (백그라운드 — 실패해도 로컬 리뷰는 유지)
+    // 서버 동기화 — 3회 재시도. 실패해도 로컬 리뷰는 유지.
     if (user) {
       (async () => {
-        try {
-          const uploaded = await uploadMedia(data.media || []);
-          const serverImg = uploaded.find((m) => m.type === "image")?.url || "";
-          const { data: created } = await supabaseReviews.create({
-            user_id: user.id,
-            title: data.title, content: data.body, category: data.category,
-            tags: data.tags.length ? data.tags : ["내웨이로그"],
-            product_name: data.product, media: uploaded,
-          });
-          if (created?.id) {
-            // 서버 ID + 업로드된 이미지 URL로 로컬 업데이트
-            setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id, img: serverImg || r.img, media: uploaded } : r));
-          }
-        } catch {}
+        let uploaded = localMedia;
+        try { uploaded = await uploadMedia(data.media || []); } catch {}
+        const serverImg = uploaded.find((m) => m.type === "image")?.url || "";
+        const payload = {
+          user_id: user.id,
+          title: data.title, content: data.body, category: data.category,
+          tags: data.tags.length ? data.tags : ["내웨이로그"],
+          product_name: data.product, media: uploaded,
+        };
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const { data: created, error: createErr } = await supabaseReviews.create(payload);
+            if (created?.id && !createErr) {
+              setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id, img: serverImg || r.img, media: uploaded } : r));
+              return; // 성공
+            }
+          } catch {}
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); // 2초, 4초 대기
+        }
+        // 3회 실패 — 로컬에 남아있지만 서버에는 없음. 다음 접속 시 사라질 수 있음.
+        setToast("서버 저장에 실패했어요. 네트워크를 확인해주세요");
       })();
     }
 
