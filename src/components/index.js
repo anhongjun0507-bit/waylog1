@@ -10,3 +10,4 @@ export { SectionTitle } from "./SectionTitle.jsx";
 export { SkeletonCard } from "./SkeletonCard.jsx";
 export { MentionText } from "./MentionText.jsx";
 export { EmptyState } from "./EmptyState.jsx";
+export { BottomSheet } from "./BottomSheet.jsx";

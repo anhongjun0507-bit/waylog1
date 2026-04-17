@@ -30,7 +30,7 @@ export const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAdd
   const sorted = [...(anonPosts || [])].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>챌린지 커뮤니티</p>

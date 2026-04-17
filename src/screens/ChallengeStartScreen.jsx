@@ -92,7 +92,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
   const inputCls = cls("w-full px-4 py-3 rounded-2xl text-sm font-bold", dark ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-900");
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
       <header className={cls("flex items-center justify-between p-4")}>
         <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <div className="flex gap-1.5">

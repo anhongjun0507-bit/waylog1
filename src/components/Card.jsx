@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Heart, Eye, Layers } from "lucide-react";
+import { Gift, Heart, Eye, Layers } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { SmartImg } from "./SmartImg.jsx";
 import { CategoryChip } from "./CategoryIcon.jsx";
@@ -41,6 +41,9 @@ const CardImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => (
       <div className={cls("flex items-center gap-2.5 mt-2 text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>
         <span className="flex items-center gap-1"><Heart size={11}/> {r.likes}</span>
         <span className="flex items-center gap-1"><Eye size={11}/> {r.views}</span>
+        {r.category === "one4one" && (
+          <span className="ml-auto flex items-center gap-0.5 text-green-500"><Gift size={11}/> 나눔</span>
+        )}
       </div>
     </div>
   </button>

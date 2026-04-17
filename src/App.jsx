@@ -28,7 +28,7 @@ import { useDebouncedValue, useStoredState, useNavStack, useExit, useTimeGradien
 import { cls, formatRelativeTime } from "./utils/ui.js";
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
-  ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState,
+  ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
@@ -586,24 +586,23 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           </div>
         )}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-          <button onClick={() => setActiveCat(null)}
-            className={cls("text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-bold",
-              !activeCat ? "bg-gray-900 text-white" : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600")}>
+          <button onClick={() => { setActiveCat(null); setActiveTag(null); }}
+            className={cls("text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-bold shrink-0",
+              !activeCat && !activeTag ? "bg-gray-900 text-white" : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600")}>
             전체
           </button>
           {Object.entries(CATEGORIES).map(([k, c]) => (
-            <button key={k} onClick={() => setActiveCat(k === activeCat ? null : k)}
-              className={cls("text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-bold",
+            <button key={k} onClick={() => { setActiveCat(k === activeCat ? null : k); setActiveTag(null); }}
+              className={cls("text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-bold shrink-0",
                 activeCat === k ? `bg-gradient-to-r ${c.color} text-white` : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600")}>
               {c.label}
             </button>
           ))}
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-          {POPULAR_TAGS.map((t) => (
+          <div className={cls("w-px h-6 self-center shrink-0", dark ? "bg-gray-700" : "bg-gray-200")}/>
+          {POPULAR_TAGS.slice(0, 6).map((t) => (
             <button key={t} onClick={() => setActiveTag(t === activeTag ? null : t)}
-              className={cls("text-xs px-2.5 py-1 rounded-full whitespace-nowrap",
-                activeTag === t ? "bg-emerald-500 text-white" : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500")}>
+              className={cls("text-xs px-2.5 py-1.5 rounded-full whitespace-nowrap shrink-0",
+                activeTag === t ? "bg-emerald-500 text-white font-bold" : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500")}>
               #{t}
             </button>
           ))}
@@ -651,11 +650,12 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
   );
 };
 
-const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onCompose }) => {
+const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onCompose, onProductClick }) => {
   const [exiting, close] = useExit(onClose);
   const [sortBy, setSortBy] = useState("latest");
   const [aiSummary, setAiSummary] = useState(null);
   const [aiExpanded, setAiExpanded] = useState(false);
+  const CATALOG = useCatalog();
 
   // 아래로 드래그하면 닫기
   const sheetRef = useRef(null);
@@ -765,7 +765,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
   const hasReviews = allReviews.length > 0;
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
       <div ref={sheetRef}
         onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
@@ -975,6 +975,28 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
             </div>
           )}
         </div>
+
+        {/* 같은 브랜드 제품 */}
+        {(() => {
+          const sameBrand = product.brand && (CATALOG || []).filter((p) => p.brand === product.brand && p.id !== product.id).slice(0, 8);
+          if (!sameBrand || sameBrand.length === 0) return null;
+          return (
+            <div className="px-5 pb-4">
+              <p className={cls("text-xs font-bold uppercase tracking-wider mb-2", dark ? "text-gray-500" : "text-gray-500")}>{product.brand}의 다른 제품</p>
+              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+                {sameBrand.map((p) => (
+                  <button key={p.id} onClick={() => { if (onProductClick) { close(); setTimeout(() => onProductClick(p), 280); } }}
+                    className={cls("shrink-0 w-24 rounded-xl overflow-hidden text-left active:scale-95 transition", dark ? "bg-gray-800" : "bg-gray-50")}>
+                    <div className="aspect-square flex items-center justify-center p-2">
+                      <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={16}/>
+                    </div>
+                    <p className={cls("text-xs font-bold px-2 pb-2 line-clamp-2 leading-tight", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 플로팅 리뷰 작성 버튼 (리뷰가 있을 때) */}
         {hasReviews && (
@@ -1239,10 +1261,31 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
   const [exiting, close] = useExit(onClose);
   const CATALOG = useCatalog();
   const [content, setContent] = useState("");
+  const [image, setImage] = useState(null);
   const [product, setProduct] = useState(null);
   const [productQuery, setProductQuery] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const dq = useDebouncedValue(productQuery, 200);
+
+  const handleImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        const max = 600;
+        if (w > max || h > max) { if (w > h) { h = Math.round((h * max) / w); w = max; } else { w = Math.round((w * max) / h); h = max; } }
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        setImage(c.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const filtered = useMemo(() => {
     if (!dq.trim()) return (CATALOG || []).slice(0, 12);
@@ -1252,12 +1295,12 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
 
   const submit = () => {
     if (!content.trim()) return;
-    onPost(content.trim(), product);
+    onPost(content.trim(), product, image);
     close();
   };
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>커뮤니티 글쓰기</p>
@@ -1275,7 +1318,20 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
           placeholder="무슨 이야기를 나눠볼까요?"
           rows={6} autoFocus
           className={cls("w-full text-sm bg-transparent outline-none resize-none leading-relaxed", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
-        <p className={cls("text-xs text-right", content.length > 300 ? "text-rose-500 font-bold" : dark ? "text-gray-500" : "text-gray-400")}>{content.length}/300</p>
+        <div className="flex items-center justify-between">
+          <label className={cls("flex items-center gap-1.5 text-xs font-bold cursor-pointer active:scale-95 transition", dark ? "text-gray-400" : "text-gray-500")}>
+            <Camera size={16}/> 사진
+            <input type="file" accept="image/*" className="hidden" onChange={handleImage}/>
+          </label>
+          <p className={cls("text-xs", content.length > 300 ? "text-rose-500 font-bold" : dark ? "text-gray-500" : "text-gray-400")}>{content.length}/300</p>
+        </div>
+        {image && (
+          <div className="relative inline-block">
+            <img src={image} alt="" className="w-full max-h-48 object-cover rounded-xl"/>
+            <button onClick={() => setImage(null)}
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center"><X size={14} className="text-white"/></button>
+          </div>
+        )}
 
         {/* 제품 태그 */}
         {product ? (
@@ -1369,6 +1425,9 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
           </div>
         </button>
         <p className={cls("text-sm leading-relaxed whitespace-pre-wrap", dark ? "text-gray-200" : "text-gray-700")}>{p.content}</p>
+        {p.image && (
+          <img src={p.image} alt="" loading="lazy" decoding="async" className="w-full rounded-xl mt-2 max-h-64 object-cover"/>
+        )}
         {p.product && (
           <div className={cls("flex items-center gap-2 mt-2 px-3 py-2 rounded-xl", dark ? "bg-gray-700/50" : "bg-gray-50")}>
             <ShoppingBag size={12} className={dark ? "text-emerald-400" : "text-emerald-600"}/>
@@ -1590,7 +1649,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   const submit = (term) => { setQ(term); addRecent(term); };
 
   return (
-    <div className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <div className={cls("flex items-center gap-2 p-3 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={20} className={dark ? "text-white" : "text-gray-700"}/></button>
         <div className={cls("flex-1 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-gray-700" : "bg-gray-100")}>
@@ -2280,7 +2339,7 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
     fetchFn(userId).then(({ data }) => { setList(data || []); setLoading(false); });
   }, [userId]);
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close}><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{title}</p>
@@ -2335,7 +2394,7 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
   }, [userId, isFollowing]);
 
   return (
-    <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b backdrop-blur", dark ? "bg-gray-900/80 border-gray-800" : "bg-white/80 border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{author}</p>
@@ -2501,7 +2560,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
   };
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
       <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe max-h-[85vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
@@ -2655,7 +2714,7 @@ const ExerciseModal = ({ onClose, onSave, dark, editing = null }) => {
   };
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
       <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
@@ -2765,7 +2824,7 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
   };
 
   return (
-    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>변화 그래프</p>
@@ -3146,7 +3205,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
   })();
 
   return (
-    <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>바디키 8주 챌린지</p>
@@ -3502,7 +3561,7 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
   const canFollow = !!userId && !isMe && !!currentUser;
 
   return (
-    <div className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
       <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-5", dark ? "bg-gray-700" : "bg-gray-300")}/>
@@ -4659,7 +4718,7 @@ function AppInner() {
     setCommunity((prev) => prev.map((p) => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
   };
 
-  const addCommunityPost = (text, product = null) => {
+  const addCommunityPost = (text, product = null, image = null) => {
     if (!user) return;
     const newPost = {
       id: Date.now(),
@@ -4672,6 +4731,7 @@ function AppInner() {
       comments: 0,
       liked: false,
       ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
+      ...(image ? { image } : {}),
     };
     setCommunity((prev) => [newPost, ...prev]);
     setToast("게시됐어요");
@@ -4956,7 +5016,7 @@ function AppInner() {
       ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
-      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod) => { addCommunityPost(text, prod); setCommunityComposeOpen(false); }} dark={dark} user={user}/>}
+      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod, img) => { addCommunityPost(text, prod, img); setCommunityComposeOpen(false); }} dark={dark} user={user}/>}
       <Suspense fallback={null}>{authOpen && <AuthScreen onClose={() => setAuthOpen(false)} onAuth={(u) => {
         setUser(u);
         setToast(`${u.nickname}님 환영해요`);
@@ -5049,6 +5109,7 @@ function AppInner() {
             setComposeProduct(prod || selectedCatalogProduct);
             setTimeout(() => setCompose(true), 280);
           }}
+          onProductClick={setSelectedCatalogProduct}
         />
       )}
 
