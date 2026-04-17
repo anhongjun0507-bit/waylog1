@@ -1,13 +1,19 @@
 import { useState } from "react";
 import {
   ArrowLeft, BookOpen, Camera, Check, Eye, MessageCircle, PenLine,
-  RefreshCw, Sparkles, Target, X
+  RefreshCw, RotateCcw, Sparkles, Target, X
 } from "lucide-react";
 import { supabase, auth as supabaseAuth } from "../supabase.js";
 import { friendlyError } from "../utils/errors.js";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { Avatar } from "../components/index.js";
+
+const withTimeout = (promise, ms) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
 
 const AuthScreen = ({ onClose, onAuth, dark }) => {
   const [exiting, close] = useExit(onClose);
@@ -47,55 +53,79 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
       if (password !== passwordConfirm) { setError("비밀번호가 일치하지 않아요"); return; }
       if (avatar && avatar.length > 500000) { setError("프로필 이미지가 너무 커요. 더 작은 이미지를 선택해주세요"); return; }
       setLoading(true);
-      const { data, error: signUpError } = await supabaseAuth.signUp(email.trim(), password, nickname.trim());
-      if (signUpError) {
-        setLoading(false);
-        // Supabase 연결 실패 시 로컬 모드 폴백
-        if (signUpError.message === "Failed to fetch" || signUpError.message?.includes("fetch")) {
-          onAuth({ id: Date.now(), nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
-          close();
+      try {
+        // 이전 세션 잔여 데이터로 인한 충돌 방지
+        if (supabase) {
+          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+        }
+        const { data, error: signUpError } = await withTimeout(
+          supabaseAuth.signUp(email.trim(), password, nickname.trim()),
+          10000
+        );
+        if (signUpError) {
+          setLoading(false);
+          // Supabase 연결 실패 시 로컬 모드 폴백
+          if (signUpError.message === "Failed to fetch" || signUpError.message?.includes("fetch")) {
+            onAuth({ id: Date.now(), nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
+            close();
+            return;
+          }
+          setError(friendlyError(signUpError, "가입에 실패했어요. 입력 내용을 확인해주세요"));
           return;
         }
-        setError(friendlyError(signUpError, "가입에 실패했어요. 입력 내용을 확인해주세요"));
-        return;
-      }
-      if (data?.user && !data.user.identities?.length) {
+        if (data?.user && !data.user.identities?.length) {
+          setLoading(false);
+          setError("이미 가입된 이메일이에요");
+          return;
+        }
+        if (data?.session) {
+          onAuth({ id: data.user.id, nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
+          close();
+        } else {
+          // 이메일 확인 필요 또는 세션 없음 — 로컬 폴백
+          onAuth({ id: data?.user?.id || Date.now(), nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
+          close();
+        }
+      } catch (e) {
         setLoading(false);
-        setError("이미 가입된 이메일이에요");
-        return;
-      }
-      if (data?.session) {
-        onAuth({ id: data.user.id, nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
-        close();
-      } else {
-        // 이메일 확인 필요 또는 세션 없음 — 로컬 폴백
-        onAuth({ id: data?.user?.id || Date.now(), nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
-        close();
+        setError(friendlyError(e, "회원가입 중 문제가 발생했어요. 다시 시도해주세요"));
       }
     } else if (mode === "login") {
       if (!email.trim() || !password.trim()) { setError("이메일과 비밀번호를 입력해주세요"); return; }
       if (!emailRegex.test(email.trim())) { setError("올바른 이메일 형식이 아니에요"); return; }
       setLoading(true);
-      const { data, error: signInError } = await supabaseAuth.signIn(email.trim(), password);
-      if (signInError) {
-        setLoading(false);
-        if (signInError.message === "Failed to fetch" || signInError.message?.includes("fetch")) {
-          onAuth({ id: Date.now(), nickname: email.split("@")[0], email: email.trim(), avatar: "", joinedAt: new Date().toISOString() });
-          close();
+      try {
+        // 이전 세션 잔여 데이터로 인한 충돌 방지
+        if (supabase) {
+          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+        }
+        const { data, error: signInError } = await withTimeout(
+          supabaseAuth.signIn(email.trim(), password),
+          5000
+        );
+        if (signInError) {
+          setLoading(false);
+          if (signInError.message === "Failed to fetch" || signInError.message?.includes("fetch")) {
+            onAuth({ id: Date.now(), nickname: email.split("@")[0], email: email.trim(), avatar: "", joinedAt: new Date().toISOString() });
+            close();
+            return;
+          }
+          setError(friendlyError(signInError, "로그인에 실패했어요. 다시 시도해주세요"));
           return;
         }
-        setError(friendlyError(signInError, "로그인에 실패했어요. 다시 시도해주세요"));
-        return;
+        const meta = data?.user?.user_metadata;
+        onAuth({
+          id: data.user.id,
+          nickname: meta?.nickname || email.split("@")[0],
+          email: email.trim(),
+          avatar: meta?.avatar_url || "",
+          joinedAt: data.user.created_at,
+        });
+        close();
+      } catch (e) {
+        setLoading(false);
+        setError(friendlyError(e, "로그인 중 문제가 발생했어요. 다시 시도해주세요"));
       }
-      const meta = data?.user?.user_metadata;
-      onAuth({
-        id: data.user.id,
-        nickname: meta?.nickname || email.split("@")[0],
-        email: email.trim(),
-        avatar: meta?.avatar_url || "",
-        joinedAt: data.user.created_at,
-      });
-      close();
     } else if (mode === "forgot-password") {
       if (!emailRegex.test(recoverInput.trim())) { setError("올바른 이메일을 입력해주세요"); return; }
       setLoading(true);
@@ -265,7 +295,12 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           <input value={recoverInput} onChange={(e) => setRecoverInput(e.target.value)} placeholder="이름 또는 전화번호" className={inputCls}/>
         )}
 
-        {error && <p className="text-xs text-rose-500 mt-3 font-medium">{error}</p>}
+        {error && (
+          <div className={cls("text-xs mt-3 p-3 rounded-xl flex items-start gap-2 font-medium", dark ? "bg-rose-900/40 text-rose-300" : "bg-rose-50 text-rose-700 border border-rose-200")}>
+            <span className="shrink-0">⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
         {info && (
           <div className={cls("text-xs mt-3 p-3 rounded-xl flex items-start gap-2 font-medium", dark ? "bg-emerald-900/30 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>
             <Check size={14} className="mt-0.5 shrink-0"/>
@@ -309,23 +344,23 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
               <div className={cls("flex-1 h-px", dark ? "bg-gray-700" : "bg-gray-200")}/>
             </div>
             <div className="space-y-2.5">
-              <button onClick={() => handleSocial("kakao", "카카오")}
-                className="relative w-full py-3.5 bg-[#FEE500] text-gray-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-md">
+              <button disabled
+                className="relative w-full py-3.5 bg-[#FEE500]/50 text-gray-900/50 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed shadow-md">
                 <MessageCircle size={18} fill="currentColor" strokeWidth={0}/>
                 카카오로 계속하기
-                <span className="absolute top-1.5 right-2.5 text-[9px] font-black bg-black/15 px-1.5 py-0.5 rounded text-gray-800 tracking-wider">DEMO</span>
+                <span className="absolute top-1.5 right-2.5 text-[9px] font-black bg-black/15 px-1.5 py-0.5 rounded text-gray-800 tracking-wider">준비중</span>
               </button>
-              <button onClick={() => handleSocial("naver", "네이버")}
-                className="relative w-full py-3.5 bg-[#03C75A] text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-md">
+              <button disabled
+                className="relative w-full py-3.5 bg-[#03C75A]/50 text-white/50 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed shadow-md">
                 <span className="font-black text-base tracking-tight">N</span>
                 네이버로 계속하기
-                <span className="absolute top-1.5 right-2.5 text-[9px] font-black bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider">DEMO</span>
+                <span className="absolute top-1.5 right-2.5 text-[9px] font-black bg-white/20 px-1.5 py-0.5 rounded text-white tracking-wider">준비중</span>
               </button>
-              <button onClick={() => handleSocial("google", "구글")}
-                className={cls("relative w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-md border", dark ? "bg-gray-800 text-white border-gray-700" : "bg-white text-gray-900 border-gray-200")}>
+              <button disabled
+                className={cls("relative w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed shadow-md border opacity-50", dark ? "bg-gray-800 text-white border-gray-700" : "bg-white text-gray-900 border-gray-200")}>
                 <span className="font-black text-base" style={{ background: "linear-gradient(45deg,#4285F4 0%,#EA4335 30%,#FBBC05 65%,#34A853 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>G</span>
                 Google로 계속하기
-                <span className={cls("absolute top-1.5 right-2.5 text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500")}>DEMO</span>
+                <span className={cls("absolute top-1.5 right-2.5 text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500")}>준비중</span>
               </button>
             </div>
           </>
@@ -336,6 +371,27 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             className={cls("w-full mt-5 text-xs", dark ? "text-gray-400" : "text-gray-500")}>
             {mode === "signup" ? "이미 계정이 있으신가요? " : "처음이신가요? "}
             <span className="text-emerald-500 font-bold">{mode === "signup" ? "로그인" : "회원가입"}</span>
+          </button>
+        )}
+
+        {!isRecover && (
+          <button onClick={async () => {
+            try {
+              const keys = Object.keys(localStorage);
+              for (const key of keys) {
+                if (key.startsWith('sb-') || key.startsWith('waylog-auth') || key.startsWith('waylog:')) {
+                  localStorage.removeItem(key);
+                }
+              }
+              if (supabase) {
+                try { await supabase.auth.signOut(); } catch {}
+              }
+            } catch {}
+            window.location.reload();
+          }}
+            className={cls("w-full mt-3 py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition", dark ? "text-gray-500 hover:text-gray-300 hover:bg-gray-800" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100")}>
+            <RotateCcw size={12}/>
+            로그인 문제가 있나요? 초기화하기
           </button>
         )}
       </div>

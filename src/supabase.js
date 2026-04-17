@@ -18,9 +18,11 @@ const isNativeApp = typeof window !== "undefined" && !!window.Capacitor?.isNativ
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
+        storageKey: 'waylog-auth-v2',
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: !isNativeApp,
+        flowType: 'pkce',
       },
     })
   : null

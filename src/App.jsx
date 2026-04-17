@@ -3432,6 +3432,21 @@ function AppInner() {
       return;
     }
 
+    // 손상된 세션 데이터 정리
+    const cleanupCorruptedSession = async () => {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {}
+      try {
+        const keys = Object.keys(localStorage);
+        for (const key of keys) {
+          if (key.startsWith('sb-') || key.startsWith('waylog-auth')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch {}
+    };
+
     // getSession을 재시도 (네트워크 플레이크에 대비한 지수 백오프 3회)
     const fetchSessionWithRetry = async () => {
       const delays = [0, 500, 1500];
@@ -3439,10 +3454,17 @@ function AppInner() {
         if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
         try {
           const { data, error } = await supabase.auth.getSession();
-          if (!error) return data?.session || null;
+          if (error) {
+            // 세션 데이터 손상 — 정리 후 재시도
+            await cleanupCorruptedSession();
+            continue;
+          }
+          return data?.session || null;
         } catch { /* 재시도 */ }
       }
-      throw new Error("session_fetch_failed");
+      // 모든 재시도 실패 시 세션 데이터 정리 후 null 반환
+      await cleanupCorruptedSession();
+      return null;
     };
 
     (async () => {
@@ -3455,7 +3477,10 @@ function AppInner() {
           loadLocal();
         }
       } catch {
-        if (!cancelled) loadLocal();
+        if (!cancelled) {
+          await cleanupCorruptedSession();
+          loadLocal();
+        }
       } finally {
         if (!cancelled) setAuthLoading(false);
       }
@@ -3472,6 +3497,9 @@ function AppInner() {
           }
           if (session?.user) {
             setUser(await buildUserFromSession(session));
+            if (event === "SIGNED_IN") {
+              setAuthOpen(false);
+            }
           }
         } catch (e) {
           console.warn("onAuthStateChange handler error:", e);
