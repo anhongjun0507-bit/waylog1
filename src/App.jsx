@@ -1236,6 +1236,94 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
   );
 };
 
+const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
+  const [exiting, close] = useExit(onClose);
+  const CATALOG = useCatalog();
+  const [content, setContent] = useState("");
+  const [product, setProduct] = useState(null);
+  const [productQuery, setProductQuery] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const dq = useDebouncedValue(productQuery, 200);
+
+  const filtered = useMemo(() => {
+    if (!dq.trim()) return (CATALOG || []).slice(0, 12);
+    const q = dq.toLowerCase();
+    return (CATALOG || []).filter((p) => (p.name + p.brand + (p.tags || []).join("")).toLowerCase().includes(q)).slice(0, 20);
+  }, [CATALOG, dq]);
+
+  const submit = () => {
+    if (!content.trim()) return;
+    onPost(content.trim(), product);
+    close();
+  };
+
+  return (
+    <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
+        <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
+        <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>커뮤니티 글쓰기</p>
+        <button onClick={submit} disabled={!content.trim()}
+          className={cls("text-sm font-black transition", content.trim() ? "text-emerald-500" : dark ? "text-gray-600" : "text-gray-300")}>게시</button>
+      </header>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* 작성자 */}
+        <div className="flex items-center gap-2.5">
+          <Avatar id={user?.avatar || ""} size={16} className="w-10 h-10" rounded="rounded-full"/>
+          <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{user?.nickname || "사용자"}</p>
+        </div>
+        {/* 본문 */}
+        <textarea value={content} onChange={(e) => setContent(e.target.value)}
+          placeholder="무슨 이야기를 나눠볼까요?"
+          rows={6} autoFocus
+          className={cls("w-full text-sm bg-transparent outline-none resize-none leading-relaxed", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
+        <p className={cls("text-xs text-right", content.length > 300 ? "text-rose-500 font-bold" : dark ? "text-gray-500" : "text-gray-400")}>{content.length}/300</p>
+
+        {/* 제품 태그 */}
+        {product ? (
+          <div className={cls("flex items-center gap-3 p-3 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-100")}>
+            <ProductImage src={product.imageUrl} alt={product.name} className="w-10 h-10 object-contain shrink-0" iconSize={16}/>
+            <div className="flex-1 min-w-0">
+              <p className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-gray-900")}>{product.name}</p>
+              <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{product.brand}</p>
+            </div>
+            <button onClick={() => setProduct(null)} className={cls("p-1 rounded-full", dark ? "text-gray-400" : "text-gray-500")}><X size={14}/></button>
+          </div>
+        ) : (
+          <button onClick={() => setPickerOpen(!pickerOpen)}
+            className={cls("flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition active:scale-[0.98] w-full",
+              dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-600")}>
+            <ShoppingBag size={16}/> 제품 태그 추가 <span className={cls("text-xs font-normal ml-auto", dark ? "text-gray-500" : "text-gray-400")}>선택사항</span>
+          </button>
+        )}
+
+        {/* 제품 검색 피커 */}
+        {pickerOpen && !product && (
+          <div className={cls("rounded-2xl overflow-hidden border", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}>
+            <div className="p-3">
+              <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)}
+                placeholder="제품명 또는 브랜드 검색"
+                className={cls("w-full px-3 py-2 rounded-xl text-sm", dark ? "bg-gray-700 text-white placeholder-gray-500" : "bg-gray-100 text-gray-900 placeholder-gray-400")}/>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filtered.map((p) => (
+                <button key={p.id} onClick={() => { setProduct(p); setPickerOpen(false); setProductQuery(""); }}
+                  className={cls("w-full flex items-center gap-3 px-3 py-2 text-left transition", dark ? "hover:bg-gray-700" : "hover:bg-gray-50")}>
+                  <ProductImage src={p.imageUrl} alt={p.name} className="w-8 h-8 object-contain shrink-0" iconSize={14}/>
+                  <div className="flex-1 min-w-0">
+                    <p className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
+                    <p className={cls("text-[10px]", dark ? "text-gray-400" : "text-gray-500")}>{p.brand}</p>
+                  </div>
+                </button>
+              ))}
+              {filtered.length === 0 && <p className={cls("text-xs text-center py-4", dark ? "text-gray-500" : "text-gray-400")}>검색 결과가 없어요</p>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, challenge, onOpenChallengeCommunity }) => {
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState({}); // { [postId]: true }
@@ -1310,6 +1398,13 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, onAddPost,
           </div>
         </button>
         <p className={cls("text-sm leading-relaxed whitespace-pre-wrap", dark ? "text-gray-200" : "text-gray-700")}>{p.content}</p>
+        {p.product && (
+          <div className={cls("flex items-center gap-2 mt-2 px-3 py-2 rounded-xl", dark ? "bg-gray-700/50" : "bg-gray-50")}>
+            <ShoppingBag size={12} className={dark ? "text-emerald-400" : "text-emerald-600"}/>
+            <span className={cls("text-xs font-bold truncate", dark ? "text-gray-300" : "text-gray-700")}>{p.product.name}</span>
+            {p.product.brand && <span className={cls("text-xs shrink-0", dark ? "text-gray-500" : "text-gray-400")}>{p.product.brand}</span>}
+          </div>
+        )}
         <div className={cls("flex gap-4 mt-3 pt-3 border-t text-xs", dark ? "border-gray-700 text-gray-400" : "border-gray-100 text-gray-500")}>
           <button onClick={() => onLike(p.id)} className={cls("flex items-center gap-1 transition active:scale-90", p.liked && "text-rose-500")}>
             <Heart size={14} className={p.liked ? "fill-rose-500" : ""}/> {p.likes}
@@ -3584,6 +3679,7 @@ function AppInner() {
   const [compose, setCompose] = useState(false);
   const [composeProduct, setComposeProduct] = useState(null);
   const [editingReview, setEditingReview] = useState(null);
+  const [communityComposeOpen, setCommunityComposeOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [armClearNotif, setArmClearNotif] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
@@ -4630,17 +4726,19 @@ function AppInner() {
     setCommunity((prev) => prev.map((p) => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
   };
 
-  const addCommunityPost = (text) => {
+  const addCommunityPost = (text, product = null) => {
     if (!user) return;
     const newPost = {
       id: Date.now(),
       author: user.nickname,
       avatar: user.avatar,
+      userId: user.id,
       time: "방금",
       content: text,
       likes: 0,
       comments: 0,
       liked: false,
+      ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
     };
     setCommunity((prev) => [newPost, ...prev]);
     setToast("게시됐어요");
@@ -4866,12 +4964,15 @@ function AppInner() {
       {/* 탭 전환 시 살짝 fade-in — tab key 로 remount 트리거하지 않도록 wrapper 만 애니 */}
       <div key={tab} className="animate-fade-in">{screens[tab]}</div>
 
-      {/* FAB - 글쓰기 (max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl 컨테이너 우측에 정렬) */}
+      {/* FAB - 글쓰기 */}
       <div className="fixed inset-x-0 bottom-0 pointer-events-none z-20 flex justify-center">
         <div className="w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl relative h-0">
-          <button onClick={() => requireAuth(() => setCompose(true))}
-            aria-label="새 웨이로그 작성"
-            className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-12 h-12 rounded-full bg-gradient-to-br shadow-xl flex items-center justify-center active:scale-90 transition hover:scale-105 tg-trans", tg.solid)}>
+          <button onClick={() => {
+            if (tab === "comm") requireAuth(() => setCommunityComposeOpen(true));
+            else requireAuth(() => setCompose(true));
+          }}
+            aria-label={tab === "comm" ? "커뮤니티 글쓰기" : "새 웨이로그 작성"}
+            className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-12 h-12 rounded-full bg-gradient-to-br shadow-xl flex items-center justify-center active:scale-90 transition hover:scale-105 tg-trans", tab === "comm" ? "from-violet-500 to-purple-600" : tg.solid)}>
             <Plus size={26} className="text-white"/>
           </button>
         </div>
@@ -4922,6 +5023,7 @@ function AppInner() {
       ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
+      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod) => { addCommunityPost(text, prod); setCommunityComposeOpen(false); }} dark={dark} user={user}/>}
       <Suspense fallback={null}>{authOpen && <AuthScreen onClose={() => setAuthOpen(false)} onAuth={(u) => {
         setUser(u);
         setToast(`${u.nickname}님 환영해요`);
