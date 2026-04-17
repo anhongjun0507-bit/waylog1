@@ -658,6 +658,26 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
   const [aiSummary, setAiSummary] = useState(null);
   const [aiExpanded, setAiExpanded] = useState(false);
 
+  // 아래로 드래그하면 닫기
+  const sheetRef = useRef(null);
+  const dragStartY = useRef(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const onDragStart = (e) => {
+    // 스크롤이 맨 위일 때만 드래그 시작
+    if (sheetRef.current && sheetRef.current.scrollTop > 0) return;
+    dragStartY.current = e.touches?.[0]?.clientY ?? e.clientY;
+  };
+  const onDragMove = (e) => {
+    if (dragStartY.current == null) return;
+    const dy = (e.touches?.[0]?.clientY ?? e.clientY) - dragStartY.current;
+    if (dy > 0) setDragOffset(dy);
+  };
+  const onDragEnd = () => {
+    if (dragOffset > 120) close();
+    else setDragOffset(0);
+    dragStartY.current = null;
+  };
+
   const allReviews = useMemo(() => {
     if (!product || !product.name) return [];
     return (reviews || []).filter((r) => {
@@ -748,8 +768,12 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
   return (
     <div className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-end", exiting ? "" : "animate-fade-in")}>
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
-      <div className={cls("relative w-full rounded-t-3xl shadow-2xl pb-safe max-h-[90vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
-        <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2", dark ? "bg-gray-700" : "bg-gray-300")}/>
+      <div ref={sheetRef}
+        onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+        onMouseDown={onDragStart} onMouseMove={onDragMove} onMouseUp={onDragEnd} onMouseLeave={onDragEnd}
+        className={cls("relative w-full rounded-t-3xl shadow-2xl pb-safe max-h-[90vh] overflow-y-auto", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}
+        style={dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: "none", opacity: Math.max(0.5, 1 - dragOffset / 400) } : undefined}>
+        <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2 cursor-grab", dark ? "bg-gray-700" : "bg-gray-300")}/>
 
         {/* 이미지 */}
         <div className={cls("w-full h-56 flex items-center justify-center p-6 relative", dark ? "bg-gray-800" : "bg-gradient-to-b from-gray-50 to-white")}>
