@@ -292,17 +292,26 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
             setError("");
             setSubmitting(true);
             const firstImg = mediaItems.find((m) => m.type === "image");
-            const ok = await onSubmit({
-              id: editing?.id,
-              title,
-              body,
-              product: selectedProducts.map((p) => p.name).join(", "),
-              products: selectedProducts,
-              tags: tags.split(/[,#\s]+/).filter(Boolean),
-              category,
-              img: firstImg?.url || (editing?.img || ""),
-              media: mediaItems,
-            });
+            let ok;
+            try {
+              ok = await Promise.race([
+                onSubmit({
+                  id: editing?.id,
+                  title,
+                  body,
+                  product: selectedProducts.map((p) => p.name).join(", "),
+                  products: selectedProducts,
+                  tags: tags.split(/[,#\s]+/).filter(Boolean),
+                  category,
+                  img: firstImg?.url || (editing?.img || ""),
+                  media: mediaItems,
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000)),
+              ]);
+            } catch (e) {
+              ok = false;
+              setError("등록에 실패했어요. 다시 시도해주세요");
+            }
             setSubmitting(false);
             if (ok !== false) {
               if (!isEditMode) clearDraft();
