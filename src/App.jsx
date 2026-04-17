@@ -4425,19 +4425,6 @@ function AppInner() {
 
   const uploadMedia = async (mediaItems) => {
     if (!user || !supabase) return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
-    // getSession에 타임아웃 — GoTrueClient lock 방지
-    let session = null;
-    try {
-      const result = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 2000)),
-      ]);
-      session = result?.data?.session;
-    } catch {}
-    // 세션이 없으면 미디어 URL 그대로 반환 (로컬 모드)
-    if (!session?.user?.id) {
-      return mediaItems.map((m) => ({ id: m.id, type: m.type, url: m.url, duration: m.duration }));
-    }
     const uploaded = [];
     let failures = 0;
     let lastError = null;

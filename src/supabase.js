@@ -50,6 +50,62 @@ export const OAUTH_REDIRECT_URL = isNativeApp
 const noop = { data: null, error: null }
 const noopArr = { data: [], error: null }
 
+// GoTrueClient에 의존하지 않는 인증 토큰 관리.
+// directSignIn 시 여기에 저장하고, supabase 클라이언트가 세션을 가져가면 그것도 사용.
+let _accessToken = null
+export const setDirectToken = (token) => { _accessToken = token }
+export const getAccessToken = async () => {
+  // 1) GoTrueClient에서 가져오기 (2초 타임아웃)
+  if (supabase) {
+    try {
+      const { data } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 1500)),
+      ])
+      if (data?.session?.access_token) return data.session.access_token
+    } catch {}
+  }
+  // 2) 직접 로그인 시 저장한 토큰
+  if (_accessToken) return _accessToken
+  // 3) directSignIn이 저장한 토큰
+  try {
+    const dt = localStorage.getItem('waylog-direct-token')
+    if (dt) return dt
+  } catch {}
+  // 4) localStorage에서 직접 읽기 (storageKey 기반)
+  try {
+    const raw = localStorage.getItem('waylog-auth-v2')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed?.access_token) return parsed.access_token
+    }
+  } catch {}
+  return null
+}
+
+// Supabase REST API 직접 호출 헬퍼 — GoTrueClient 완전 우회
+const directRest = async (method, path, body = null) => {
+  const token = await getAccessToken()
+  if (!token) return { data: null, error: { message: 'no_auth_token' } }
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${token}`,
+    Prefer: method === 'POST' ? 'return=representation' : undefined,
+  }
+  Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
+  const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method, headers,
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    return { data: null, error: { message: err.message || err.error || `HTTP ${res.status}` } }
+  }
+  const data = await res.json().catch(() => null)
+  return { data: Array.isArray(data) ? data[0] : data, error: null }
+}
+
 // GoTrueClient를 완전히 우회하는 직접 로그인.
 // 어떤 클라이언트 상태에서도 멈추지 않는다.
 const directSignIn = async (email, password) => {
@@ -60,7 +116,10 @@ const directSignIn = async (email, password) => {
   })
   const body = await res.json()
   if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || 'Login failed' } }
-  // setSession도 lock에 걸릴 수 있으므로 fire-and-forget
+  // 토큰 저장 — 이후 REST API 호출에서 사용
+  _accessToken = body.access_token
+  try { localStorage.setItem('waylog-direct-token', body.access_token) } catch {}
+  // setSession도 시도 (lock 걸리면 무시)
   if (supabase) {
     try { supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token }).catch(() => {}) }
     catch {}
@@ -200,8 +259,16 @@ export const reviews = {
   },
   async create(review) {
     if (!supabase) return noop
-    try { return await supabase.from('reviews').insert(review).select().single() }
-    catch (e) { return { data: null, error: e } }
+    // 1) GoTrueClient 경유 시도 (2초 타임아웃)
+    try {
+      const result = await Promise.race([
+        supabase.from('reviews').insert(review).select().single(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
+      ])
+      if (result?.data?.id) return result
+    } catch {}
+    // 2) 직접 REST API 폴백 — GoTrueClient 완전 우회
+    return directRest('POST', 'reviews', review)
   },
   async delete(id) {
     if (!supabase) return noop
@@ -492,23 +559,35 @@ export const analytics = {
 export const storage = {
   async uploadMedia(userId, file, fileName) {
     if (!supabase) return { url: null, error: null }
+    const path = `${userId}/${Date.now()}-${fileName}`
+    const contentType = file?.type || (fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
+    // 1) GoTrueClient 경유 시도
     try {
-      const path = `${userId}/${Date.now()}-${fileName}`
-      const contentType = file?.type || (fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
-      const { data, error } = await supabase.storage
-        .from('review-media')
-        .upload(path, file, { cacheControl: '31536000', upsert: false, contentType })
-      if (error) {
-        // 디버깅을 위해 raw 에러 그대로 노출
-        console.warn('[storage.uploadMedia] supabase error', { path, contentType, size: file?.size, error })
-        return { url: null, error }
+      const { data, error } = await Promise.race([
+        supabase.storage.from('review-media').upload(path, file, { cacheControl: '31536000', upsert: false, contentType }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 5000)),
+      ])
+      if (!error && data?.path) {
+        const { data: urlData } = supabase.storage.from('review-media').getPublicUrl(data.path)
+        return { url: urlData.publicUrl, error: null }
       }
-      const { data: urlData } = supabase.storage
-        .from('review-media')
-        .getPublicUrl(data.path)
-      return { url: urlData.publicUrl, error: null }
+    } catch {}
+    // 2) 직접 fetch 폴백
+    try {
+      const token = await getAccessToken()
+      if (!token) return { url: null, error: { message: 'no_auth_token' } }
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/review-media/${path}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey, 'Content-Type': contentType, 'Cache-Control': 'max-age=31536000' },
+        body: file,
+      })
+      if (res.ok) {
+        const publicUrl = `${supabaseUrl}/storage/v1/object/public/review-media/${path}`
+        return { url: publicUrl, error: null }
+      }
+      const err = await res.json().catch(() => ({}))
+      return { url: null, error: { message: err.message || `HTTP ${res.status}` } }
     } catch (e) {
-      console.warn('[storage.uploadMedia] threw', e)
       return { url: null, error: e }
     }
   },
