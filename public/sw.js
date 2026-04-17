@@ -5,7 +5,7 @@
 //  - Supabase API(/rest/v1, /auth/v1): network-first, 실패 시 캐시 폴백 (GET만)
 //  - Claude Edge Function: 항상 네트워크 (캐시하지 않음)
 
-const VERSION = "waylog-v1";
+const VERSION = "waylog-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const IMAGE_CACHE = `${VERSION}-image`;
 const API_CACHE = `${VERSION}-api`;
@@ -43,8 +43,11 @@ self.addEventListener("fetch", (event) => {
   // Claude 함수는 절대 캐시 안 함
   if (url.pathname.includes("/functions/v1/claude")) return;
 
-  // Supabase REST / Auth
-  if (url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/auth/v1/")) {
+  // Supabase Auth — 절대 캐시하지 않음 (stale 세션/토큰 방지)
+  if (url.pathname.startsWith("/auth/v1/") || url.pathname.includes("/auth/")) return;
+
+  // Supabase REST
+  if (url.pathname.startsWith("/rest/v1/")) {
     event.respondWith(networkFirst(req, API_CACHE));
     return;
   }

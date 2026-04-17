@@ -23,14 +23,23 @@ if (isNative()) {
 
 // Service Worker 등록 — 웹 프로덕션에서만. 네이티브에서는 Capacitor 가 HTTP 캐시 제공.
 if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
+  // 구버전(waylog-v1) 캐시 즉시 정리 — SW activate 전에도 클라이언트에서 선제 삭제
+  if ('caches' in window) {
+    caches.keys().then((names) =>
+      names.filter((n) => n.startsWith('waylog-v1')).forEach((n) => caches.delete(n))
+    ).catch(() => {})
+  }
+
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js')
 
-      const notify = () => window.dispatchEvent(new CustomEvent('waylog:sw-update', { detail: { reg } }))
+      // 대기 중인 새 SW가 있으면 즉시 활성화 요청
+      if (reg.waiting) {
+        reg.waiting.postMessage('SKIP_WAITING')
+      }
 
-      // 이미 대기 중인 SW 가 있으면 즉시 알림
-      if (reg.waiting) notify()
+      const notify = () => window.dispatchEvent(new CustomEvent('waylog:sw-update', { detail: { reg } }))
 
       // 업데이트 발견 → 설치 완료까지 감시
       reg.addEventListener('updatefound', () => {
@@ -38,6 +47,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
         if (!newSW) return
         newSW.addEventListener('statechange', () => {
           if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            // 새 SW 설치됨 → 즉시 활성화 요청
+            newSW.postMessage('SKIP_WAITING')
             notify()
           }
         })

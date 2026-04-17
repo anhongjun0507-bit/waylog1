@@ -78,17 +78,18 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           setError("이미 가입된 이메일이에요");
           return;
         }
+        setLoading(false);
         if (data?.session) {
           onAuth({ id: data.user.id, nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
           close();
         } else {
-          // 이메일 확인 필요 또는 세션 없음 — 로컬 폴백
+          // 이메일 ���인 필요 또는 세션 없음 — ���컬 폴백
           onAuth({ id: data?.user?.id || Date.now(), nickname: nickname.trim(), email: email.trim(), avatar, joinedAt: new Date().toISOString() });
           close();
         }
       } catch (e) {
         setLoading(false);
-        setError(friendlyError(e, "회원가입 중 문제가 발생했어요. 다시 시도해주세요"));
+        setError(friendlyError(e, "회���가입 중 문제가 발생했어요. 다시 시도해주��요"));
       }
     } else if (mode === "login") {
       if (!email.trim() || !password.trim()) { setError("이메일과 비밀번호를 입력해주세요"); return; }
@@ -114,6 +115,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           return;
         }
         const meta = data?.user?.user_metadata;
+        setLoading(false);
         onAuth({
           id: data.user.id,
           nickname: meta?.nickname || email.split("@")[0],
@@ -377,14 +379,26 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
         {!isRecover && (
           <button onClick={async () => {
             try {
+              // 1. localStorage 인증 관련 키 전부 정리
               const keys = Object.keys(localStorage);
               for (const key of keys) {
                 if (key.startsWith('sb-') || key.startsWith('waylog-auth') || key.startsWith('waylog:')) {
                   localStorage.removeItem(key);
                 }
               }
+              // 2. Supabase signOut
               if (supabase) {
                 try { await supabase.auth.signOut(); } catch {}
+              }
+              // 3. Service Worker 캐시 전체 정리
+              if ('caches' in window) {
+                const names = await caches.keys();
+                await Promise.all(names.map((n) => caches.delete(n)));
+              }
+              // 4. Service Worker 재등록 강제
+              if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map((r) => r.unregister()));
               }
             } catch {}
             window.location.reload();
