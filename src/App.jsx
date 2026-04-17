@@ -2403,11 +2403,11 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
   );
 };
 
-const ExerciseModal = ({ onClose, onSave, dark }) => {
+const ExerciseModal = ({ onClose, onSave, dark, editing = null }) => {
   const [exiting, close] = useExit(onClose);
-  const [type, setType] = useState(null);
-  const [minutes, setMinutes] = useState("");
-  const [intensity, setIntensity] = useState("mid");
+  const [type, setType] = useState(editing?.type || null);
+  const [minutes, setMinutes] = useState(editing ? String(editing.minutes) : "");
+  const [intensity, setIntensity] = useState(editing?.intensity || "mid");
 
   const calc = () => {
     if (!type || !minutes) return 0;
@@ -2431,7 +2431,7 @@ const ExerciseModal = ({ onClose, onSave, dark }) => {
       <div className={cls("absolute inset-0 bg-black/50", exiting ? "animate-fade-out" : "")} onClick={close}/>
       <div className={cls("relative w-full rounded-t-3xl p-6 shadow-2xl pb-safe", dark ? "bg-gray-900" : "bg-white", exiting ? "animate-slide-down" : "animate-slide-up")}>
         <div className={cls("w-12 h-1 rounded-full mx-auto mb-4", dark ? "bg-gray-700" : "bg-gray-300")}/>
-        <h3 className={cls("text-lg font-black mb-4", dark ? "text-white" : "text-gray-900")}>운동 기록</h3>
+        <h3 className={cls("text-lg font-black mb-4", dark ? "text-white" : "text-gray-900")}>{editing ? "운동 수정" : "운동 기록"}</h3>
 
         <p className={cls("text-xs font-bold mb-2", dark ? "text-gray-400" : "text-gray-500")}>운동 종류</p>
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -2480,7 +2480,7 @@ const ExerciseModal = ({ onClose, onSave, dark }) => {
             type && minutes && parseInt(minutes) > 0
               ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
               : dark ? "bg-gray-800 text-gray-600" : "bg-gray-200 text-gray-400")}>
-          저장하기
+          {editing ? "수정 완료" : "저장하기"}
         </button>
       </div>
     </div>
@@ -2877,6 +2877,27 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
     onShowToast && onShowToast("운동이 기록됐어요");
   };
 
+  const [editingExercise, setEditingExercise] = useState(null); // { index, data }
+
+  const updateExercise = (ex) => {
+    if (editingExercise == null) return;
+    const idx = editingExercise.index;
+    updateTodayLog((log) => ({
+      ...log,
+      exercises: log.exercises.map((e, i) => (i === idx ? { ...ex, time: e.time } : e)),
+    }));
+    setEditingExercise(null);
+    onShowToast && onShowToast("운동이 수정됐어요");
+  };
+
+  const deleteExercise = (idx) => {
+    updateTodayLog((log) => ({
+      ...log,
+      exercises: log.exercises.filter((_, i) => i !== idx),
+    }));
+    onShowToast && onShowToast("운동이 삭제됐어요");
+  };
+
   // 변화량 계산 (시작 vs 최근)
   const sortedInbody = [...(inbodyRecords || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
   const firstInbody = sortedInbody[0];
@@ -3075,11 +3096,19 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   {todayLog.exercises.map((ex, i) => (
                     <div key={i} className={cls("flex items-center gap-3 p-2 rounded-xl", dark ? "bg-gray-700/50" : "bg-gray-50")}>
                       <MissionIcon iconKey={ex.iconKey || ex.type || "free"} size={16} className={dark ? "text-emerald-400" : "text-emerald-600"}/>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{ex.label}</p>
                         <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{ex.minutes}분 · {ex.intensity === "low" ? "저" : ex.intensity === "mid" ? "중" : "고"}강도</p>
                       </div>
-                      <span className="text-xs font-bold text-amber-500">{ex.calories}kcal</span>
+                      <span className="text-xs font-bold text-amber-500 shrink-0">{ex.calories}kcal</span>
+                      <button onClick={() => setEditingExercise({ index: i, data: ex })}
+                        className={cls("p-1.5 rounded-lg shrink-0 transition active:scale-90", dark ? "text-gray-400 hover:bg-gray-600" : "text-gray-400 hover:bg-gray-200")}>
+                        <PenLine size={13}/>
+                      </button>
+                      <button onClick={() => deleteExercise(i)}
+                        className={cls("p-1.5 rounded-lg shrink-0 transition active:scale-90", dark ? "text-gray-500 hover:bg-gray-600 hover:text-rose-400" : "text-gray-400 hover:bg-gray-200 hover:text-rose-500")}>
+                        <X size={13}/>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -3138,6 +3167,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
       {/* Modals */}
       {mealModal && <MealUploadModal mealType={mealModal} onClose={() => setMealModal(null)} onSave={addMeal} dark={dark}/>}
       {exerciseModal && <ExerciseModal onClose={() => setExerciseModal(false)} onSave={addExercise} dark={dark}/>}
+      {editingExercise && <ExerciseModal onClose={() => setEditingExercise(null)} onSave={updateExercise} dark={dark} editing={editingExercise.data}/>}
       <Suspense fallback={null}>{inbodyOpen && <InbodyScreen records={inbodyRecords} onAdd={(r) => setInbodyRecords((prev) => [...prev, r])} onClose={() => setInbodyOpen(false)} dark={dark}/>}</Suspense>
       {graphOpen && <ChallengeGraphScreen challenge={challenge} dailyLogs={dailyLogs} inbodyRecords={inbodyRecords} onClose={() => setGraphOpen(false)} dark={dark}/>}
       <Suspense fallback={null}>{anonOpen && <AnonCommunityScreen challenge={challenge} onClose={() => setAnonOpen(false)} dark={dark} anonPosts={anonPosts} onAddPost={(p) => setAnonPosts((prev) => [...prev, p])} getChallengeDay={getChallengeDay}/>}</Suspense>
