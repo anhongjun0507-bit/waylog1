@@ -1674,7 +1674,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [zoomedImg, setZoomedImg] = useState(null);
+  const [zoomedImg, setZoomedImg] = useState(null); // { urls: string[], index: number } | null
   const [shareOpen, setShareOpen] = useState(false);
   const isMine = user && r.author === user.nickname;
   const galleryRef = useRef(null);
@@ -1706,10 +1706,14 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         {r.media && r.media.length > 0 ? (
           <div className="relative">
             <div ref={galleryRef} onScroll={handleGalleryScroll} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none" }}>
-              {r.media.map((m) => (
+              {r.media.map((m, mi) => (
                 <div key={m.id} className="snap-start shrink-0 w-full h-80 bg-gray-200 dark:bg-gray-800">
                   {m.type === "image" ? (
-                    <img src={m.url} alt="" loading="lazy" decoding="async" onClick={() => setZoomedImg(m.url)} className="w-full h-full object-cover cursor-zoom-in"/>
+                    <img src={m.url} alt="" loading="lazy" decoding="async" onClick={() => {
+                      const imageUrls = r.media.filter((x) => x.type === "image").map((x) => x.url);
+                      const idx = imageUrls.indexOf(m.url);
+                      setZoomedImg({ urls: imageUrls, index: idx >= 0 ? idx : 0 });
+                    }} className="w-full h-full object-cover cursor-zoom-in"/>
                   ) : (
                     <video src={m.url} className="w-full h-full object-cover" controls playsInline/>
                   )}
@@ -1731,7 +1735,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             )}
           </div>
         ) : (
-          <div onClick={() => setZoomedImg(r.img)} className="cursor-zoom-in">
+          <div onClick={() => r.img && setZoomedImg({ urls: [r.img], index: 0 })} className="cursor-zoom-in">
             <SmartImg r={r} className="w-full h-80 object-cover"/>
           </div>
         )}
@@ -2052,19 +2056,72 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
           </>
         )}
       </div>
-      {zoomedImg && (
-        <div className="fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto bg-black animate-fade-in overflow-auto"
-          onClick={() => setZoomedImg(null)}
-          style={{ touchAction: "pinch-zoom" }}>
-          <div className="min-h-full flex items-center justify-center p-2">
-            <img src={zoomedImg} alt="" decoding="async" className="max-w-none w-full h-auto" style={{ touchAction: "pinch-zoom" }} onClick={(e) => e.stopPropagation()}/>
-          </div>
-          <button onClick={() => setZoomedImg(null)} aria-label="이미지 닫기" className="fixed top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/70 backdrop-blur flex items-center justify-center">
-            <X size={18} className="text-white"/>
-          </button>
-          <p className="fixed bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/80 font-bold pointer-events-none bg-black/50 px-3 py-1.5 rounded-full">두 손가락으로 확대 · 탭해서 닫기</p>
-        </div>
-      )}
+      {zoomedImg && (() => {
+        const { urls, index: initIdx } = zoomedImg;
+        const ZoomViewer = () => {
+          const [cur, setCur] = useState(initIdx);
+          const scrollRef = useRef(null);
+          const startX = useRef(null);
+          const dragX = useRef(0);
+          useEffect(() => {
+            if (scrollRef.current) scrollRef.current.scrollLeft = cur * scrollRef.current.offsetWidth;
+          }, []);
+          const onSnap = () => {
+            if (!scrollRef.current) return;
+            const idx = Math.round(scrollRef.current.scrollLeft / scrollRef.current.offsetWidth);
+            setCur(idx);
+          };
+          // 키보드 좌우
+          useEffect(() => {
+            const handler = (e) => {
+              if (e.key === "ArrowLeft" && cur > 0) { setCur(cur - 1); scrollRef.current?.scrollTo({ left: (cur - 1) * scrollRef.current.offsetWidth, behavior: "smooth" }); }
+              if (e.key === "ArrowRight" && cur < urls.length - 1) { setCur(cur + 1); scrollRef.current?.scrollTo({ left: (cur + 1) * scrollRef.current.offsetWidth, behavior: "smooth" }); }
+              if (e.key === "Escape") setZoomedImg(null);
+            };
+            window.addEventListener("keydown", handler);
+            return () => window.removeEventListener("keydown", handler);
+          }, [cur]);
+          return (
+            <div className="fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto bg-black animate-fade-in flex flex-col">
+              {/* 닫기 */}
+              <button onClick={() => setZoomedImg(null)} aria-label="닫기"
+                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/70 backdrop-blur flex items-center justify-center">
+                <X size={18} className="text-white"/>
+              </button>
+              {/* 카운터 */}
+              {urls.length > 1 && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/60 backdrop-blur text-white text-xs font-bold tabular-nums">
+                  {cur + 1} / {urls.length}
+                </div>
+              )}
+              {/* 스와이프 영역 */}
+              <div ref={scrollRef} onScroll={onSnap}
+                className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                style={{ scrollbarWidth: "none" }}>
+                {urls.map((url, i) => (
+                  <div key={i} className="snap-start shrink-0 w-full h-full flex items-center justify-center"
+                    onClick={() => setZoomedImg(null)}>
+                    <img src={url} alt="" decoding="async"
+                      className="max-w-full max-h-full object-contain"
+                      style={{ touchAction: "pinch-zoom" }}
+                      onClick={(e) => e.stopPropagation()}/>
+                  </div>
+                ))}
+              </div>
+              {/* 하단 점 인디케이터 */}
+              {urls.length > 1 && (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 items-center">
+                  {urls.map((_, i) => (
+                    <div key={i} className={cls("rounded-full transition-all duration-300",
+                      i === cur ? "w-2.5 h-2.5 bg-white shadow" : "w-1.5 h-1.5 bg-white/40")}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        };
+        return <ZoomViewer/>;
+      })()}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex items-center justify-center p-6 animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmDelete(false)}/>
