@@ -2197,8 +2197,33 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
   const [editProtein, setEditProtein] = useState("");
   const [editCarb, setEditCarb] = useState("");
   const [editFat, setEditFat] = useState("");
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const reanalyzeTimer = useRef(null);
 
   const mealLabels = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
+
+  // 이름 변경 시 디바운스 후 AI 재분석
+  const handleNameChange = (newName) => {
+    setEditName(newName);
+    if (reanalyzeTimer.current) clearTimeout(reanalyzeTimer.current);
+    if (!newName.trim() || newName.trim() === result?.name) return;
+    reanalyzeTimer.current = setTimeout(async () => {
+      setReanalyzing(true);
+      const prompt = `"${newName.trim()}" 한 인분의 영양 정보를 추정해주세요. JSON만 응답: {"cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`;
+      const text = await callClaude(prompt, 150);
+      const block = extractJsonBlock(text);
+      if (block) {
+        try {
+          const parsed = JSON.parse(block);
+          setEditCal(String(parsed.cal || 0));
+          setEditProtein(String(parsed.protein || 0));
+          setEditCarb(String(parsed.carb || 0));
+          setEditFat(String(parsed.fat || 0));
+        } catch {}
+      }
+      setReanalyzing(false);
+    }, 800);
+  };
 
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -2306,8 +2331,20 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
               </div>
               {editMode ? (
                 <div className="space-y-2">
-                  <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="음식 이름"
-                    className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
+                  <div className="relative">
+                    <input value={editName} onChange={(e) => handleNameChange(e.target.value)} placeholder="음식 이름"
+                      className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
+                    {reanalyzing && (
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                        <RefreshCw size={14} className={cls("animate-spin", dark ? "text-emerald-400" : "text-emerald-500")}/>
+                      </div>
+                    )}
+                  </div>
+                  {reanalyzing && (
+                    <p className={cls("text-[10px] font-medium mt-1", dark ? "text-emerald-400" : "text-emerald-600")}>
+                      "{editName}" 영양 정보 재분석 중...
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>칼로리</label>
