@@ -241,14 +241,13 @@ const aiCoachMessage = async (tone, dayNum, completedMissions, totalMissions) =>
   return msgs[tone] || msgs.cheerful;
 };
 
-const aiDailyReport = async (totalCal, totalBurned, completedMissions, totalMissions, targetCal) => {
+const aiDailyReport = async (totalCal, totalBurned, completedMissions, totalMissions) => {
   const rate = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
   const today = new Date().toISOString().slice(0, 10);
-  // 같은 날짜·수치면 동일 리포트 → 캐시
-  const cacheKey = `report:${today}:${totalCal}:${totalBurned}:${rate}:${targetCal}`;
+  const cacheKey = `report:${today}:${totalCal}:${totalBurned}:${rate}`;
   const text = await cachedCallClaude(
     cacheKey,
-    `피트니스 일일 리포트 코멘트를 한국어 1-2문장으로 작성해주세요. 오늘 섭취 ${totalCal}kcal (목표 ${targetCal}kcal), 소비 ${totalBurned}kcal, 미션 달성률 ${rate}%. 격려와 구체적 조언을 포함. 텍스트만 응답.`,
+    `피트니스 일일 리포트 코멘트를 한국어 1-2문장으로 작성해주세요. 오늘 섭취 ${totalCal}kcal, 소비 ${totalBurned}kcal, 미션 달성률 ${rate}%. 격려와 구체적 조언을 포함. 텍스트만 응답.`,
     150
   );
   if (text) return text.trim();
@@ -2864,14 +2863,7 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
           )}
         </div>
 
-        {challenge?.targetCalories && activeTab === "calories" && (
-          <div className={cls("p-3 rounded-2xl flex items-center gap-2", dark ? "bg-amber-900/30" : "bg-amber-50")}>
-            <Target size={16} className="text-amber-500"/>
-            <p className={cls("text-xs font-bold", dark ? "text-amber-300" : "text-amber-700")}>
-              목표 칼로리: {challenge.targetCalories} kcal/일
-            </p>
-          </div>
-        )}
+        {/* 목표 칼로리 표시 제거됨 */}
       </div>
     </div>
   );
@@ -2898,7 +2890,7 @@ const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
   useEffect(() => {
     if (now < 22 || !todayLog) return;
     let alive = true;
-    aiDailyReport(totalCal, totalBurned, completedMissions, totalMissions, challenge?.targetCalories || 2000)
+    aiDailyReport(totalCal, totalBurned, completedMissions, totalMissions)
       .then((msg) => { if (alive) setEncouragement(msg); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3306,8 +3298,8 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
             <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
               <div className="flex items-center justify-between mb-3">
                 <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>오늘의 식단</p>
-                <p className={cls("text-xs font-bold", totalCalToday > (challenge?.targetCalories || 2000) ? "text-rose-500" : "text-emerald-500")}>
-                  {totalCalToday} / {challenge?.targetCalories || "-"} kcal
+                <p className="text-xs font-bold text-emerald-500">
+                  {totalCalToday} kcal 섭취
                 </p>
               </div>
               <div className="space-y-2">
