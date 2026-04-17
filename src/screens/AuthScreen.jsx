@@ -54,10 +54,6 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
       if (avatar && avatar.length > 500000) { setError("프로필 이미지가 너무 커요. 더 작은 이미지를 선택해주세요"); return; }
       setLoading(true);
       try {
-        // 이전 세션 잔여 데이터로 인한 충돌 방지
-        if (supabase) {
-          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
-        }
         const { data, error: signUpError } = await withTimeout(
           supabaseAuth.signUp(email.trim(), password, nickname.trim()),
           10000
@@ -96,13 +92,9 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
       if (!emailRegex.test(email.trim())) { setError("올바른 이메일 형식이 아니에요"); return; }
       setLoading(true);
       try {
-        // 이전 세션 잔여 데이터로 인한 충돌 방지
-        if (supabase) {
-          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
-        }
         const { data, error: signInError } = await withTimeout(
           supabaseAuth.signIn(email.trim(), password),
-          5000
+          8000
         );
         if (signInError) {
           setLoading(false);
