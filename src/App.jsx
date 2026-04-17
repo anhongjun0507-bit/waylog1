@@ -422,7 +422,7 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
 };
 
 // ---------- SCREENS ----------
-const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moods, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult, onProductClick }) => {
+const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, tg, refreshKey = 0, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult, onProductClick }) => {
   const CATALOG = useCatalog();
   const [hotMode, setHotMode] = useState("trending");
   const [exploreCat, setExploreCat] = useState("all");
@@ -436,12 +436,6 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moo
     if (refreshKey > 0) return [...recent].sort(() => Math.random() - 0.5).slice(0, 4);
     return recent.slice(0, 4);
   }, [reviews, refreshKey]);
-
-  const personalized = useMemo(() => {
-    if (favs.size < 2) return [];
-    const score = (r) => (taste.cats[r.category] || 0) * 2 + r.tags.reduce((s,t) => s + (taste.tags[t] || 0), 0);
-    return [...reviews].filter((r) => !favs.has(r.id)).map((r) => ({ r, s: score(r) })).filter((x) => x.s > 0).sort((a,b) => b.s - a.s).slice(0, 6).map((x) => x.r);
-  }, [reviews, taste, favs]);
 
   const filteredCatalog = useMemo(() => {
     const list = CATALOG || [];
@@ -468,47 +462,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, taste, moods: _moo
         </button>
       </div>
 
-      {/* ② 오늘의 픽 (스와이프) */}
-      <SectionTitle dark={dark} title="오늘의 픽" sub="좌우로 스와이프해 취향을 알려주세요" />
-      <SwipePick reviews={trending} onLike={(r) => toggleFav(r.id)} onPass={() => {}} dark={dark}/>
-
-      {/* ③ 개인화 추천 — 2열 그리드 + 특별 배경 */}
-      <div className={cls("mx-4 mt-8 rounded-3xl p-4 pb-2", dark ? "bg-gradient-to-br from-emerald-900/30 to-teal-900/20 border border-emerald-800/40" : "bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100")}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className={cls("text-base font-bold tracking-tight", dark ? "text-white" : "text-gray-900")}>
-              {user ? `${user.nickname}님을 위한 추천` : "맞춤 추천"}
-            </h2>
-            <p className={cls("text-xs mt-0.5", dark ? "text-emerald-400/80" : "text-emerald-600/80")}>
-              {personalized.length > 0 ? "좋아요와 스와이프로 학습된 결과예요" : "좋아요를 누를수록 추천이 정교해져요"}
-            </p>
-          </div>
-          {personalized.length > 0 && (
-            <span className={cls("text-[10px] font-black px-2 py-1 rounded-full", dark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600")}>AI</span>
-          )}
-        </div>
-        {personalized.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2.5 pb-2">
-            {personalized.map((r, i) => (
-              <div key={r.id} className="animate-card-enter" style={{ animationDelay: `${i * 50}ms` }}>
-                <Card r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className={cls("flex flex-col items-center py-6 gap-2 text-center")}>
-            <div className={cls("w-14 h-14 rounded-2xl flex items-center justify-center", dark ? "bg-emerald-800/40" : "bg-emerald-100")}>
-              <Heart size={24} className={dark ? "text-emerald-400" : "text-emerald-500"}/>
-            </div>
-            <p className={cls("text-sm font-bold", dark ? "text-gray-200" : "text-gray-800")}>아직 취향 데이터가 부족해요</p>
-            <p className={cls("text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
-              리뷰에 좋아요를 2개 이상 누르면<br/>나만의 맞춤 추천이 시작돼요
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ④ 챌린지 카드 — 자연스러운 브레이크 */}
+      {/* ② 챌린지 카드 */}
       <ChallengeEntryCard
           challenge={challenge}
           dailyLogs={dailyLogs}
