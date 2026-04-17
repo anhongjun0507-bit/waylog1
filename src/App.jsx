@@ -4476,91 +4476,91 @@ function AppInner() {
   };
 
   const submitReview = async (data) => {
-    try {
-      // 텍스트 필드 sanitize (제어문자 제거 + 길이 제한)
-      data = {
-        ...data,
-        title: sanitizeInline(data.title, { maxLength: 200 }),
-        body: sanitizeText(data.body, { maxLength: 5000 }),
-        product: sanitizeInline(data.product, { maxLength: 200 }),
-        category: sanitizeInline(data.category, { maxLength: 40 }),
-        tags: (data.tags || []).map((t) => sanitizeInline(t, { maxLength: 40 })).filter(Boolean),
-      };
-      // 미디어 업로드 (base64 → Supabase Storage URL)
-      const uploadedMedia = await uploadMedia(data.media || []);
-      const firstImgUrl = uploadedMedia.find((m) => m.type === "image")?.url || "";
+    // 텍스트 필드 sanitize
+    data = {
+      ...data,
+      title: sanitizeInline(data.title, { maxLength: 200 }),
+      body: sanitizeText(data.body, { maxLength: 5000 }),
+      product: sanitizeInline(data.product, { maxLength: 200 }),
+      category: sanitizeInline(data.category, { maxLength: 40 }),
+      tags: (data.tags || []).map((t) => sanitizeInline(t, { maxLength: 40 })).filter(Boolean),
+    };
 
-      if (data.id) {
-        // 수정 모드 (로컬)
-        setUserReviews((prev) => prev.map((r) => r.id === data.id ? {
-          ...r,
-          title: data.title, body: data.body, product: data.product,
-          products: data.products || [],
-          media: uploadedMedia,
-          tags: data.tags.length ? data.tags : ["내웨이로그"],
-          category: data.category,
-          img: firstImgUrl || data.img || "",
-        } : r));
-        // Supabase 수정 (서버 UUID인 경우만)
-        if (user && typeof data.id === "string") {
+    // 미디어는 일단 로컬 URL 그대로 사용 (업로드는 백그라운드)
+    const localMedia = (data.media || []).map((m) => ({ id: m.id, type: m.type, url: m.url || "", duration: m.duration }));
+    const firstImg = localMedia.find((m) => m.type === "image");
+
+    if (data.id) {
+      // 수정 모드 — 즉시 로컬 반영
+      setUserReviews((prev) => prev.map((r) => r.id === data.id ? {
+        ...r,
+        title: data.title, body: data.body, product: data.product,
+        products: data.products || [],
+        media: localMedia,
+        tags: data.tags.length ? data.tags : ["내웨이로그"],
+        category: data.category,
+        img: firstImg?.url || data.img || "",
+      } : r));
+      setToast("웨이로그가 수정됐어요");
+      // 서버 동기화 (백그라운드, 실패해도 로컬은 유지)
+      if (user && typeof data.id === "string") {
+        uploadMedia(data.media || []).then((uploaded) => {
           supabaseReviews.update(data.id, {
             title: data.title, content: data.body, category: data.category,
             tags: data.tags.length ? data.tags : ["내웨이로그"],
-            product_name: data.product, media: uploadedMedia,
+            product_name: data.product, media: uploaded,
           }).catch(() => {});
-        }
-        setTimeout(() => setToast("웨이로그가 수정됐어요"), 280);
-        return true;
+        }).catch(() => {});
       }
-
-      // 새 리뷰
-      const localR = {
-        id: Date.now(),
-        img: firstImgUrl || data.img || "",
-        title: data.title, body: data.body, product: data.product,
-        products: data.products || [],
-        media: uploadedMedia,
-        tags: data.tags.length ? data.tags : ["내웨이로그"],
-        category: data.category, views: 0, likes: 0,
-        date: new Date().toISOString().slice(0, 10),
-        author: user?.nickname || "나",
-        authorAvatar: user?.avatar || "",
-      };
-      setUserReviews((prev) => [localR, ...prev]);
-
-      // Supabase 저장
-      if (user) {
-        const { data: created, error: createErr } = await supabaseReviews.create({
-          user_id: user.id,
-          title: data.title, content: data.body, category: data.category,
-          tags: data.tags.length ? data.tags : ["내웨이로그"],
-          product_name: data.product, media: uploadedMedia,
-        });
-        if (createErr || !created?.id) {
-          // 서버 저장 실패 → 로컬 롤백
-          setUserReviews((prev) => prev.filter((r) => r.id !== localR.id));
-          setToast("서버 저장에 실패했어요. 다시 시도해주세요");
-          return false;
-        }
-        // 서버 ID로 로컬 ID 업데이트 (중복 방지)
-        setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id } : r));
-      }
-
-      setTimeout(() => {
-        setTab("feed");
-        setToast("웨이로그가 등록됐어요");
-        // 게시 직후: 피드의 내 글로 부드럽게 스크롤 + 1.8초간 ring 하이라이트
-        setHighlightId(localR.id);
-        setTimeout(() => {
-          document.querySelector(`[data-rid="${localR.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 350);
-        setTimeout(() => setHighlightId(null), 1800);
-      }, 280);
       return true;
-    } catch (err) {
-      setToast("등록 실패. 다시 시도해주세요");
-      return false;
     }
+
+    // 새 리뷰 — 즉시 로컬에 추가하고 모달 닫기
+    const localR = {
+      id: Date.now(),
+      img: firstImg?.url || data.img || "",
+      title: data.title, body: data.body, product: data.product,
+      products: data.products || [],
+      media: localMedia,
+      tags: data.tags.length ? data.tags : ["내웨이로그"],
+      category: data.category, views: 0, likes: 0,
+      date: new Date().toISOString().slice(0, 10),
+      author: user?.nickname || "나",
+      authorAvatar: user?.avatar || "",
+    };
+    setUserReviews((prev) => [localR, ...prev]);
+
+    setTimeout(() => {
+      setTab("feed");
+      setToast("웨이로그가 등록됐어요");
+      setHighlightId(localR.id);
+      setTimeout(() => {
+        document.querySelector(`[data-rid="${localR.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 350);
+      setTimeout(() => setHighlightId(null), 1800);
+    }, 280);
+
+    // 서버 동기화 (백그라운드 — 실패해도 로컬 리뷰는 유지)
+    if (user) {
+      (async () => {
+        try {
+          const uploaded = await uploadMedia(data.media || []);
+          const serverImg = uploaded.find((m) => m.type === "image")?.url || "";
+          const { data: created } = await supabaseReviews.create({
+            user_id: user.id,
+            title: data.title, content: data.body, category: data.category,
+            tags: data.tags.length ? data.tags : ["내웨이로그"],
+            product_name: data.product, media: uploaded,
+          });
+          if (created?.id) {
+            // 서버 ID + 업로드된 이미지 URL로 로컬 업데이트
+            setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id, img: serverImg || r.img, media: uploaded } : r));
+          }
+        } catch {}
+      })();
+    }
+
+    return true; // 항상 성공 — 로컬에는 이미 저장됨
   };
 
   const [deletingReviewId, setDeletingReviewId] = useState(null);
