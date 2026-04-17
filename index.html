@@ -23,6 +23,25 @@
     <meta property="og:type" content="website" />
 
     <title>웨이로그 | Waylog</title>
+
+    <!-- 🔧 Auth fix: React/Supabase 로드 전에 stale 세션 데이터 정리 -->
+    <script>
+    (function(){
+      var AUTH_VER = 2;
+      try {
+        var cur = +localStorage.getItem('waylog:auth-ver');
+        if (cur < AUTH_VER) {
+          var keys = Object.keys(localStorage);
+          for (var i = 0; i < keys.length; i++) {
+            if (keys[i].indexOf('sb-') === 0 || keys[i].indexOf('supabase') === 0) {
+              localStorage.removeItem(keys[i]);
+            }
+          }
+          localStorage.setItem('waylog:auth-ver', String(AUTH_VER));
+        }
+      } catch(e) {}
+    })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

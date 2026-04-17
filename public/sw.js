@@ -19,7 +19,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// activate: 이전 버전 캐시 삭제
+// activate: 이전 버전 캐시 삭제 + 클라이언트에 auth 정리 알림
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -27,6 +27,9 @@ self.addEventListener("activate", (event) => {
       .filter((k) => !k.startsWith(VERSION))
       .map((k) => caches.delete(k)));
     await self.clients.claim();
+    // 모든 클라이언트 탭에 stale auth 정리 요청
+    const clients = await self.clients.matchAll({ type: "window" });
+    clients.forEach((c) => c.postMessage("CLEAR_STALE_AUTH"));
   })());
 });
 

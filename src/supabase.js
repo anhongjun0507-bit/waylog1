@@ -1,6 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 // reports/analytics 는 하단에서 정의.
 
+// Supabase 클라이언트 생성 전, 구버전 세션 키를 정리.
+// GoTrueClient가 stale 토큰을 복구하다 내부 lock에 걸리는 것을 방지.
+try {
+  const AUTH_VER = 2;
+  const cur = +(localStorage.getItem('waylog:auth-ver') || 0);
+  if (cur < AUTH_VER) {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') || key.startsWith('supabase')) {
+        localStorage.removeItem(key);
+      }
+    }
+    localStorage.setItem('waylog:auth-ver', String(AUTH_VER));
+  }
+} catch {}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
