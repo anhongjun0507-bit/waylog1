@@ -50,47 +50,75 @@ export const OAUTH_REDIRECT_URL = isNativeApp
 const noop = { data: null, error: null }
 const noopArr = { data: [], error: null }
 
+// GoTrueClient를 완전히 우회하는 직접 로그인.
+// 어떤 클라이언트 상태에서도 멈추지 않는다.
+const directSignIn = async (email, password) => {
+  const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
+    body: JSON.stringify({ email, password }),
+  })
+  const body = await res.json()
+  if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || 'Login failed' } }
+  // setSession도 lock에 걸릴 수 있으므로 fire-and-forget
+  if (supabase) {
+    try { supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token }).catch(() => {}) }
+    catch {}
+  }
+  return { data: { user: body.user, session: body }, error: null }
+}
+
+const directSignUp = async (email, password, nickname) => {
+  const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
+    body: JSON.stringify({ email, password, data: { nickname } }),
+  })
+  const body = await res.json()
+  if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || body.error || 'Signup failed' } }
+  if (body.access_token && supabase) {
+    try { supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token }).catch(() => {}) }
+    catch {}
+  }
+  return { data: { user: body.user || body, session: body.access_token ? body : null }, error: null }
+}
+
 export const auth = {
   async signUp(email, password, nickname) {
     if (!supabase) return noop
-    try { return await supabase.auth.signUp({ email, password, options: { data: { nickname } } }) }
-    catch (e) { return { data: null, error: e } }
+    // GoTrueClient 2초 시도 → 실패 시 직접 API 호출
+    try {
+      const result = await Promise.race([
+        supabase.auth.signUp({ email, password, options: { data: { nickname } } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
+      ])
+      return result
+    } catch {
+      return directSignUp(email, password, nickname)
+    }
   },
   async signIn(email, password) {
     if (!supabase) return noop
+    // GoTrueClient 2초 시도 → 실패 시 직접 API 호출
     try {
-      // GoTrueClient 가 stale 세션 복구 중 내부 lock에 걸릴 수 있으므로
-      // 3초 안에 응답 없으면 REST API 직접 호출로 폴백한다.
       const result = await Promise.race([
         supabase.auth.signInWithPassword({ email, password }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 3000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
       ])
       return result
-    } catch (e) {
-      if (e.message === '__timeout__') {
-        // GoTrueClient 우회 — Supabase REST API 직접 호출
-        try {
-          const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
-            body: JSON.stringify({ email, password }),
-          })
-          const body = await res.json()
-          if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || 'Login failed' } }
-          // 세션을 GoTrueClient에 주입
-          await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token })
-          return { data: { user: body.user, session: body }, error: null }
-        } catch (fetchErr) {
-          return { data: null, error: fetchErr }
-        }
-      }
-      return { data: null, error: e }
+    } catch {
+      return directSignIn(email, password)
     }
   },
   async signOut() {
     if (!supabase) return noop
-    try { return await supabase.auth.signOut() }
-    catch (e) { return { error: e } }
+    try {
+      const result = await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((resolve) => setTimeout(() => resolve({ error: null }), 2000)),
+      ])
+      return result
+    } catch (e) { return { error: e } }
   },
   async getSession() {
     if (!supabase) return null

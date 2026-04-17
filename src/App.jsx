@@ -3756,44 +3756,16 @@ function AppInner() {
       return;
     }
 
-    // 손상된 세션 데이터 정리
-    const cleanupCorruptedSession = async () => {
-      try {
-        await supabase.auth.signOut({ scope: 'local' });
-      } catch {}
-      try {
-        const keys = Object.keys(localStorage);
-        for (const key of keys) {
-          if (key.startsWith('sb-') || key.startsWith('waylog-auth')) {
-            localStorage.removeItem(key);
-          }
-        }
-      } catch {}
-    };
-
-    // getSession을 재시도 (네트워크 플레이크에 대비한 지수 백오프 3회)
-    const fetchSessionWithRetry = async () => {
-      const delays = [0, 500, 1500];
-      for (let i = 0; i < delays.length; i++) {
-        if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          if (error) {
-            // 세션 데이터 손상 — 정리 후 재시도
-            await cleanupCorruptedSession();
-            continue;
-          }
-          return data?.session || null;
-        } catch { /* 재시도 */ }
-      }
-      // 모든 재시도 실패 시 세션 데이터 정리 후 null 반환
-      await cleanupCorruptedSession();
-      return null;
-    };
+    // getSession — 3초 타임아웃. lock에 걸리면 즉시 포기.
+    const safeGetSession = () => Promise.race([
+      supabase.auth.getSession(),
+      new Promise((resolve) => setTimeout(() => resolve({ data: { session: null }, error: null }), 3000)),
+    ]).catch(() => ({ data: { session: null }, error: null }));
 
     (async () => {
       try {
-        const session = await fetchSessionWithRetry();
+        const { data } = await safeGetSession();
+        const session = data?.session || null;
         if (cancelled) return;
         if (session?.user) {
           setUser(await buildUserFromSession(session));
@@ -3801,10 +3773,7 @@ function AppInner() {
           loadLocal();
         }
       } catch {
-        if (!cancelled) {
-          await cleanupCorruptedSession();
-          loadLocal();
-        }
+        if (!cancelled) loadLocal();
       } finally {
         if (!cancelled) setAuthLoading(false);
       }

@@ -123,7 +123,9 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
     } else if (mode === "forgot-password") {
       if (!emailRegex.test(recoverInput.trim())) { setError("올바른 이메일을 입력해주세요"); return; }
       setLoading(true);
-      if (supabase) await supabase.auth.resetPasswordForEmail(recoverInput.trim());
+      try {
+        if (supabase) await withTimeout(supabase.auth.resetPasswordForEmail(recoverInput.trim()), 5000);
+      } catch {}
       setLoading(false);
       setInfo(`${recoverInput.trim()} 으로 비밀번호 재설정 링크를 보냈어요`);
       setTimeout(() => { setMode("login"); setRecoverInput(""); setInfo(""); }, 2200);
