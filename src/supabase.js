@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // Supabase 클라이언트 생성 전, 구버전 세션 키를 정리.
 // GoTrueClient가 stale 토큰을 복구하다 내부 lock에 걸리는 것을 방지.
 try {
-  const AUTH_VER = 2;
+  const AUTH_VER = 3;
   const cur = +(localStorage.getItem('waylog:auth-ver') || 0);
   if (cur < AUTH_VER) {
     for (const key of Object.keys(localStorage)) {

@@ -26,23 +26,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
   // 구버전 캐시 즉시 정리 — SW activate 전에도 클라이언트에서 선제 삭제
   if ('caches' in window) {
     caches.keys().then((names) =>
-      names.filter((n) => n.startsWith('waylog-v1')).forEach((n) => caches.delete(n))
+      names.filter((n) => !n.startsWith('waylog-v3')).forEach((n) => caches.delete(n))
     ).catch(() => {})
   }
-
-  // SW에서 stale auth 정리 요청 수신
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data === 'CLEAR_STALE_AUTH') {
-      try {
-        for (const key of Object.keys(localStorage)) {
-          if (key.startsWith('sb-') || key.startsWith('supabase')) {
-            localStorage.removeItem(key)
-          }
-        }
-        localStorage.setItem('waylog:auth-ver', '2')
-      } catch {}
-    }
-  })
 
   window.addEventListener('load', async () => {
     try {
