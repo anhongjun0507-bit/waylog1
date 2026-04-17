@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import {
-  Check, Download, ExternalLink, Heart, MessageCircle, RefreshCw, Sparkles, X
+  Check, Download, ExternalLink, Heart, MessageCircle, RefreshCw, Share2, Sparkles, Star, X
 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { sanitizeImageUrl } from "../utils/sanitize.js";
@@ -19,15 +19,13 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const cat = CATEGORIES[review.category] || CATEGORIES.food;
   const accent = CAT_SOLID[review.category] || "#10b981";
   const shareUrl = `waylog.kr/r/${review.id}`;
-  const bodyPreview = (review.body || "").slice(0, 50) + ((review.body || "").length > 50 ? "…" : "");
-  // review.img 를 항상 올바른 URL 로 정규화 (상대경로/공백/null 모두 처리).
+  const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
+  const rating = review.rating || (review.likes > 50 ? 5 : review.likes > 20 ? 4 : 3);
 
-  const handleSaveImage = async () => {
-    if (!cardRef.current || saving) return;
-    setSaving(true);
-    // 캡처 전 외부 이미지(amway.co.kr 등)를 fetch 로 data URL 로 바꿔둔다.
-    // 그래야 canvas tainted 가 안 나고 toPng 가 성공. 실패해도 원상복구.
+  // 카드를 PNG data URL 로 캡처
+  const captureCard = async () => {
+    if (!cardRef.current) return null;
     const imgEls = cardRef.current.querySelectorAll("img");
     const originals = [];
     for (const img of imgEls) {
@@ -47,57 +45,72 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
         img.src = dataUrl;
         await new Promise((resolve) => {
           if (img.complete && img.naturalWidth > 0) resolve();
-          else {
-            img.onload = resolve;
-            img.onerror = resolve;
-          }
+          else { img.onload = resolve; img.onerror = resolve; }
         });
-      } catch (e) {
-        console.warn("[ShareCard] 이미지 data URL 변환 실패 — 스킵:", img.src, e?.message || e);
-      }
+      } catch {}
     }
 
     let dataUrl = null;
     try {
       const { toPng } = await import("html-to-image");
-      dataUrl = await toPng(cardRef.current, {
-        quality: 0.95,
-        pixelRatio: 2,
-        cacheBust: true,
-        skipFonts: true,
-      });
-    } catch (e) {
-      console.error("[ShareCard] toPng 실패 (1차):", e?.message || e);
-      // 한 번 더 — 이미지 제외하고 시도
+      dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 3, cacheBust: true, skipFonts: true });
+    } catch {
       try {
         const { toPng } = await import("html-to-image");
         dataUrl = await toPng(cardRef.current, {
-          quality: 0.95,
-          pixelRatio: 2,
-          cacheBust: true,
-          skipFonts: true,
+          quality: 0.95, pixelRatio: 3, cacheBust: true, skipFonts: true,
           filter: (node) => node?.tagName !== "IMG",
         });
-        onShowToast && onShowToast("이미지 없이 저장됐어요 (원본 로드 실패)");
-      } catch (e2) {
-        console.error("[ShareCard] toPng 실패 (2차):", e2?.message || e2);
-      }
+      } catch {}
     }
 
-    // 원상복구 (모달이 계속 열려있을 수 있음)
     originals.forEach(({ el, src, crossOrigin }) => {
       el.src = src;
       if (crossOrigin) el.setAttribute("crossorigin", crossOrigin);
     });
+    return dataUrl;
+  };
 
-    if (dataUrl) {
-      const link = document.createElement("a");
-      link.download = `waylog-${review.id}.png`;
-      link.href = dataUrl;
-      link.click();
-    } else {
-      onShowToast && onShowToast("공유 카드 저장에 실패했어요. 잠시 후 다시 시도해주세요");
+  const dataUrlToBlob = (dataUrl) => {
+    const [header, base64] = dataUrl.split(",");
+    const mime = header.match(/:(.*?);/)[1];
+    const bin = atob(base64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  };
+
+  const handleSaveImage = async () => {
+    if (saving) return;
+    setSaving(true);
+    const dataUrl = await captureCard();
+    if (!dataUrl) {
+      onShowToast && onShowToast("카드 저장에 실패했어요");
+      setSaving(false);
+      return;
     }
+
+    const blob = dataUrlToBlob(dataUrl);
+    const file = new File([blob], `waylog-${review.id}.png`, { type: "image/png" });
+
+    // 1) navigator.share (files) — 안드로이드 갤러리 저장 가능
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        onShowToast && onShowToast("저장/공유 완료!");
+        setSaving(false);
+        return;
+      } catch (e) {
+        if (e.name === "AbortError") { setSaving(false); return; }
+      }
+    }
+
+    // 2) 폴백: 다운로드
+    const link = document.createElement("a");
+    link.download = file.name;
+    link.href = dataUrl;
+    link.click();
+    onShowToast && onShowToast("이미지가 저장됐어요");
     setSaving(false);
   };
 
@@ -118,57 +131,67 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center gap-5">
-        {/* 미리보기 카드 */}
-        <div ref={cardRef} className="w-full rounded-3xl overflow-hidden shadow-2xl" style={{ aspectRatio: "5/4" }}>
-          <div className="relative w-full h-full flex flex-col" style={{ background: `linear-gradient(135deg, ${accent}18, ${accent}30)` }}>
-            {/* 배경 장식 */}
-            <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-20" style={{ background: `radial-gradient(circle, ${accent}, transparent)` }}/>
-            <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-10" style={{ background: `radial-gradient(circle, ${accent}, transparent)` }}/>
-
-            {/* 상단: 제품 이미지 */}
-            <div className="flex-1 relative flex items-center justify-center p-5 pb-2">
+        {/* ── 카드 미리보기 ── */}
+        <div ref={cardRef} className="w-full overflow-hidden" style={{ borderRadius: 24, aspectRatio: "4/5" }}>
+          <div className="relative w-full h-full flex flex-col" style={{ background: "#fff" }}>
+            {/* 히어로 이미지 */}
+            <div className="relative flex-1 overflow-hidden" style={{ minHeight: 0 }}>
               {safeImg ? (
                 <img src={safeImg} alt="" crossOrigin="anonymous" loading="lazy" decoding="async"
-                  className="max-w-full max-h-full object-contain rounded-2xl shadow-lg"/>
+                  className="w-full h-full object-cover"/>
               ) : (
-                <div className={cls("w-28 h-28 rounded-3xl bg-gradient-to-br flex items-center justify-center", cat.color)}>
-                  <CategoryIcon cat={review.category} size={48} className="text-white/80"/>
+                <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accent}30, ${accent}60)` }}>
+                  <CategoryIcon cat={review.category} size={64} className="text-white/60"/>
                 </div>
               )}
+              {/* 그라데이션 오버레이 */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)" }}/>
+              {/* 카테고리 칩 */}
+              <div className="absolute top-4 left-4 px-3 py-1 rounded-full text-[11px] font-black text-white" style={{ background: accent }}>
+                {cat.label}
+              </div>
+              {/* 제목 + 작성자 오버레이 */}
+              <div className="absolute bottom-0 left-0 right-0 p-5">
+                <p className="text-white text-xl font-black leading-tight line-clamp-2 drop-shadow-lg">{review.title || review.product}</p>
+                <p className="text-white/70 text-xs font-bold mt-1.5">by {review.author}</p>
+              </div>
             </div>
 
-            {/* 중앙: 제품명, 작성자 */}
-            <div className="px-5 pb-1">
-              <p className="text-base font-black text-gray-900 leading-tight line-clamp-2">{review.title || review.product}</p>
-              <p className="text-xs font-bold text-gray-500 mt-1">by {review.author}</p>
-            </div>
-
-            {/* 본문 요약 */}
-            {bodyPreview && (
-              <div className="px-5 py-2">
-                <p className="text-xs text-gray-600 leading-relaxed italic">"{bodyPreview}"</p>
-              </div>
-            )}
-
-            {/* 하단 */}
-            <div className="px-5 pb-4 pt-1 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-400 inline-flex items-center gap-1">
-                  <Heart size={10} style={{ color: accent }} fill={accent}/> {review.likes || 0}
-                </span>
-                <span className="text-xs text-gray-400">{review.date}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                  <Sparkles size={8} className="text-white"/>
+            {/* 하단 정보 영역 */}
+            <div className="px-5 py-4" style={{ background: "#fff" }}>
+              {/* 본문 미리보기 */}
+              {bodyPreview && (
+                <p className="text-gray-600 text-xs leading-relaxed mb-3 line-clamp-2">"{bodyPreview}"</p>
+              )}
+              {/* 별점 + 통계 */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={14} className={i < rating ? "text-amber-400" : "text-gray-200"} fill={i < rating ? "#fbbf24" : "none"}/>
+                  ))}
                 </div>
-                <span className="text-[10px] font-black text-gray-400 tracking-tight">{shareUrl}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-gray-400 inline-flex items-center gap-1">
+                    <Heart size={11} fill={accent} style={{ color: accent }}/> {review.likes || 0}
+                  </span>
+                  <span className="text-xs text-gray-400">{review.date}</span>
+                </div>
+              </div>
+              {/* 브랜딩 */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                    <Sparkles size={10} className="text-white"/>
+                  </div>
+                  <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400">{shareUrl}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 공유 버튼들 */}
+        {/* ── 버튼 영역 ── */}
         <div className="w-full space-y-2">
           <button onClick={handleSaveImage} disabled={saving}
             className={cls("w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition active:scale-[0.98]",
@@ -177,14 +200,8 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
             {saving ? (
               <><RefreshCw size={16} className="animate-spin"/> 이미지 생성 중...</>
             ) : (
-              <><Download size={16}/> 이미지로 저장</>
+              <><Share2 size={16}/> 갤러리에 저장 / 공유</>
             )}
-          </button>
-
-          <button disabled
-            className={cls("w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed",
-              dark ? "bg-yellow-900/30 text-yellow-300" : "bg-yellow-50 text-yellow-700 border border-yellow-200")}>
-            <MessageCircle size={16}/> 카카오톡 공유 <span className="text-[10px] font-normal">(준비 중)</span>
           </button>
 
           <button onClick={handleCopyLink}
@@ -192,20 +209,12 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
               copied
                 ? dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700"
                 : dark ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-700")}>
-            {copied ? (
-              <><Check size={16}/> 복사됨!</>
-            ) : (
-              <><ExternalLink size={16}/> 링크 복사</>
-            )}
+            {copied ? <><Check size={16}/> 복사됨!</> : <><ExternalLink size={16}/> 링크 복사</>}
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-// 댓글 본문 중 @멘션을 클릭 가능한 버튼으로 렌더.
-
-
 
 export default ShareCardModal;
