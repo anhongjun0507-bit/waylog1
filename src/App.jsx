@@ -1811,15 +1811,33 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
 const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, onBrowse, onProductClick, loading = false }) => {
   const CATALOG = useCatalog();
   const catalogLoading = useCatalogLoading();
-  const [mainTab, setMainTab] = useState("catalog"); // "catalog" | "favs"
+  // 기본 탭을 "저장됨"으로 — 탭 이름 "마이웨이템"과 일치. 내 것이 먼저.
+  const [mainTab, setMainTab] = useState("favs"); // "catalog" | "favs"
   const [view, setView] = useState("grid");
   const [moodPickerFor, setMoodPickerFor] = useState(null);
   const [catalogQ, setCatalogQ] = useState("");
   const [catalogCat, setCatalogCat] = useState("all");
-  // 페이지네이션: 30개씩 표시, "더 보기" 로 증가. 검색/카테고리 변경 시 리셋.
+  // 무드 배너 1회성 — localStorage 에 닫힘 기록. 재방문 시 표시 안 함.
+  const [moodTipDismissed, setMoodTipDismissed] = useStoredState("waylog:fav:moodTipDismissed", false);
+  // 페이지네이션: 30개씩 표시, 무한스크롤 sentinel 로 자동 증가.
   const CATALOG_PAGE_SIZE = 30;
   const [catalogVisible, setCatalogVisible] = useState(CATALOG_PAGE_SIZE);
+  const catalogLoadMoreRef = useRef(null);
   useEffect(() => { setCatalogVisible(CATALOG_PAGE_SIZE); }, [catalogCat, catalogQ]);
+
+  // 카탈로그 무한스크롤 — sentinel 관찰
+  useEffect(() => {
+    if (mainTab !== "catalog") return;
+    const el = catalogLoadMoreRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setCatalogVisible((v) => v + CATALOG_PAGE_SIZE);
+      }
+    }, { rootMargin: "300px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [mainTab, catalogCat, catalogQ]);
   // reviews/favs가 변경될 때만 재필터 (상위 리렌더마다 반복 X)
   const list = useMemo(() => reviews.filter((r) => favs.has(r.id)), [reviews, favs]);
   const byMonth = useMemo(() => {
@@ -1856,7 +1874,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
       <div className="px-4 pt-6">
         <h2 className={cls("text-[22px] font-black tracking-tight", dark ? "text-white" : "text-black")}>마이 웨이템</h2>
         <p className={cls("text-[13px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-          관심 제품을 찾고 저장한 리뷰를 다시 볼 수 있어요
+          {mainTab === "favs" ? "저장한 리뷰를 다시 볼 수 있어요" : "관심 있는 제품을 찾아보세요"}
         </p>
 
         {/* 메인 탭 — 민트 액센트 언더라인 */}
@@ -1913,7 +1931,8 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
           </div>
 
           <p className={cls("text-[12px] font-bold mb-3 uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-            {filteredCatalog.length}개 제품
+            {catalogCat === "all" ? `${filteredCatalog.length}개 제품` : `${CATEGORIES[catalogCat]?.label || ""} ${filteredCatalog.length}개`}
+            {catalogQ && <span className="normal-case ml-1">· "{catalogQ}" 검색</span>}
           </p>
 
           {filteredCatalog.length === 0 ? (
@@ -1925,37 +1944,36 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
               {filteredCatalog.slice(0, catalogVisible).map((p, i) => {
                 return (
                   <button key={p.id} onClick={() => onProductClick && onProductClick(p)}
-                    className="text-left active:scale-[0.98] transition animate-card-enter"
+                    className="text-left active:scale-[0.98] transition animate-card-enter flex flex-col"
                     style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
                     <div className={cls("relative aspect-square rounded-lg overflow-hidden flex items-center justify-center p-2", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={18}/>
                     </div>
-                    {p.brand && (
-                      <p className={cls("text-[9.5px] font-bold mt-1 truncate", dark ? "text-mint-400" : "text-mint-700")}>
-                        {p.brand}
-                      </p>
-                    )}
-                    <p className={cls("text-[11px] font-semibold line-clamp-2 leading-[1.25]", dark ? "text-white" : "text-black", p.brand ? "mt-0" : "mt-1")}>
+                    {/* brand 슬롯 — 없어도 공간 예약 (타일 높이 통일) */}
+                    <p className={cls("text-[9.5px] font-bold mt-1 truncate h-[13px] leading-[13px]", dark ? "text-mint-400" : "text-mint-700")}>
+                      {p.brand || "\u00A0"}
+                    </p>
+                    {/* 제품명 — 2줄 고정 (1줄이어도 2줄 공간 확보) */}
+                    <p className={cls("text-[11px] font-semibold line-clamp-2 leading-[1.3] min-h-[29px]", dark ? "text-white" : "text-black")}>
                       {p.name}
                     </p>
-                    {p.price > 0 && (
-                      <p className={cls("text-[11px] font-black tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>
-                        {p.price.toLocaleString()}원
-                      </p>
-                    )}
+                    {/* 가격 슬롯 — 없어도 공간 예약 */}
+                    <p className={cls("text-[11px] font-black tabular-nums mt-0.5 h-[15px] leading-[15px]", dark ? "text-white" : "text-black")}>
+                      {p.price > 0 ? `${p.price.toLocaleString()}원` : "\u00A0"}
+                    </p>
                   </button>
                 );
               })}
             </div>
           )}
 
+          {/* 무한스크롤 sentinel — IntersectionObserver 트리거 */}
           {filteredCatalog.length > catalogVisible && (
-            <button
-              onClick={() => setCatalogVisible((v) => v + CATALOG_PAGE_SIZE)}
-              className={cls("w-full mt-5 py-3 rounded-xl text-[13px] font-bold active:scale-[0.98] transition",
-                dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
-              더 보기 ({filteredCatalog.length - catalogVisible}개 남음)
-            </button>
+            <div ref={catalogLoadMoreRef} className="py-6 flex items-center justify-center">
+              <span className={cls("inline-flex items-center gap-2 text-[12px] font-medium", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+                <RefreshCw size={12} className="animate-spin"/> 더 불러오는 중...
+              </span>
+            </div>
           )}
           {filteredCatalog.length > 0 && filteredCatalog.length <= catalogVisible && filteredCatalog.length > CATALOG_PAGE_SIZE && (
             <p className={cls("text-center text-[12px] mt-4 py-2", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
@@ -1974,7 +1992,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                 <Grid3x3 size={20} strokeWidth={1.8}/>
               </button>
               <button onClick={() => setView("timeline")}
-                aria-label="다이어리 보기"
+                aria-label="월별 보기"
                 className={cls("p-1.5 rounded transition", view === "timeline" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#737373]" : "text-[#a8a8a8]"))}>
                 <Calendar size={20} strokeWidth={1.8}/>
               </button>
@@ -1994,53 +2012,97 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
       ) : list.length === 0 ? (
         <div className="text-center py-16 px-6">
           <div className={cls("w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ring-1", dark ? "ring-[#262626]" : "ring-[#dbdbdb]")}>
-            <Bookmark size={28} strokeWidth={1.8} className={dark ? "text-white" : "text-black"}/>
+            <Heart size={28} strokeWidth={1.8} className="text-mint-500"/>
           </div>
           <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>저장한 항목이 없어요</p>
-          <p className={cls("text-[14px] mt-1 max-w-xs mx-auto", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>하트를 눌러 게시물을 저장하면 여기서 볼 수 있어요</p>
-          <button onClick={onBrowse}
-            className="mt-5 px-6 py-2 bg-mint-500 text-white text-[14px] font-bold rounded-lg active:opacity-80 transition">
-            게시물 둘러보기
-          </button>
+          <p className={cls("text-[14px] mt-1 max-w-xs mx-auto inline-flex items-center justify-center gap-1 flex-wrap", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+            피드 카드의 <Heart size={13} className="fill-mint-500 text-mint-500 inline-block"/> 하트를 누르면 여기에 저장돼요
+          </p>
+          <div>
+            <button onClick={onBrowse}
+              className="mt-5 px-6 py-2 bg-mint-500 text-white text-[14px] font-bold rounded-lg active:opacity-80 transition">
+              게시물 둘러보기
+            </button>
+          </div>
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-3">
           {list.map((r) => {
             const rCat = CATEGORIES[r.category];
+            const mood = MOODS.find((m) => m.key === moods[r.id]);
             return (
               <button key={r.id} onClick={() => onOpen(r)}
                 className="text-left active:scale-[0.98] transition">
-                <div className={cls("relative w-full aspect-[4/5] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
+                {/* FeedScreen 과 동일한 카드 스타일 — aspect-square, 무게 줄인 카테고리 칩, quote fallback */}
+                <div className={cls("relative w-full aspect-square rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                   {r.img
                     ? <SmartImg r={r} className="w-full h-full object-cover"/>
-                    : <div className="w-full h-full flex items-center justify-center"><Camera size={24} strokeWidth={1.5} className={dark ? "text-[#404040]" : "text-[#c7c7c7]"}/></div>}
+                    : (
+                      <div className={cls("w-full h-full p-3 flex flex-col justify-center relative ring-1",
+                        dark ? "bg-[#0f0f0f] ring-white/5" : "bg-[#fafafa] ring-black/5")}>
+                        <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-mint-500/70"/>
+                        <p className={cls("text-[12.5px] font-medium line-clamp-4 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
+                          {r.body || r.title || "웨이로그"}
+                        </p>
+                      </div>
+                    )}
                   {rCat && (
-                    <div className="absolute top-2 left-2">
-                      <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur", dark ? "bg-black/60 text-white" : "bg-white/90 text-black")}>
-                        {rCat.label}
-                      </span>
-                    </div>
+                    <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-md",
+                      dark ? "bg-black/35 text-white/90" : "bg-white/70 text-black/75")}>
+                      {rCat.label}
+                    </span>
+                  )}
+                  {/* 무드 오버레이 — 설정된 무드가 그리드 뷰에도 보이도록 */}
+                  {mood && mood.Icon && (
+                    <span className={cls("absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full backdrop-blur-md",
+                      dark ? "bg-black/50" : "bg-white/80")}>
+                      <mood.Icon size={12} strokeWidth={2} className={mood.color}/>
+                    </span>
                   )}
                 </div>
-                <p className={cls("text-[13px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
+
+                <p className={cls("text-[14px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
                   {r.title || "제목 없음"}
                 </p>
-                {r.likes > 0 && (
-                  <span className={cls("text-[11px] inline-flex items-center gap-0.5 mt-1 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                    <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
-                    {r.likes}
-                  </span>
-                )}
+
+                <div className="h-4 mt-2 flex items-center gap-1 min-w-0">
+                  {r.product && (
+                    <>
+                      <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
+                      <span className={cls("text-[11px] font-semibold truncate", dark ? "text-mint-300" : "text-mint-700")}>
+                        {r.product}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Avatar id={r.authorAvatar} size={7} className="w-4 h-4 shrink-0"/>
+                  <p className={cls("text-[11px] font-medium truncate", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
+                    {r.author || "익명"}
+                  </p>
+                  {r.likes > 0 && (
+                    <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                      <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+                      {r.likes}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
       ) : (
         <div className="space-y-6">
-          <div className={cls("px-3 py-2 rounded-xl text-xs flex items-center gap-1.5", dark ? "bg-gray-800 text-gray-400" : "bg-white text-gray-500")}>
-            <span className="text-amber-500">⭐</span>
-            <span>표시된 무드는 추천에 더 강하게 반영돼요</span>
-          </div>
+          {!moodTipDismissed && (
+            <div className={cls("px-3 py-2 rounded-xl text-xs flex items-center gap-1.5", dark ? "bg-[#121212] text-[#a8a8a8]" : "bg-[#f5f5f5] text-[#525252]")}>
+              <span className="text-amber-500">⭐</span>
+              <span className="flex-1">표시된 무드는 추천에 더 강하게 반영돼요</span>
+              <button onClick={() => setMoodTipDismissed(true)} aria-label="닫기" className="active:opacity-60 shrink-0">
+                <X size={14}/>
+              </button>
+            </div>
+          )}
           {byMonth.map(([month, items]) => (
             <div key={month}>
               <div className="flex items-center gap-2 mb-3">
@@ -2052,13 +2114,13 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                 {items.map((r) => {
                   const mood = MOODS.find((m) => m.key === moods[r.id]);
                   return (
-                  <div key={r.id} className={cls("rounded-2xl overflow-hidden -ml-1", dark ? "bg-gray-800" : "bg-white")}>
+                  <div key={r.id} className={cls("rounded-2xl overflow-hidden -ml-1 ring-1", dark ? "bg-[#121212] ring-[#262626]" : "bg-white ring-[#efefef]")}>
                     <button onClick={() => onOpen(r)} className="flex gap-3 w-full text-left">
                       <SmartImg r={r} className="w-16 h-16 object-cover shrink-0"/>
                       <div className="flex-1 py-2 pr-2 min-w-0">
-                        <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(r.date)}</p>
-                        <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-gray-900")}>{r.title}</p>
-                        <p className={cls("text-xs line-clamp-1", dark ? "text-gray-400" : "text-gray-500")}>{r.product}</p>
+                        <p className={cls("text-xs font-normal opacity-70", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{formatRelativeTime(r.createdAt || r.date)}</p>
+                        <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-black")}>{r.title}</p>
+                        <p className={cls("text-xs line-clamp-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{r.product}</p>
                       </div>
                     </button>
                     <div className={cls("flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-t flex-wrap", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
