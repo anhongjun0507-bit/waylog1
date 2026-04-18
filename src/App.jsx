@@ -1312,16 +1312,16 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           return (
             <button key={r.id} data-rid={r.id} onClick={() => onOpen(r)}
               className={cls("text-left active:scale-[0.98] transition", highlight && "ring-2 ring-mint-500 rounded-xl")}>
-              {/* 이미지 — 4:5 portrait */}
-              <div className={cls("relative w-full aspect-[4/5] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
+              {/* 이미지 — 정사각형 1:1. 세로 높이 줄여 화면당 카드 수 ↑, 스캔 용이 */}
+              <div className={cls("relative w-full aspect-square rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                 {r.img
                   ? <SmartImg r={r} className="w-full h-full object-cover"/>
                   : (
-                    /* 이미지 없는 포스트 — 에디토리얼 quote 스타일. 링 테두리 + 좌측 민트 바 */
-                    <div className={cls("w-full h-full p-4 flex flex-col justify-center relative ring-1",
+                    /* 이미지 없는 포스트 — 에디토리얼 quote 스타일 */
+                    <div className={cls("w-full h-full p-3 flex flex-col justify-center relative ring-1",
                       dark ? "bg-[#0f0f0f] ring-white/5" : "bg-[#fafafa] ring-black/5")}>
-                      <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r bg-mint-500/70"/>
-                      <p className={cls("text-[13px] font-medium line-clamp-6 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
+                      <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-mint-500/70"/>
+                      <p className={cls("text-[12.5px] font-medium line-clamp-4 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
                         {r.body || r.title || "웨이로그"}
                       </p>
                     </div>
