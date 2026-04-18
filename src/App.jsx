@@ -8,7 +8,7 @@ import {
   BookOpen, PenLine, Target, Inbox, Wind, ShoppingBag,
   Trophy, Dumbbell, Activity,
   BarChart3, Download,
-  Package, Send, Bookmark, Compass, Film, Grid3x3, Tag, Menu, Settings as SettingsIcon,
+  Package, Send, Bookmark, Compass, Film, Images, Grid3x3, Tag, Menu, Settings as SettingsIcon,
   MoreHorizontal, Clock, UserPlus, Play
 } from "lucide-react";
 
@@ -1306,15 +1306,24 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
         const renderCard = (r) => {
           const rCat = CATEGORIES[r.category];
           const hasVideo = r.media && r.media.some((m) => m.type === "video");
+          const mediaCount = r.media ? r.media.length : 0;
           const isFav = favs.has(r.id);
           const highlight = r.id === highlightId;
           return (
             <button key={r.id} data-rid={r.id} onClick={() => onOpen(r)}
               className={cls("text-left active:scale-[0.98] transition", highlight && "ring-2 ring-mint-500 rounded-xl")}>
+              {/* 이미지 — 4:5 portrait, 라이프스타일 사진에 맞는 비율 */}
               <div className={cls("relative w-full aspect-[4/5] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                 {r.img
                   ? <SmartImg r={r} className="w-full h-full object-cover"/>
-                  : <div className="w-full h-full flex items-center justify-center"><Camera size={24} strokeWidth={1.5} className={dark ? "text-[#404040]" : "text-[#c7c7c7]"}/></div>}
+                  : (
+                    /* 이미지 없는 포스트 — 본문 일부를 타이포그래피로 */
+                    <div className={cls("w-full h-full p-3 flex flex-col justify-center", dark ? "bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a]" : "bg-gradient-to-br from-[#f5f5f5] to-[#ebebeb]")}>
+                      <p className={cls("text-[13px] font-semibold line-clamp-5 leading-[1.45]", dark ? "text-white/80" : "text-black/70")}>
+                        {r.body || r.title || "웨이로그"}
+                      </p>
+                    </div>
+                  )}
                 {rCat && (
                   <div className="absolute top-2 left-2">
                     <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur", dark ? "bg-black/60 text-white" : "bg-white/90 text-black")}>
@@ -1322,9 +1331,11 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                     </span>
                   </div>
                 )}
-                {hasVideo && (
+                {(hasVideo || mediaCount > 1) && (
                   <div className="absolute top-2 right-2 bg-black/50 backdrop-blur rounded-full w-6 h-6 flex items-center justify-center">
-                    <Film size={12} className="text-white"/>
+                    {hasVideo
+                      ? <Film size={12} className="text-white"/>
+                      : <Images size={12} className="text-white"/>}
                   </div>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); toggleFav(r.id); }}
@@ -1334,15 +1345,30 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                     className={isFav ? "fill-mint-500 text-mint-500" : "text-white"}/>
                 </button>
               </div>
-              <p className={cls("text-[13px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
+
+              {/* 제목 — 14px 로 bump, 2줄 클램프 */}
+              <p className={cls("text-[14px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
                 {r.title || "제목 없음"}
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <p className={cls("text-[11px] truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+
+              {/* 제품 칩 — 웨이로그의 핵심 정보. 민트 톤으로 강조 */}
+              {r.product && (
+                <div className="flex items-center gap-1 mt-1 min-w-0">
+                  <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
+                  <span className={cls("text-[11px] font-semibold truncate", dark ? "text-mint-300" : "text-mint-700")}>
+                    {r.product}
+                  </span>
+                </div>
+              )}
+
+              {/* 작성자 행 — 아바타 + 닉네임 + 좋아요 */}
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Avatar id={r.authorAvatar} size={7} className="w-4 h-4 shrink-0"/>
+                <p className={cls("text-[11px] font-medium truncate", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
                   {r.author || "익명"}
                 </p>
                 {r.likes > 0 && (
-                  <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                  <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                     <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
                     {r.likes}
                   </span>
@@ -4941,6 +4967,7 @@ function AppInner() {
       tags: (r.tags || []).map((t) => sanitizeInline(t, { maxLength: 40 })).filter(Boolean),
       author: sanitizeInline(r.profiles?.nickname, { maxLength: 60 }) || "익명",
       authorId: r.user_id,
+      authorAvatar: sanitizeImageUrl(r.profiles?.avatar_url) || "",
       date: (r.created_at || "").slice(0, 10),
       createdAt: r.created_at, // 페이지네이션 커서용
       likes: r.likes_count || 0,

@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Heart, MessageCircle, Bookmark, MoreHorizontal, Film, Images } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreHorizontal, Film, Images, ShoppingBag } from "lucide-react";
 import { cls, formatRelativeTime } from "../utils/ui.js";
 import { SmartImg } from "./SmartImg.jsx";
 import { Avatar } from "./Avatar.jsx";
@@ -72,7 +72,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
         </button>
       )}
 
-      {/* 카테고리 + 제품 메타 */}
+      {/* 카테고리 + 제품 메타 — 제품은 웨이로그 핵심 정보라 민트 칩으로 강조 */}
       {(cat || r.product) && (
         <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
           {cat && (
@@ -81,8 +81,10 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
             </span>
           )}
           {r.product && (
-            <span className={cls("text-[12px] truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-              {r.product}
+            <span className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold max-w-[200px]",
+              dark ? "bg-mint-900/30 text-mint-300" : "bg-mint-50 text-mint-700")}>
+              <ShoppingBag size={10} strokeWidth={2.2} className="shrink-0"/>
+              <span className="truncate">{r.product}</span>
             </span>
           )}
         </div>
