@@ -1921,25 +1921,25 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
               title="검색 결과가 없어요"
               desc="다른 키워드로 검색해보세요"/>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {filteredCatalog.slice(0, catalogVisible).map((p, i) => {
                 return (
                   <button key={p.id} onClick={() => onProductClick && onProductClick(p)}
                     className="text-left active:scale-[0.98] transition animate-card-enter"
                     style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
-                    <div className={cls("relative aspect-square rounded-xl overflow-hidden flex items-center justify-center p-3", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-                      <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={22}/>
+                    <div className={cls("relative aspect-square rounded-lg overflow-hidden flex items-center justify-center p-2", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
+                      <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={18}/>
                     </div>
                     {p.brand && (
-                      <p className={cls("text-[10px] font-bold mt-1.5 truncate", dark ? "text-mint-400" : "text-mint-700")}>
+                      <p className={cls("text-[9.5px] font-bold mt-1 truncate", dark ? "text-mint-400" : "text-mint-700")}>
                         {p.brand}
                       </p>
                     )}
-                    <p className={cls("text-[12px] font-semibold line-clamp-2 leading-[1.3]", dark ? "text-white" : "text-black", p.brand ? "mt-0" : "mt-1.5")}>
+                    <p className={cls("text-[11px] font-semibold line-clamp-2 leading-[1.25]", dark ? "text-white" : "text-black", p.brand ? "mt-0" : "mt-1")}>
                       {p.name}
                     </p>
                     {p.price > 0 && (
-                      <p className={cls("text-[12px] font-black tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>
+                      <p className={cls("text-[11px] font-black tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>
                         {p.price.toLocaleString()}원
                       </p>
                     )}
