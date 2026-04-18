@@ -5255,12 +5255,8 @@ function AppInner() {
 
   const [recents, setRecents] = useStoredState("waylog:recents", []);
   const [commentsMap, setCommentsMap] = useState(SEED_COMMENTS);
-  const [community, setCommunity] = useStoredState("waylog:community", [
-    { id: 1, author: "건강한엄마", avatar: "flower", createdAt: Date.now() - 30_000, content: "오늘 퀸 Ti 웍으로 처음 무수분 요리 도전! 양배추가 이렇게 달았나 싶을 정도예요.", likes: 12, comments: 5, liked: false },
-    { id: 2, author: "라떼러버", avatar: "coffee", createdAt: Date.now() - 3600_000, content: "까페드다몬 아메리카노 진짜 미쳤다… 사무실에서 마실 인스턴트인데 산미가 살아있어요.", likes: 24, comments: 8, liked: false },
-    { id: 3, author: "다이어터김", avatar: "leaf", createdAt: Date.now() - 3 * 3600_000, content: "푸로틴 + 화이버 비츠 조합 두 달째인데 -4kg 찍었어요. 식단 일지 공유 원하시는 분?", likes: 47, comments: 19, liked: false },
-    { id: 4, author: "요가맘", avatar: "feather", createdAt: Date.now() - 86400_000, content: "라벤더 에센셜 오일 디퓨징하면서 명상하면 정말 깊게 잠들어요.", likes: 18, comments: 6, liked: false },
-  ]);
+  // 커뮤니티 기본값 — 비어있음. 실제 사용자가 올린 글만 표시.
+  const [community, setCommunity] = useStoredState("waylog:community", []);
   // 커뮤니티 댓글: { [postId]: [{ id, author, avatar, authorId, text, time, createdAt, parentId, mentionTo, likedBy }] }
   const [communityComments, setCommunityComments] = useStoredState("waylog:communityComments", {});
 

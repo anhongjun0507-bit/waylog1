@@ -6,6 +6,22 @@ import './supabase.js'
 import './storage-shim.js'
 import { isNative, initNativeChrome, initDeepLinkHandler } from './utils/platform.js'
 
+// 커뮤니티 샘플 데이터 1회성 정리 — 기존 사용자 브라우저에 저장된 기본 4개 포스트 제거.
+// 버전 키로 한 번만 실행. 새 버전으로 올리면 다시 실행.
+try {
+  const VER = 1
+  const cur = +(localStorage.getItem('waylog:community-clean-ver') || 0)
+  if (cur < VER) {
+    ;(async () => {
+      try {
+        await window.storage?.delete?.('waylog:community')
+        await window.storage?.delete?.('waylog:communityComments')
+        localStorage.setItem('waylog:community-clean-ver', String(VER))
+      } catch {}
+    })()
+  }
+} catch {}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
