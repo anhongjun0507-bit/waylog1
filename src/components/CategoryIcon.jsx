@@ -1,13 +1,15 @@
+import { memo } from "react";
 import { Sparkles } from "lucide-react";
 import { CAT_ICON, CATEGORIES } from "../constants.js";
 import { cls } from "../utils/ui.js";
 
-export const CategoryIcon = ({ cat, size = 22, strokeWidth = 2, className }) => {
+const CategoryIconBase = ({ cat, size = 22, strokeWidth = 2, className }) => {
   const Icon = CAT_ICON[cat] || Sparkles;
   return <Icon size={size} strokeWidth={strokeWidth} className={className}/>;
 };
+export const CategoryIcon = memo(CategoryIconBase);
 
-export const CategoryChip = ({ cat, dark }) => {
+const CategoryChipBase = ({ cat, dark }) => {
   const c = CATEGORIES[cat] || CATEGORIES.food;
   return (
     <span className={cls(
@@ -18,3 +20,4 @@ export const CategoryChip = ({ cat, dark }) => {
     </span>
   );
 };
+export const CategoryChip = memo(CategoryChipBase);

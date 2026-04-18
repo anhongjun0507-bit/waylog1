@@ -41,16 +41,18 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
   const graphData = [...(records || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).filter((r) => r.weight > 0);
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>인바디 기록</p>
-        <button onClick={() => setAdding(true)} aria-label="기록 추가" className="text-emerald-500"><Plus size={22}/></button>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
+      <header className={cls("flex items-center justify-between px-4 h-12 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/></button>
+        <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>인바디 기록</p>
+        <button onClick={() => setAdding(true)} aria-label="기록 추가" className={dark ? "text-white" : "text-black"}>
+          <Plus size={22}/>
+        </button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {adding && (
-          <div className={cls("p-4 rounded-2xl space-y-3", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>새 기록 추가</p>
+          <div className={cls("p-4 rounded-xl space-y-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+            <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>새 기록 추가</p>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "체중 (kg)", val: weight, set: setWeight },
@@ -59,16 +61,18 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                 { label: "BMI", val: bmi, set: setBmi },
               ].map((f) => (
                 <div key={f.label}>
-                  <label className={cls("text-xs font-bold block mb-1", dark ? "text-gray-400" : "text-gray-500")}>{f.label}</label>
+                  <label className={cls("text-[11px] font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{f.label}</label>
                   <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" inputMode="decimal" step="0.1"
-                    className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
+                    className={cls("w-full px-3 py-2 rounded-lg text-[14px] font-semibold border outline-none",
+                      dark ? "bg-black text-white border-[#262626] focus:border-[#737373]"
+                           : "bg-white text-black border-[#dbdbdb] focus:border-[#a8a8a8]")}/>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setAdding(false)} className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600")}>취소</button>
+              <button onClick={() => setAdding(false)} className={cls("flex-1 py-2 rounded-lg text-[14px] font-semibold", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>취소</button>
               <button onClick={handleAdd} disabled={!weight}
-                className={cls("flex-1 py-2.5 rounded-xl text-sm font-black", weight ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" : dark ? "bg-gray-700 text-gray-600" : "bg-gray-200 text-gray-400")}>
+                className={cls("flex-1 py-2 rounded-lg text-[14px] font-bold transition", weight ? "bg-mint-500 text-white active:opacity-80" : "bg-mint-500/30 text-white cursor-not-allowed")}>
                 저장
               </button>
             </div>
@@ -76,9 +80,9 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
         )}
 
         {latest && (
-          <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-xs font-bold mb-3", dark ? "text-gray-400" : "text-gray-500")}>최근 기록 vs 이전</p>
-            <div className="grid grid-cols-2 gap-3">
+          <div className={cls("p-4 rounded-xl border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+            <p className={cls("text-[12px] font-semibold uppercase tracking-wider mb-3", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>최근 기록 vs 이전</p>
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { label: "체중", val: latest.weight, unit: "kg", prev: prev?.weight },
                 { label: "체지방", val: latest.bodyFat, unit: "%", prev: prev?.bodyFat, invert: true },
@@ -88,13 +92,13 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                 const d = delta(item.val, item.prev);
                 const good = d ? (item.invert ? d < 0 : d > 0) : null;
                 return (
-                  <div key={item.label} className={cls("p-3 rounded-xl", dark ? "bg-gray-700" : "bg-gray-50")}>
-                    <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>{item.label}</p>
-                    <p className={cls("text-xl font-black mt-1", dark ? "text-white" : "text-gray-900")}>
-                      {item.val || "-"}<span className="text-xs font-bold ml-0.5">{item.unit}</span>
+                  <div key={item.label} className={cls("p-3 rounded-lg", dark ? "bg-black" : "bg-white")}>
+                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{item.label}</p>
+                    <p className={cls("text-[20px] font-bold tabular-nums mt-1", dark ? "text-white" : "text-black")}>
+                      {item.val || "-"}<span className="text-[11px] font-medium opacity-60 ml-0.5">{item.unit}</span>
                     </p>
                     {d !== null && (
-                      <p className={cls("text-xs font-bold mt-0.5", good ? "text-emerald-500" : "text-rose-500")}>
+                      <p className={cls("text-[11px] font-semibold tabular-nums mt-0.5", good ? "text-mint-500" : "text-red-500")}>
                         {d > 0 ? "+" : ""}{d.toFixed(1)}{item.unit}
                       </p>
                     )}
@@ -106,8 +110,8 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
         )}
 
         {graphData.length >= 2 && (
-          <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
-            <p className={cls("text-xs font-bold mb-3", dark ? "text-gray-400" : "text-gray-500")}>체중 변화</p>
+          <div className={cls("p-4 rounded-xl border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+            <p className={cls("text-[12px] font-semibold uppercase tracking-wider mb-3", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>체중 변화</p>
             <svg viewBox="0 0 300 120" className="w-full h-28">
               {(() => {
                 const vals = graphData.map((d) => d.weight);
@@ -121,11 +125,11 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                 const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
                 return (
                   <>
-                    <path d={line} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d={line} fill="none" stroke={dark ? "#ffffff" : "#000000"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     {pts.map((p, i) => (
                       <g key={i}>
-                        <circle cx={p.x} cy={p.y} r="4" fill="#10b981"/>
-                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px] font-bold" fill={dark ? "#9ca3af" : "#6b7280"}>{vals[i]}</text>
+                        <circle cx={p.x} cy={p.y} r="3" fill={dark ? "#ffffff" : "#000000"}/>
+                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px]" fill={dark ? "#a8a8a8" : "#737373"}>{vals[i]}</text>
                       </g>
                     ))}
                   </>
@@ -136,21 +140,21 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
         )}
 
         <div className="space-y-2">
-          <p className={cls("text-xs font-bold px-1", dark ? "text-gray-400" : "text-gray-500")}>기록 히스토리</p>
+          <p className={cls("text-[12px] font-semibold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>기록 히스토리</p>
           {sorted.length === 0 && (
-            <div className={cls("py-8 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
+            <div className={cls("py-12 text-center rounded-xl border border-dashed", dark ? "border-[#262626] text-[#a8a8a8]" : "border-[#dbdbdb] text-[#737373]")}>
               <Activity size={28} className="mx-auto mb-2 opacity-50"/>
-              <p className="text-xs font-medium">아직 기록이 없어요</p>
+              <p className="text-[13px]">아직 기록이 없어요</p>
             </div>
           )}
           {sorted.map((r) => (
-            <div key={r.id} className={cls("p-3 rounded-2xl flex items-center gap-3", dark ? "bg-gray-800" : "bg-white")}>
-              <div className={cls("w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-400 to-teal-500")}>
-                <Activity size={18}/>
+            <div key={r.id} className={cls("p-3 rounded-xl flex items-center gap-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+              <div className={cls("w-10 h-10 rounded-full flex items-center justify-center", dark ? "bg-[#262626] text-white" : "bg-white text-black")}>
+                <Activity size={16} strokeWidth={1.8}/>
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
-                <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>
+                <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
+                <p className={cls("text-[13px] font-semibold tabular-nums", dark ? "text-white" : "text-black")}>
                   {r.weight}kg · {r.bodyFat}% · {r.muscle}kg
                 </p>
               </div>

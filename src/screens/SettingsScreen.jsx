@@ -90,50 +90,50 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
   ];
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>설정</p>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
+      <header className={cls("flex items-center justify-between px-4 h-12 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/></button>
+        <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>설정</p>
         <div className="w-6"/>
       </header>
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto">
         {items.map((section) => (
-          <div key={section.group}>
-            <p className={cls("text-xs font-bold uppercase tracking-wider mb-2 px-2", dark ? "text-gray-500" : "text-gray-500")}>{section.group}</p>
-            <div className={cls("rounded-2xl overflow-hidden", dark ? "bg-gray-800" : "bg-white")}>
-              {section.rows.map((row, i) => {
-                const RowIcon = row.icon;
-                const Tag = row.type === "action" ? "button" : "div";
-                return (
-                  <Tag key={i} onClick={row.type === "action" ? row.onClick : undefined}
-                    className={cls("w-full flex items-center gap-3 p-4 text-left transition",
-                      row.type === "action" && (dark ? "active:bg-gray-700/30" : "active:bg-gray-50"),
-                      i !== section.rows.length - 1 && (dark ? "border-b border-gray-700/50" : "border-b border-gray-100"))}>
-                    <div className={cls("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", row.danger ? dark ? "bg-rose-900/30" : "bg-rose-50" : dark ? "bg-gray-700/50" : "bg-gray-100")}>
-                      <RowIcon size={16} className={row.danger ? "text-rose-500" : dark ? "text-gray-300" : "text-gray-600"}/>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cls("text-sm font-bold", row.danger ? "text-rose-500" : dark ? "text-white" : "text-gray-900")}>{row.label}</p>
-                      {row.sub && <p className={cls("text-xs font-normal opacity-70 mt-0.5", dark ? "text-gray-400" : "text-gray-600")}>{row.sub}</p>}
-                    </div>
-                    {row.type === "toggle" && (
-                      <button onClick={row.onChange}
-                        className={cls("relative w-11 h-6 rounded-full transition", row.value ? "bg-emerald-500" : dark ? "bg-gray-600" : "bg-gray-300")}>
-                        <div className={cls("absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all", row.value ? "left-[22px]" : "left-0.5")}/>
-                      </button>
-                    )}
-                    {row.type === "action" && <ChevronRight size={18} className={dark ? "text-gray-400" : "text-gray-500"}/>}
-                  </Tag>
-                );
-              })}
-            </div>
+          <div key={section.group} className={cls("border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+            <p className={cls("text-[12px] font-semibold uppercase tracking-wider px-4 pt-4 pb-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+              {section.group}
+            </p>
+            {section.rows.map((row, i) => {
+              const RowIcon = row.icon;
+              const Tag = row.type === "action" ? "button" : "div";
+              return (
+                <Tag key={i} onClick={row.type === "action" ? row.onClick : undefined}
+                  className={cls("w-full flex items-center gap-4 px-4 py-3 text-left transition",
+                    row.type === "action" && (dark ? "active:bg-[#121212]" : "active:bg-[#fafafa]"))}>
+                  <RowIcon size={20} strokeWidth={1.8}
+                    className={cls(row.danger ? "text-red-500" : dark ? "text-white" : "text-black")}/>
+                  <div className="flex-1 min-w-0">
+                    <p className={cls("text-[14px]", row.danger ? "text-red-500" : dark ? "text-white" : "text-black")}>{row.label}</p>
+                    {row.sub && <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{row.sub}</p>}
+                  </div>
+                  {row.type === "toggle" && (
+                    <button onClick={row.onChange}
+                      className={cls("relative w-[34px] h-[18px] rounded-full transition", row.value ? "bg-mint-500" : dark ? "bg-[#262626]" : "bg-[#dbdbdb]")}>
+                      <div className={cls("absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all", row.value ? "left-[18px]" : "left-[2px]")}/>
+                    </button>
+                  )}
+                  {row.type === "action" && <ChevronRight size={18} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>}
+                </Tag>
+              );
+            })}
           </div>
         ))}
-        <button onClick={() => { onLogout(); close(); }}
-          className={cls("w-full py-3.5 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-rose-400 bg-gray-800" : "border-gray-200 text-rose-500 bg-white")}>
-          로그아웃
-        </button>
-        <p className={cls("text-xs text-center pb-4", dark ? "text-gray-600" : "text-gray-400")}>웨이로그 v5.5.0</p>
+        <div className={cls("border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+          <button onClick={() => { onLogout(); close(); }}
+            className="w-full py-3 text-left px-4 text-[14px] text-red-500 font-semibold active:opacity-60">
+            로그아웃
+          </button>
+        </div>
+        <p className={cls("text-[12px] text-center py-6", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>웨이로그 v5.5.0</p>
       </div>
 
       {confirmClear && (
@@ -171,9 +171,9 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
             <div className={cls("flex-1 overflow-y-auto px-6 pb-8 text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-600")}>
               {docOpen === "about" ? (
                 <div className="space-y-4">
-                  <div className={cls("p-3 rounded-2xl border-l-4 border-emerald-500", dark ? "bg-emerald-900/20" : "bg-emerald-50")}>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-emerald-300" : "text-emerald-700")}>비공식 앱 안내</p>
-                    <p className={cls(dark ? "text-emerald-200" : "text-emerald-800")}>
+                  <div className={cls("p-3 rounded-2xl border-l-4 border-mint-500", dark ? "bg-mint-900/20" : "bg-mint-50")}>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-mint-300" : "text-mint-700")}>비공식 앱 안내</p>
+                    <p className={cls(dark ? "text-mint-200" : "text-mint-800")}>
                       웨이로그는 <b>Amway Corp. / 암웨이 코리아와 관련이 없는 독립 앱</b>입니다. 개인 사용자가 자신이 사용한 제품에 대한 후기를 기록하고 공유할 수 있도록 돕는 비영리 도구로 운영됩니다.
                     </p>
                   </div>
@@ -277,7 +277,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
                         <p className={cls("text-xs opacity-70", dark ? "text-gray-400" : "text-gray-500")}>차단됨</p>
                       </div>
                       <button onClick={() => onUnblock && onUnblock(author)}
-                        className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-black rounded-full active:scale-95 transition shrink-0">
+                        className="px-3 py-1.5 bg-mint-500 text-white text-xs font-black rounded-full active:scale-95 transition shrink-0">
                         해제
                       </button>
                     </div>

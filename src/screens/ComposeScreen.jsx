@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Camera, Check, PenLine, Plus, RefreshCw, Search, X
+  Camera, Check, PenLine, Plus, RefreshCw, Search, X, ShoppingBag
 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { useExit, useDebouncedValue, useStoredState } from "../hooks.js";
@@ -28,8 +28,8 @@ const TagChipInput = ({ tags, setTags, dark }) => {
         {list.map((t) => (
           <button key={t} type="button" onClick={() => remove(t)}
             className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold active:scale-95 transition",
-              dark ? "bg-emerald-900/40 text-emerald-300 hover:bg-rose-900/40 hover:text-rose-300"
-                   : "bg-emerald-50 text-emerald-700 hover:bg-rose-50 hover:text-rose-700")}>
+              dark ? "bg-mint-900/40 text-mint-300 hover:bg-rose-900/40 hover:text-rose-300"
+                   : "bg-mint-50 text-mint-700 hover:bg-rose-50 hover:text-rose-700")}>
             #{t}
             <X size={11} className="opacity-70"/>
           </button>
@@ -70,6 +70,8 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   const [error, setError] = useState("");
   const [confirmClearDraft, setConfirmClearDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 카테고리 변경 시 기존 제품이 맞지 않으면 확인 받고 제거 (조용히 날리면 사용자가 놀람)
+  const [pendingCategoryChange, setPendingCategoryChange] = useState(null);
   // 드래프트 복구 안내 — 수정 모드가 아니고, 저장된 drafts 가 있으면 한 번 노출.
   // 모든 useStoredState 가 IDB 로부터 로드 완료된 이후에만 체크 (타이머 대신).
   const [restorePrompt, setRestorePrompt] = useState(false);
@@ -269,51 +271,63 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   }, [dProductQuery, pickerCat, composeCatalog]);
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <div className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <div className="flex flex-col items-center">
-          <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{isEditMode ? "웨이로그 수정" : "새 웨이로그"}</p>
-          {!isEditMode && (title || body || tags || selectedProducts.length > 0) && (
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className={cls("text-xs font-bold inline-flex items-center gap-1", dark ? "text-emerald-400" : "text-emerald-600")}>
-                <Check size={10}/> 임시 저장됨
-              </span>
-              <button onClick={() => setConfirmClearDraft(true)}
-                className={cls("text-xs font-bold active:opacity-60", dark ? "text-rose-400" : "text-rose-500")}>
-                초기화
-              </button>
-            </div>
-          )}
-        </div>
-        <button disabled={submitting}
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
+      <div className={cls("flex items-center justify-between px-4 h-12 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+        <button onClick={close} aria-label="닫기"><X size={24} className={dark ? "text-white" : "text-black"}/></button>
+        <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>
+          {isEditMode ? "수정" : "새 게시물"}
+        </p>
+        <button disabled={submitting || !valid}
           onClick={async () => {
+            if (submitting) return; // double-click 방지 (disabled 만으론 부족)
             if (!valid) { showValidationError(); return; }
             setError("");
             setSubmitting(true);
             const firstImg = mediaItems.find((m) => m.type === "image");
-            const ok = await onSubmit({
-              id: editing?.id,
-              title,
-              body,
-              product: selectedProducts.map((p) => p.name).join(", "),
-              products: selectedProducts,
-              tags: tags.split(/[,#\s]+/).filter(Boolean),
-              category,
-              img: firstImg?.url || (editing?.img || ""),
-              media: mediaItems,
-            });
+            let ok = false;
+            try {
+              ok = await onSubmit({
+                id: editing?.id,
+                title: title.trim(),
+                body: body.trim(),
+                product: selectedProducts.map((p) => p.name).join(", "),
+                products: selectedProducts,
+                tags: tags.split(/[,#\s]+/).filter(Boolean),
+                category,
+                img: firstImg?.url || (editing?.img || ""),
+                media: mediaItems,
+              });
+            } catch (e) {
+              setError(e?.message || "등록에 실패했어요. 다시 시도해주세요");
+              setSubmitting(false);
+              return;
+            }
             setSubmitting(false);
+            if (ok === false) {
+              // onSubmit 이 명시적으로 false 리턴 시: 실패 — draft 보존, 모달 유지
+              setError("등록에 실패했어요. 잠시 후 다시 시도해주세요");
+              return;
+            }
             if (!isEditMode) clearDraft();
             close();
           }}
-          className={cls("px-4 py-1.5 rounded-full text-sm font-black transition active:scale-95",
-            submitting ? "opacity-50 cursor-wait" :
-            valid ? "bg-emerald-500 text-white shadow-md" :
-            dark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-500")}>
-          {submitting ? <><RefreshCw size={14} className="animate-spin"/> 저장 중</> : isEditMode ? "수정 완료" : "등록"}
+          className={cls("px-4 py-1.5 rounded-full text-[13px] font-bold transition active:scale-95",
+            submitting ? "bg-mint-500/50 text-white cursor-wait" :
+            valid ? "bg-mint-500 text-white" : dark ? "bg-[#262626] text-[#737373]" : "bg-[#efefef] text-[#a8a8a8]")}>
+          {submitting ? <span className="inline-flex items-center gap-1"><RefreshCw size={12} className="animate-spin"/> 공유 중</span> : isEditMode ? "완료" : "공유"}
         </button>
       </div>
+      {!isEditMode && (title || body || tags || selectedProducts.length > 0) && (
+        <div className={cls("px-4 py-2 flex items-center justify-between border-b", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+          <span className={cls("text-[12px] inline-flex items-center gap-1", dark ? "text-mint-400" : "text-mint-600")}>
+            <Check size={10}/> 초안이 저장됐어요
+          </span>
+          <button onClick={() => setConfirmClearDraft(true)}
+            className="text-[12px] font-semibold text-red-500 active:opacity-60">
+            초기화
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {error && (
@@ -330,17 +344,19 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
           <div className="flex gap-2 flex-wrap">
             {Object.entries(CATEGORIES).map(([k, c]) => (
               <button key={k} onClick={() => {
+                if (category === k) return;
                 const mismatched = selectedProducts.filter((p) => p.category && p.category !== k);
                 if (mismatched.length > 0) {
-                  setSelectedProducts((prev) => prev.filter((p) => !p.category || p.category === k));
-                  setError(`${mismatched.length}개의 제품이 카테고리와 맞지 않아 제거됐어요`);
-                  setTimeout(() => setError(""), 3000);
+                  // 확인 다이얼로그로 보류 — 사용자가 확인 전에 제품이 사라지지 않게
+                  setPendingCategoryChange({ next: k, label: c.label, mismatched });
+                  return;
                 }
                 setCategory(k);
               }}
-                className={cls("text-xs px-3 py-1.5 rounded-full font-bold transition active:scale-95",
-                  category === k ? `bg-gradient-to-r ${c.color} text-white shadow-md` : dark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600",
-                  !category && "ring-1 ring-rose-300")}>
+                className={cls("text-[13px] px-3.5 py-1.5 rounded-full font-bold transition active:scale-95",
+                  category === k
+                    ? "bg-mint-500 text-white"
+                    : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
                 {c.label}
               </button>
             ))}
@@ -350,12 +366,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
         {/* 미디어 업로드 */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>사진 · 동영상</p>
-            <span className={cls("text-xs font-bold tabular-nums", dark ? "text-gray-400" : "text-gray-500")}>{mediaItems.length}/10</span>
+            <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>사진 · 동영상</p>
+            <span className={cls("text-[12px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{mediaItems.length}/10</span>
           </div>
           <div className="grid grid-cols-4 lg:grid-cols-6 gap-2">
             {mediaItems.map((m) => (
-              <div key={m.id} className="relative aspect-square rounded-xl overflow-hidden bg-gray-200 group">
+              <div key={m.id} className={cls("relative aspect-square rounded-lg overflow-hidden group", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
                 {m.type === "image" ? (
                   <img src={m.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
                 ) : (
@@ -363,10 +379,10 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                     <video src={m.url} className="w-full h-full object-cover" muted/>
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                       <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                        <div className="w-0 h-0 border-l-[8px] border-l-gray-900 border-y-[6px] border-y-transparent ml-0.5"/>
+                        <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-0.5"/>
                       </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 text-xs font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
+                    <span className="absolute bottom-1 right-1 text-[10px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
                   </>
                 )}
                 <button onClick={() => removeMedia(m.id)}
@@ -376,35 +392,36 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               </div>
             ))}
             {mediaItems.length < 10 && (
-              <label className={cls("aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition active:scale-95",
-                dark ? "border-gray-700 bg-gray-800/50 hover:bg-gray-800" : "border-gray-300 bg-white hover:bg-gray-50")}>
-                <Camera size={20} className={dark ? "text-gray-400" : "text-gray-500"}/>
-                <span className={cls("text-xs font-bold mt-1", dark ? "text-gray-400" : "text-gray-500")}>추가</span>
+              <label className={cls("aspect-square rounded-lg border border-dashed flex flex-col items-center justify-center cursor-pointer transition active:opacity-70",
+                dark ? "border-[#262626] bg-[#121212]" : "border-[#dbdbdb] bg-[#fafafa]")}>
+                <Camera size={20} className={dark ? "text-white" : "text-black"} strokeWidth={1.8}/>
+                <span className={cls("text-[11px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>추가</span>
                 <input type="file" accept="image/*,video/*" multiple onChange={handleMediaUpload}
                   className="absolute w-px h-px opacity-0 overflow-hidden -m-px p-0 border-0"/>
               </label>
             )}
           </div>
-          <p className={cls("text-xs mt-2 opacity-70", dark ? "text-gray-500" : "text-gray-500")}>
-            사진/동영상 최대 10개 · 임시저장에는 포함되지 않아요
+          <p className={cls("text-[12px] mt-2", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            사진/동영상 최대 10개
           </p>
         </div>
 
         {/* 제품 선택 */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>
-              제품 <span className={cls("font-normal opacity-70", dark ? "text-gray-400" : "text-gray-500")}>(선택)</span>
+            <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>
+              제품 태그 <span className={cls("font-normal ml-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>(선택)</span>
             </p>
-            <span className={cls("text-xs font-bold tabular-nums", dark ? "text-gray-400" : "text-gray-500")}>{selectedProducts.length}/3</span>
+            <span className={cls("text-[12px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{selectedProducts.length}/3</span>
           </div>
           {selectedProducts.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {selectedProducts.map((p) => (
-                <div key={p.id} className={cls("inline-flex items-center gap-2 pl-2 pr-1 py-1 rounded-full", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>
-                  <span className="text-xs font-bold max-w-[140px] truncate">{p.name}</span>
-                  <button onClick={() => toggleProduct(p)} className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center active:scale-90">
-                    <X size={10}/>
+                <div key={p.id} className={cls("inline-flex items-center gap-2 pl-2.5 pr-1 py-1 rounded-lg", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
+                  <ShoppingBag size={11}/>
+                  <span className="text-[12px] font-semibold max-w-[140px] truncate">{p.name}</span>
+                  <button onClick={() => toggleProduct(p)} className="w-5 h-5 rounded-full flex items-center justify-center active:scale-90 opacity-60">
+                    <X size={11}/>
                   </button>
                 </div>
               ))}
@@ -415,67 +432,113 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               if (!category) { setError("먼저 카테고리를 선택해주세요"); return; }
               setPickerCat(category || "all"); setProductQuery(""); setProductPickerOpen(true);
             }}
-              className={cls("w-full py-3 rounded-xl border-2 border-dashed text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]",
-                !category ? dark ? "border-gray-700 bg-gray-800/30 text-gray-600" : "border-gray-200 bg-gray-50 text-gray-400" : dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-emerald-200 bg-emerald-50/40 text-emerald-700")}>
+              className={cls("w-full py-2.5 rounded-lg border border-dashed text-[13px] font-semibold flex items-center justify-center gap-2 transition active:opacity-70",
+                !category
+                  ? (dark ? "border-[#262626] text-[#737373]" : "border-[#dbdbdb] text-[#a8a8a8]")
+                  : (dark ? "border-[#262626] text-white" : "border-[#dbdbdb] text-black"))}>
               <Plus size={14}/>
-              {!category ? "카테고리 선택 후 제품 추가" : "제품 추가하기"}
+              {!category ? "카테고리 선택 후 제품 추가" : "제품 추가"}
             </button>
           )}
         </div>
 
         {/* 텍스트 필드 */}
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="제목 *"
-          className={cls("w-full text-lg font-bold bg-transparent outline-none border-b pb-2",
-            dark ? "text-white placeholder-gray-600 border-gray-700" : "text-gray-900 placeholder-gray-300 border-gray-200")}/>
-        <textarea value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = Math.min(e.target.scrollHeight, 500) + "px";
-          }}
-          placeholder="내용을 자유롭게 적어보세요 *" rows={6}
-          className={cls("w-full text-sm bg-transparent outline-none border-b pb-2 resize-none overflow-hidden",
-            dark ? "text-white placeholder-gray-600 border-gray-700" : "text-gray-900 placeholder-gray-300 border-gray-200")}/>
-        <TagChipInput tags={tags} setTags={setTags} dark={dark}/>
+        <div>
+          <p className={cls("text-[14px] font-semibold mb-2", dark ? "text-white" : "text-black")}>제목 <span className="text-red-500">*</span></p>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="한 줄로 제목을 적어보세요"
+            className={cls("w-full text-[15px] font-semibold bg-transparent outline-none border rounded-lg px-3 py-2.5",
+              dark ? "text-white placeholder-[#737373] border-[#262626] focus:border-[#737373]"
+                   : "text-black placeholder-[#8e8e8e] border-[#dbdbdb] focus:border-[#a8a8a8]")}/>
+        </div>
+        <div>
+          <p className={cls("text-[14px] font-semibold mb-2", dark ? "text-white" : "text-black")}>내용 <span className="text-red-500">*</span></p>
+          <textarea value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 500) + "px";
+            }}
+            placeholder="사진이나 제품에 대한 경험을 자유롭게 적어주세요" rows={6}
+            className={cls("w-full text-[14px] bg-transparent outline-none border rounded-lg px-3 py-2.5 resize-none overflow-hidden leading-[1.5]",
+              dark ? "text-white placeholder-[#737373] border-[#262626] focus:border-[#737373]"
+                   : "text-black placeholder-[#8e8e8e] border-[#dbdbdb] focus:border-[#a8a8a8]")}/>
+        </div>
+        <div>
+          <p className={cls("text-[14px] font-semibold mb-2", dark ? "text-white" : "text-black")}>태그 <span className={cls("font-normal text-[12px] ml-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>(선택)</span></p>
+          <TagChipInput tags={tags} setTags={setTags} dark={dark}/>
+        </div>
 
-        {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+        {error && <p className="text-[13px] text-red-500">{error}</p>}
       </div>
 
-      {/* 드래프트 복구 안내 */}
+      {/* 드래프트 복구 안내 — 제목/본문 미리보기 포함해 사용자가 어떤 내용인지 알 수 있게 */}
       {restorePrompt && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center p-6 animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setRestorePrompt(false)}/>
-          <div className={cls("relative w-full max-w-xs rounded-3xl p-6 shadow-2xl animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
-              <PenLine size={24} className="text-emerald-500"/>
-            </div>
-            <p className={cls("text-base font-black text-center", dark ? "text-white" : "text-gray-900")}>이어서 쓰시겠어요?</p>
-            <p className={cls("text-xs text-center mt-2 opacity-70", dark ? "text-gray-400" : "text-gray-600")}>이전에 작성하다가 중단한 내용이 남아 있어요.</p>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => { discardDraft(); }}
-                className={cls("flex-1 py-3 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600")}>새로 쓰기</button>
+          <div className={cls("relative w-full max-w-sm rounded-2xl p-6 animate-slide-up shadow-2xl", dark ? "bg-[#121212]" : "bg-white")}>
+            <p className={cls("text-[16px] font-bold text-center", dark ? "text-white" : "text-black")}>이어서 쓰시겠어요?</p>
+            <p className={cls("text-[13px] text-center mt-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>이전에 작성하다가 중단한 내용이 있어요.</p>
+            {(title?.trim() || body?.trim()) && (
+              <div className={cls("mt-3 rounded-lg p-3 text-left", dark ? "bg-[#1a1a1a]" : "bg-[#f5f5f5]")}>
+                {title?.trim() && (
+                  <p className={cls("text-[13px] font-bold truncate", dark ? "text-white" : "text-black")}>{title}</p>
+                )}
+                {body?.trim() && (
+                  <p className={cls("text-[12px] mt-1 line-clamp-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{body}</p>
+                )}
+              </div>
+            )}
+            <div className="flex flex-col gap-2 mt-5">
               <button onClick={() => setRestorePrompt(false)}
-                className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold text-sm">이어 쓰기</button>
+                className="py-2.5 bg-mint-500 hover:bg-mint-600 active:scale-[0.98] text-white rounded-lg font-bold text-[14px] transition">이어 쓰기</button>
+              <button onClick={() => { discardDraft(); }}
+                className={cls("py-2.5 rounded-lg font-semibold text-[14px] active:scale-[0.98] transition", dark ? "bg-[#262626] hover:bg-[#333] text-white" : "bg-[#efefef] hover:bg-[#e5e5e5] text-black")}>새로 쓰기</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 제품 선택 모달 */}
+      {/* 카테고리 변경 확인 — 선택된 제품이 새 카테고리와 맞지 않을 때 */}
+      {pendingCategoryChange && (
+        <div className="absolute inset-0 z-[55] flex items-center justify-center p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPendingCategoryChange(null)}/>
+          <div className={cls("relative w-full max-w-sm rounded-2xl p-6 animate-slide-up shadow-2xl", dark ? "bg-[#121212]" : "bg-white")}>
+            <p className={cls("text-[16px] font-bold text-center", dark ? "text-white" : "text-black")}>카테고리를 바꿀까요?</p>
+            <p className={cls("text-[13px] text-center mt-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+              선택한 제품 {pendingCategoryChange.mismatched.length}개가 &apos;{pendingCategoryChange.label}&apos; 카테고리와 맞지 않아 제거돼요.
+            </p>
+            <div className={cls("mt-3 rounded-lg p-3 max-h-28 overflow-auto", dark ? "bg-[#1a1a1a]" : "bg-[#f5f5f5]")}>
+              {pendingCategoryChange.mismatched.map((p) => (
+                <p key={p.id} className={cls("text-[12px] truncate", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>• {p.name}</p>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2 mt-5">
+              <button onClick={() => {
+                const next = pendingCategoryChange.next;
+                setSelectedProducts((prev) => prev.filter((p) => !p.category || p.category === next));
+                setCategory(next);
+                setPendingCategoryChange(null);
+              }}
+                className="py-2.5 bg-mint-500 hover:bg-mint-600 active:scale-[0.98] text-white rounded-lg font-bold text-[14px] transition">바꾸기</button>
+              <button onClick={() => setPendingCategoryChange(null)}
+                className={cls("py-2.5 rounded-lg font-semibold text-[14px] active:scale-[0.98] transition", dark ? "bg-[#262626] hover:bg-[#333] text-white" : "bg-[#efefef] hover:bg-[#e5e5e5] text-black")}>취소</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 초기화 확인 */}
       {confirmClearDraft && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-6 animate-fade-in">
           <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmClearDraft(false)}/>
-          <div className={cls("relative w-full max-w-xs rounded-3xl p-6 shadow-2xl animate-slide-up", dark ? "bg-gray-900" : "bg-white")}>
-            <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
-              <X size={26} className="text-rose-500"/>
-            </div>
-            <p className={cls("text-base font-black text-center", dark ? "text-white" : "text-gray-900")}>작성 중인 내용을 모두 지울까요?</p>
-            <p className={cls("text-xs text-center mt-2 opacity-70", dark ? "text-gray-400" : "text-gray-600")}>제목, 본문, 태그, 사진, 제품이 모두 삭제돼요. 되돌릴 수 없어요.</p>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setConfirmClearDraft(false)}
-                className={cls("flex-1 py-3 rounded-2xl font-bold text-sm border", dark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600")}>취소</button>
+          <div className={cls("relative w-full max-w-xs rounded-xl p-6 animate-slide-up", dark ? "bg-[#121212]" : "bg-white")}>
+            <p className={cls("text-[16px] font-bold text-center", dark ? "text-white" : "text-black")}>작성 중인 내용을 지울까요?</p>
+            <p className={cls("text-[13px] text-center mt-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>제목, 본문, 태그, 사진, 제품이 모두 삭제돼요.</p>
+            <div className="flex flex-col gap-2 mt-5">
               <button onClick={() => { clearDraft(); setConfirmClearDraft(false); }}
-                className="flex-1 py-3 bg-rose-500 text-white rounded-2xl font-bold text-sm">초기화</button>
+                className="py-2 bg-red-500 text-white rounded-lg font-bold text-[14px]">초기화</button>
+              <button onClick={() => setConfirmClearDraft(false)}
+                className={cls("py-2 rounded-lg font-semibold text-[14px]", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>취소</button>
             </div>
           </div>
         </div>
@@ -490,7 +553,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               <div className="min-w-0">
                 <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>제품 선택</p>
                 {productQuery.trim() ? (
-                  <p className={cls("text-xs font-bold mt-0.5", dark ? "text-emerald-400" : "text-emerald-600")}>
+                  <p className={cls("text-xs font-bold mt-0.5", dark ? "text-mint-400" : "text-mint-600")}>
                     전체 제품에서 찾는 중
                   </p>
                 ) : pickerCat && pickerCat !== "all" && CATEGORIES[pickerCat] ? (
@@ -523,7 +586,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 <button key={c.key} onClick={() => { setPickerCat(c.key); setProductQuery(""); }}
                   className={cls("shrink-0 px-3 py-1 rounded-full text-xs font-bold transition",
                     pickerCat === c.key
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-mint-500 text-white"
                       : dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500")}>
                   {c.label}
                 </button>
@@ -549,7 +612,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                       <button key={p.id} onClick={() => toggleProduct(p)}
                         className={cls("w-full flex items-center gap-3 p-2.5 rounded-2xl transition active:scale-[0.98] text-left",
                           selected
-                            ? dark ? "bg-emerald-900/40 ring-2 ring-emerald-500" : "bg-emerald-50 ring-2 ring-emerald-500"
+                            ? dark ? "bg-mint-900/40 ring-2 ring-mint-500" : "bg-mint-50 ring-2 ring-mint-500"
                             : dark ? "bg-gray-800/60 hover:bg-gray-800" : "bg-white hover:bg-gray-50 border border-gray-100")}>
                         <div className={cls("w-16 h-16 rounded-xl shrink-0 overflow-hidden flex items-center justify-center", dark ? "bg-gray-900" : "bg-gray-50")}>
                           <ProductImage
@@ -561,7 +624,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                         </div>
                         <div className="flex-1 min-w-0">
                           {p.brand && (
-                            <p className={cls("text-xs font-bold mb-0.5 truncate", dark ? "text-emerald-400" : "text-emerald-600")}>{p.brand}</p>
+                            <p className={cls("text-xs font-bold mb-0.5 truncate", dark ? "text-mint-400" : "text-mint-600")}>{p.brand}</p>
                           )}
                           <p className={cls("text-xs font-bold line-clamp-2 leading-tight", dark ? "text-white" : "text-gray-900")}>{p.name}</p>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -576,7 +639,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                           </div>
                         </div>
                         {selected ? (
-                          <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-mint-500 flex items-center justify-center shrink-0">
                             <Check size={14} className="text-white"/>
                           </div>
                         ) : (
@@ -589,7 +652,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               )}
             </div>
             <button onClick={() => setProductPickerOpen(false)}
-              className="w-full mt-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-[0.98] transition">
+              className="w-full mt-4 py-3 bg-gradient-to-r from-mint-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-[0.98] transition">
               선택 완료
             </button>
             {productQuery.trim() && filteredProducts.length === 0 && (
@@ -602,7 +665,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 setProductPickerOpen(false);
               }}
                 className={cls("w-full mt-2 py-3 rounded-2xl font-bold text-sm border-2 border-dashed flex items-center justify-center gap-2 active:scale-[0.98] transition",
-                  dark ? "border-emerald-700 text-emerald-400" : "border-emerald-300 text-emerald-600")}>
+                  dark ? "border-mint-700 text-mint-400" : "border-mint-300 text-mint-600")}>
                 <Plus size={14}/>
                 "{productQuery.trim()}" 직접 추가하기
               </button>

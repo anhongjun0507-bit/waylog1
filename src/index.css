@@ -1,3 +1,4 @@
+/* Pretendard — 오늘의집/Threads 모두 산세리프 기반 */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
 @tailwind base;
@@ -8,36 +9,34 @@
   html, body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #f9fafb;
-    /* iOS safari momentum 스크롤 */
+    /* IG light — 순백 */
+    background-color: #ffffff;
     -webkit-overflow-scrolling: touch;
-    /* 가로 overscroll 제거 (pull-to-refresh 외 수평 bounce 방지) */
     overscroll-behavior-x: none;
   }
   html.dark, html.dark body {
-    background-color: #111827;
+    /* IG dark — OLED 순흑 */
+    background-color: #000000;
     color-scheme: dark;
   }
   body {
     margin: 0;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
-    /* 한국어 본문 리듬: 자간 살짝 좁히고 행간 넉넉히 */
-    letter-spacing: -0.01em;
-    line-height: 1.6;
-    /* 다크모드에서 시스템 기본 text 색 */
-    color: #111827;
+    letter-spacing: -0.005em;
+    line-height: 1.5;
+    color: #000000;
   }
-  html.dark body { color: #e5e7eb; }
+  html.dark body { color: #ffffff; }
   * {
     -webkit-tap-highlight-color: transparent;
   }
   /* 포커스 표시 — 키보드 탐색 (Tab) 시에만 노출, 마우스/터치 탭 시엔 숨김 */
   input:focus-visible, textarea:focus-visible, select:focus-visible {
-    outline: 2px solid #10b981;
+    outline: 2px solid #00C9A7;
     outline-offset: 1px;
   }
   button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-    outline: 2px solid #10b981;
+    outline: 2px solid #00C9A7;
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -69,6 +68,13 @@
 @keyframes toastIn { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes cardEnter { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes heartBurst {
+  0%   { opacity: 0; transform: scale(0); }
+  15%  { opacity: 0.95; transform: scale(1.2); }
+  40%  { opacity: 0.95; transform: scale(1); }
+  80%  { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
 
 .animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
 .animate-slide-down { animation: slideDown 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
@@ -77,10 +83,11 @@
 .animate-toast { animation: toastIn 2.2s ease-out; }
 .animate-shimmer { animation: shimmer 1.5s infinite linear; }
 .animate-card-enter { animation: cardEnter 0.4s ease-out backwards; }
+.animate-heart-burst { animation: heartBurst 0.8s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
 .tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
 
 button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-  outline: 2px solid #10b981;
+  outline: 2px solid #00C9A7;
   outline-offset: 2px;
   border-radius: 4px;
 }

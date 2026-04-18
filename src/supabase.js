@@ -84,26 +84,50 @@ export const getAccessToken = async () => {
 }
 
 // Supabase REST API 직접 호출 헬퍼 — GoTrueClient 완전 우회
-const directRest = async (method, path, body = null) => {
+// AbortController + 15초 기본 타임아웃으로 무한 대기 방지.
+// 외부에서 signal 을 주입하면 (예: 사용자 로그아웃 시 abort) 즉시 취소 가능.
+const DEFAULT_REST_TIMEOUT = 15000
+const directRest = async (method, path, body = null, { signal: externalSignal, timeoutMs = DEFAULT_REST_TIMEOUT } = {}) => {
   const token = await getAccessToken()
   if (!token) return { data: null, error: { message: 'no_auth_token' } }
   const headers = {
     'Content-Type': 'application/json',
     apikey: supabaseAnonKey,
     Authorization: `Bearer ${token}`,
-    Prefer: method === 'POST' ? 'return=representation' : undefined,
+    Prefer: (method === 'POST' || method === 'PATCH') ? 'return=representation' : undefined,
   }
   Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
-  const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    method, headers,
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    return { data: null, error: { message: err.message || err.error || `HTTP ${res.status}` } }
+
+  // 내부 타임아웃 controller — 외부 signal 과 merge
+  const controller = new AbortController()
+  const timeoutId = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null
+  const onExternalAbort = () => controller.abort()
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort()
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true })
   }
-  const data = await res.json().catch(() => null)
-  return { data: Array.isArray(data) ? data[0] : data, error: null }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+      method, headers,
+      signal: controller.signal,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { data: null, error: { message: err.message || err.error || `HTTP ${res.status}` } }
+    }
+    const data = await res.json().catch(() => null)
+    return { data: Array.isArray(data) ? data[0] : data, error: null }
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      return { data: null, error: { message: externalSignal?.aborted ? 'aborted' : 'timeout' } }
+    }
+    return { data: null, error: { message: e?.message || 'network_error' } }
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort)
+  }
 }
 
 // GoTrueClient를 완전히 우회하는 직접 로그인.
@@ -199,6 +223,17 @@ export const auth = {
         .select().single()
     } catch (e) { return { data: null, error: e } }
   },
+  // 회원가입/최초 로그인 시 profile 테이블에 row 가 없으면 생성.
+  // DB trigger (handle_new_user) 가 설정돼 있으면 no-op 이지만, 설정 안 된 환경 방어.
+  // 이미 있으면 그대로 반환 (편집한 값이 덮어쓰이지 않도록 insert 만 사용).
+  async ensureProfile(userId, { nickname = '', avatar_url = '' } = {}) {
+    if (!supabase || !userId) return noop
+    try {
+      const existing = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle()
+      if (existing.data?.id) return { data: existing.data, error: null }
+      return await supabase.from('profiles').insert({ id: userId, nickname, avatar_url }).select().single()
+    } catch (e) { return { data: null, error: e } }
+  },
   async updateUserMetadata(metadata) {
     if (!supabase) return noop
     try { return await supabase.auth.updateUser({ data: metadata }) }
@@ -224,13 +259,17 @@ async function enrichWithProfiles(rows) {
   }
 }
 
+// UI(mapReviewRow)에서 실제로 읽는 컬럼만 선택 — payload / 네트워크 절감.
+// 새 컬럼을 UI 에서 쓰려면 여기도 같이 추가해야 함 (silent truncation 방지).
+const REVIEW_COLS = 'id, user_id, title, content, category, tags, product_name, media, likes_count, views_count, created_at'
+
 export const reviews = {
   // limit 기본 30 으로 상향 조정 — UI 에서 무한 스크롤로 추가 fetch.
   // 하위호환: 기존 호출은 limit 파라미터 없이 fetchAll() 로 첫 페이지만 가져온다.
   async fetchAll(limit = 30) {
     if (!supabase) return noopArr
     try {
-      const { data, error } = await supabase.from('reviews').select('*')
+      const { data, error } = await supabase.from('reviews').select(REVIEW_COLS)
         .order('created_at', { ascending: false }).limit(limit)
       if (error) return { data: [], error }
       return { data: await enrichWithProfiles(data), error: null }
@@ -240,7 +279,7 @@ export const reviews = {
   async fetchPage({ cursor = null, limit = 30 } = {}) {
     if (!supabase) return noopArr
     try {
-      let q = supabase.from('reviews').select('*')
+      let q = supabase.from('reviews').select(REVIEW_COLS)
         .order('created_at', { ascending: false }).limit(limit)
       if (cursor) q = q.lt('created_at', cursor)
       const { data, error } = await q
@@ -251,7 +290,7 @@ export const reviews = {
   async fetchMine(userId) {
     if (!supabase) return noopArr
     try {
-      const { data, error } = await supabase.from('reviews').select('*')
+      const { data, error } = await supabase.from('reviews').select(REVIEW_COLS)
         .eq('user_id', userId).order('created_at', { ascending: false })
       if (error) return { data: [], error }
       return { data: await enrichWithProfiles(data), error: null }
@@ -277,8 +316,15 @@ export const reviews = {
   },
   async update(id, updates) {
     if (!supabase) return noop
-    try { return await supabase.from('reviews').update(updates).eq('id', id).select().single() }
-    catch (e) { return { data: null, error: e } }
+    // GoTrueClient 경유 2초 타임아웃 → 실패 시 직접 REST 폴백 (내부 15초 타임아웃).
+    try {
+      const result = await Promise.race([
+        supabase.from('reviews').update(updates).eq('id', id).select().single(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
+      ])
+      if (result?.data?.id || result?.data === null) return result
+    } catch {}
+    return directRest('PATCH', `reviews?id=eq.${encodeURIComponent(id)}`, updates)
   },
 }
 
@@ -572,7 +618,9 @@ export const storage = {
         return { url: urlData.publicUrl, error: null }
       }
     } catch {}
-    // 2) 직접 fetch 폴백
+    // 2) 직접 fetch 폴백 — 30초 타임아웃(이미지/동영상 크기 고려)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
     try {
       const token = await getAccessToken()
       if (!token) return { url: null, error: { message: 'no_auth_token' } }
@@ -580,6 +628,7 @@ export const storage = {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey, 'Content-Type': contentType, 'Cache-Control': 'max-age=31536000' },
         body: file,
+        signal: controller.signal,
       })
       if (res.ok) {
         const publicUrl = `${supabaseUrl}/storage/v1/object/public/review-media/${path}`
@@ -588,7 +637,10 @@ export const storage = {
       const err = await res.json().catch(() => ({}))
       return { url: null, error: { message: err.message || `HTTP ${res.status}` } }
     } catch (e) {
+      if (e?.name === 'AbortError') return { url: null, error: { message: 'timeout' } }
       return { url: null, error: e }
+    } finally {
+      clearTimeout(timeoutId)
     }
   },
   async deleteMedia(path) {

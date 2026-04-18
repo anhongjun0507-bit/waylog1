@@ -10,7 +10,7 @@ export const MentionText = ({ text, dark, onMentionClick }) => {
       {tokens.map((t, i) => t.type === "mention" ? (
         <button key={i} type="button"
           onClick={() => onMentionClick && onMentionClick(t.name)}
-          className={cls("font-bold active:opacity-60", dark ? "text-emerald-400" : "text-emerald-600")}>
+          className={cls("font-bold active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
           @{t.name}
         </button>
       ) : (

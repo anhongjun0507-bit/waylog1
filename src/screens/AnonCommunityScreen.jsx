@@ -34,15 +34,15 @@ export const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAdd
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>챌린지 커뮤니티</p>
-        <button onClick={() => setComposing(true)} aria-label="새 글 쓰기" className="text-emerald-500"><PenLine size={20}/></button>
+        <button onClick={() => setComposing(true)} aria-label="새 글 쓰기" className="text-mint-500"><PenLine size={20}/></button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {composing && (
           <div className={cls("p-4 rounded-2xl space-y-3", dark ? "bg-gray-800" : "bg-white")}>
             <div className="flex items-center gap-2 mb-1">
-              <CircleUser size={16} className="text-emerald-500"/>
+              <CircleUser size={16} className="text-mint-500"/>
               <span className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>{anonId}</span>
-              <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>Day {dayNum}</span>
+              <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-700")}>Day {dayNum}</span>
             </div>
             <input value={postTitle} onChange={(e) => setPostTitle(e.target.value)} placeholder="제목 (선택)"
               className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")}/>
@@ -53,7 +53,7 @@ export const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAdd
                 className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600")}>취소</button>
               <button onClick={handlePost} disabled={!postBody.trim()}
                 className={cls("flex-1 py-2.5 rounded-xl text-sm font-black",
-                  postBody.trim() ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" : dark ? "bg-gray-700 text-gray-600" : "bg-gray-200 text-gray-400")}>
+                  postBody.trim() ? "bg-gradient-to-r from-mint-500 to-teal-500 text-white" : dark ? "bg-gray-700 text-gray-600" : "bg-gray-200 text-gray-400")}>
                 공유하기
               </button>
             </div>
@@ -71,10 +71,10 @@ export const AnonCommunityScreen = ({ challenge, onClose, dark, anonPosts, onAdd
         {sorted.map((p) => (
           <div key={p.id} className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
             <div className="flex items-center gap-2 mb-2">
-              <CircleUser size={16} className={p.anonId === anonId ? "text-emerald-500" : dark ? "text-gray-400" : "text-gray-500"}/>
+              <CircleUser size={16} className={p.anonId === anonId ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500"}/>
               <span className={cls("text-xs font-bold", dark ? "text-gray-300" : "text-gray-700")}>{p.anonId}</span>
               <span className={cls("text-xs px-2 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>Day {p.dayNum}</span>
-              {p.anonId === anonId && <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-emerald-900/40 text-emerald-300" : "bg-emerald-50 text-emerald-700")}>나</span>}
+              {p.anonId === anonId && <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-700")}>나</span>}
             </div>
             {p.title && <p className={cls("text-sm font-black mb-1", dark ? "text-white" : "text-gray-900")}>{p.title}</p>}
             <p className={cls("text-sm leading-relaxed", dark ? "text-gray-300" : "text-gray-700")}>{p.body}</p>
