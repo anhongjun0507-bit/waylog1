@@ -1312,27 +1312,29 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           return (
             <button key={r.id} data-rid={r.id} onClick={() => onOpen(r)}
               className={cls("text-left active:scale-[0.98] transition", highlight && "ring-2 ring-mint-500 rounded-xl")}>
-              {/* 이미지 — 4:5 portrait, 라이프스타일 사진에 맞는 비율 */}
+              {/* 이미지 — 4:5 portrait */}
               <div className={cls("relative w-full aspect-[4/5] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                 {r.img
                   ? <SmartImg r={r} className="w-full h-full object-cover"/>
                   : (
-                    /* 이미지 없는 포스트 — 본문 일부를 타이포그래피로 */
-                    <div className={cls("w-full h-full p-3 flex flex-col justify-center", dark ? "bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a]" : "bg-gradient-to-br from-[#f5f5f5] to-[#ebebeb]")}>
-                      <p className={cls("text-[13px] font-semibold line-clamp-5 leading-[1.45]", dark ? "text-white/80" : "text-black/70")}>
+                    /* 이미지 없는 포스트 — 에디토리얼 quote 스타일. 링 테두리 + 좌측 민트 바 */
+                    <div className={cls("w-full h-full p-4 flex flex-col justify-center relative ring-1",
+                      dark ? "bg-[#0f0f0f] ring-white/5" : "bg-[#fafafa] ring-black/5")}>
+                      <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r bg-mint-500/70"/>
+                      <p className={cls("text-[13px] font-medium line-clamp-6 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
                         {r.body || r.title || "웨이로그"}
                       </p>
                     </div>
                   )}
+                {/* 카테고리 — 시각 무게 down (사이즈·대비·폰트 weight 낮춤). 제품 칩이 주인공 */}
                 {rCat && (
-                  <div className="absolute top-2 left-2">
-                    <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur", dark ? "bg-black/60 text-white" : "bg-white/90 text-black")}>
-                      {rCat.label}
-                    </span>
-                  </div>
+                  <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-md",
+                    dark ? "bg-black/35 text-white/90" : "bg-white/70 text-black/75")}>
+                    {rCat.label}
+                  </span>
                 )}
                 {(hasVideo || mediaCount > 1) && (
-                  <div className="absolute top-2 right-2 bg-black/50 backdrop-blur rounded-full w-6 h-6 flex items-center justify-center">
+                  <div className="absolute top-2 right-2 bg-black/40 backdrop-blur rounded-full w-6 h-6 flex items-center justify-center">
                     {hasVideo
                       ? <Film size={12} className="text-white"/>
                       : <Images size={12} className="text-white"/>}
@@ -1346,23 +1348,25 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                 </button>
               </div>
 
-              {/* 제목 — 14px 로 bump, 2줄 클램프 */}
+              {/* 메타 영역 — 8px 그리드로 통일. 제품 줄은 있든 없든 공간 예약 → 카드 높이 일관 */}
               <p className={cls("text-[14px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
                 {r.title || "제목 없음"}
               </p>
 
-              {/* 제품 칩 — 웨이로그의 핵심 정보. 민트 톤으로 강조 */}
-              {r.product && (
-                <div className="flex items-center gap-1 mt-1 min-w-0">
-                  <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
-                  <span className={cls("text-[11px] font-semibold truncate", dark ? "text-mint-300" : "text-mint-700")}>
-                    {r.product}
-                  </span>
-                </div>
-              )}
+              {/* 제품 칩 — 고정 높이 16px로 공간 항상 예약. 카드 높이 불일치 해소 */}
+              <div className="h-4 mt-2 flex items-center gap-1 min-w-0">
+                {r.product && (
+                  <>
+                    <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
+                    <span className={cls("text-[11px] font-semibold truncate", dark ? "text-mint-300" : "text-mint-700")}>
+                      {r.product}
+                    </span>
+                  </>
+                )}
+              </div>
 
-              {/* 작성자 행 — 아바타 + 닉네임 + 좋아요 */}
-              <div className="flex items-center gap-1.5 mt-1.5">
+              {/* 작성자 행 */}
+              <div className="flex items-center gap-1.5 mt-2">
                 <Avatar id={r.authorAvatar} size={7} className="w-4 h-4 shrink-0"/>
                 <p className={cls("text-[11px] font-medium truncate", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
                   {r.author || "익명"}
