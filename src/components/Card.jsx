@@ -42,10 +42,10 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
         </button>
       </div>
 
-      {/* Image — rounded (매거진 톤), 가로 여백 주어 edge-to-edge 지양 */}
+      {/* Image — 4:3 landscape 비율로 카드 세로 부피 축소. 스크롤 피로 ↓ */}
       {hasImg && (
         <button onClick={() => onOpen(r)} className="block w-full px-4">
-          <div className={cls("relative w-full aspect-square overflow-hidden rounded-xl", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
+          <div className={cls("relative w-full aspect-[4/3] overflow-hidden rounded-xl", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
             <SmartImg r={r} className="w-full h-full object-cover"/>
             {(hasVideo || mediaCount > 1) && (
               <div className="absolute top-3 right-3 bg-black/50 backdrop-blur rounded-full w-8 h-8 flex items-center justify-center">
