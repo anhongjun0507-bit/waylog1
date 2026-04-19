@@ -23,7 +23,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
 
   return (
     <article data-rid={r.id}
-      className={cls("block w-full", highlight && "bg-mint-500/5")}>
+      className={cls("block w-full", highlight && "bg-brand-500/5")}>
       {/* Header */}
       <div className="px-4 py-3 flex items-center gap-3">
         <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden">
@@ -34,7 +34,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
             {r.author || "익명"}
           </p>
           {timestamp && (
-            <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{timestamp}</p>
+            <p className={cls("text-[11px]", dark ? "text-ink-400" : "text-ink-500")}>{timestamp}</p>
           )}
         </div>
         <button aria-label="더보기" className="active:opacity-60">
@@ -45,7 +45,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
       {/* Image — 4:3 landscape 비율로 카드 세로 부피 축소. 스크롤 피로 ↓ */}
       {hasImg && (
         <button onClick={() => onOpen(r)} className="block w-full px-4">
-          <div className={cls("relative w-full aspect-[4/3] overflow-hidden rounded-xl", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
+          <div className={cls("relative w-full aspect-[4/3] overflow-hidden rounded-card", dark ? "bg-ink-900" : "bg-ink-50")}>
             <SmartImg r={r} className="w-full h-full object-cover"/>
             {(hasVideo || mediaCount > 1) && (
               <div className="absolute top-3 right-3 bg-black/50 backdrop-blur rounded-full w-8 h-8 flex items-center justify-center">
@@ -82,7 +82,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
           )}
           {r.product && (
             <span className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold max-w-[200px]",
-              dark ? "bg-mint-900/30 text-mint-300" : "bg-mint-50 text-mint-700")}>
+              dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
               <ShoppingBag size={10} strokeWidth={2.2} className="shrink-0"/>
               <span className="truncate">{r.product}</span>
             </span>
@@ -97,18 +97,18 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
             {r.title}
           </h3>
           {r.body && (
-            <p className={cls("text-[13.5px] leading-[1.5] mt-1", dark ? "text-[#d4d4d4]" : "text-[#404040]", !captionExpanded && "line-clamp-2")}>
+            <p className={cls("text-[13.5px] leading-[1.5] mt-1", dark ? "text-ink-200" : "text-ink-700", !captionExpanded && "line-clamp-2")}>
               {r.body}
             </p>
           )}
           {r.body && r.body.length > 80 && !captionExpanded && (
             <span onClick={(e) => { e.stopPropagation(); setCaptionExpanded(true); }}
-              className={cls("text-[13px] font-medium mt-1 inline-block", dark ? "text-mint-400" : "text-mint-700")}>
+              className={cls("text-[13px] font-medium mt-1 inline-block", dark ? "text-brand-300" : "text-brand-700")}>
               더 보기
             </span>
           )}
           {r.tags && r.tags.length > 0 && captionExpanded && (
-            <p className={cls("text-[13px] mt-1.5", dark ? "text-mint-400" : "text-mint-700")}>
+            <p className={cls("text-[13px] mt-1.5", dark ? "text-brand-300" : "text-brand-700")}>
               {r.tags.map((t) => `#${t}`).join(" ")}
             </p>
           )}
@@ -121,7 +121,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
           aria-label={isFav ? "좋아요 취소" : "좋아요"} aria-pressed={isFav}
           className="p-1.5 active:scale-90 transition inline-flex items-center gap-1.5">
           <Heart size={24} strokeWidth={1.8}
-            className={cls(isFav ? "fill-mint-500 text-mint-500" : dark ? "text-white" : "text-black")}/>
+            className={cls(isFav ? "fill-accent-500 text-accent-500" : dark ? "text-white" : "text-black")}/>
           {r.likes > 0 && (
             <span className={cls("text-[13px] font-semibold tabular-nums", dark ? "text-white" : "text-black")}>
               {r.likes.toLocaleString()}
@@ -141,7 +141,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
         </button>
       </div>
 
-      <div className={cls("mx-4 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}/>
+      <div className={cls("mx-4 border-b", dark ? "border-ink-800" : "border-ink-200")}/>
     </article>
   );
 };

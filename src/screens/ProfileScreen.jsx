@@ -49,7 +49,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
         <button onClick={() => editing ? save() : setEditing(true)} disabled={saving}
           className={cls("px-4 py-1.5 rounded-full text-[13px] font-bold transition active:scale-95",
             editing
-              ? saving ? "bg-mint-500/50 text-white cursor-wait" : "bg-mint-500 text-white"
+              ? saving ? "bg-brand-500/50 text-white cursor-wait" : "bg-brand-500 text-white"
               : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
           {editing ? (saving ? "저장 중" : "완료") : "편집"}
         </button>
@@ -60,7 +60,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
           <div className="relative">
             <Avatar id={avatar} size={48} className="w-24 h-24" rounded="rounded-full"/>
             {editing && (
-              <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 flex items-center justify-center cursor-pointer active:opacity-80 transition border-2"
+              <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center cursor-pointer active:opacity-80 transition border-2"
                 style={{ borderColor: dark ? "#000" : "#fff" }}>
                 <Camera size={14} className="text-white"/>
                 <input type="file" accept="image/*" className="hidden" onChange={handleFileChange}/>
@@ -69,7 +69,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
           </div>
           {editing ? (
             <input value={nick} onChange={(e) => setNick(e.target.value)}
-              className={cls("mt-4 text-[18px] font-bold text-center bg-transparent outline-none border-b pb-1", dark ? "text-white border-[#262626]" : "text-black border-[#dbdbdb]")}/>
+              className={cls("mt-4 text-[18px] font-bold text-center bg-transparent outline-none border-b pb-1 focus:border-brand-500", dark ? "text-white border-ink-800" : "text-black border-ink-200")}/>
           ) : (
             <h2 className={cls("mt-4 text-[18px] font-bold", dark ? "text-white" : "text-black")}>{user.nickname}</h2>
           )}
@@ -95,7 +95,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
         </div>
 
         {totalCats > 0 && (
-          <div className={cls("mt-4 p-4 rounded-xl border", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+          <div className={cls("mt-4 p-5 rounded-card border", dark ? "border-ink-800" : "border-ink-200")}>
             <p className={cls("text-[12px] font-semibold mb-3 uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               카테고리 비율
             </p>

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { useCatalog, useCatalogLoading } from "./catalog.js";
-import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage, follows as supabaseFollows, profilesApi as supabaseProfiles, communityApi as supabaseCommunity } from "./supabase.js";
+import { supabase, migrationReady, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage, follows as supabaseFollows, profilesApi as supabaseProfiles, communityApi as supabaseCommunity } from "./supabase.js";
 import { sanitizeImageUrl, sanitizeText, sanitizeInline } from "./utils/sanitize.js";
 import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
@@ -91,7 +91,7 @@ class ErrorBoundary extends Component {
               다시 시도
             </button>
             <button onClick={() => window.location.reload()}
-              className="flex-1 py-3 bg-gradient-to-r from-mint-500 to-teal-500 text-white rounded-2xl font-bold text-sm active:scale-95 transition">
+              className="flex-1 py-3 bg-brand-500 text-white rounded-2xl font-bold text-sm active:scale-95 transition">
               새로고침
             </button>
           </div>
@@ -366,10 +366,10 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
   if (!top) {
     return (
       <div className={cls("mx-4 mt-3 h-72 rounded-3xl flex flex-col items-center justify-center", dark ? "bg-gray-800" : "bg-white")}>
-        <Check size={32} className="text-mint-500 mb-2"/>
+        <Check size={32} className="text-brand-500 mb-2"/>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>오늘의 픽 완료!</p>
         <p className={cls("text-xs mt-1 mb-4", dark ? "text-gray-400" : "text-gray-500")}>내일 새로운 추천이 기다려요</p>
-        <button onClick={() => setIdx(0)} className="px-4 py-2 rounded-full bg-mint-500 text-white text-xs font-bold active:scale-95 transition">다시 시작</button>
+        <button onClick={() => setIdx(0)} className="px-4 py-2 rounded-full bg-brand-500 text-white text-xs font-bold active:scale-95 transition">다시 시작</button>
       </div>
     );
   }
@@ -477,7 +477,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
             <button key={k} onClick={() => setActiveCat(k)}
               className={cls("shrink-0 px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition",
                 selected
-                  ? "bg-mint-500 text-white"
+                  ? "bg-brand-500 text-white"
                   : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
               {isAll ? "전체" : cat.label}
             </button>
@@ -489,7 +489,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
       {challengeActive && activeCat === "all" && (
         <div className="px-4 pt-4">
           <button onClick={onChallengeOpen}
-            className="w-full text-left block rounded-2xl overflow-hidden active:scale-[0.99] transition bg-gradient-to-br from-mint-500 to-mint-700">
+            className="w-full text-left block rounded-2xl overflow-hidden active:scale-[0.99] transition bg-gradient-to-br from-brand-500 to-brand-700">
             <div className="px-5 py-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
                 <Dumbbell size={22} className="text-white" strokeWidth={2}/>
@@ -510,8 +510,8 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
             className={cls("w-full text-left block rounded-2xl overflow-hidden active:scale-[0.99] transition border",
               dark ? "bg-[#121212] border-[#262626]" : "bg-white border-[#dbdbdb]")}>
             <div className="px-5 py-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-mint-500/10 flex items-center justify-center shrink-0">
-                <Dumbbell size={22} className="text-mint-500" strokeWidth={2}/>
+              <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
+                <Dumbbell size={22} className="text-brand-500" strokeWidth={2}/>
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>바디키 8주 챌린지</p>
@@ -528,8 +528,8 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
         <>
           <div className="px-4 pt-8 pb-3 flex items-baseline justify-between">
             <h3 className={cls("text-[16px] font-black inline-flex items-center gap-2", dark ? "text-white" : "text-black")}>
-              <span className="w-[3px] h-[14px] rounded-full bg-mint-500 self-center"/>
-              <Flame size={15} className="text-mint-500"/> 이번 주 인기
+              <span className="w-[3px] h-[14px] rounded-full bg-brand-500 self-center"/>
+              <Flame size={15} className="text-brand-500"/> 이번 주 인기
             </h3>
             <span className={cls("text-[12px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>최근 7일</span>
           </div>
@@ -542,7 +542,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                   <div className={cls("relative w-full aspect-[3/4] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                     <SmartImg r={r} className="w-full h-full object-cover"/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent"/>
-                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-mint-500 text-white text-[11px] font-black flex items-center justify-center shadow">
+                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center shadow">
                       {idx + 1}
                     </span>
                     {rCat && (
@@ -551,7 +551,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                       </span>
                     )}
                     <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 text-white">
-                      <Heart size={11} className="fill-mint-300 text-mint-300 shrink-0"/>
+                      <Heart size={11} className="fill-accent-300 text-accent-300 shrink-0"/>
                       <span className="text-[11px] font-bold tabular-nums">{r.likes || 0}</span>
                     </div>
                   </div>
@@ -569,7 +569,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
       {feedPosts.length > 0 && (
         <div className="px-4 pt-8 pb-3 flex items-baseline justify-between">
           <h3 className={cls("text-[16px] font-black inline-flex items-center gap-2", dark ? "text-white" : "text-black")}>
-            <span className="w-[3px] h-[14px] rounded-full bg-mint-500 self-center"/>
+            <span className="w-[3px] h-[14px] rounded-full bg-brand-500 self-center"/>
             {activeCat === "all" ? "최신 웨이로그" : `${CATEGORIES[activeCat]?.label} 리뷰`}
           </h3>
           <span className={cls("text-[12px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
@@ -601,7 +601,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
       {!loading && feedPosts.length === 0 && (
         <div className="px-6 py-20 text-center">
           <div className={cls("w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-            <Camera size={28} strokeWidth={1.5} className="text-mint-500"/>
+            <Camera size={28} strokeWidth={1.5} className="text-brand-500"/>
           </div>
           <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>
             {activeCat === "all" ? "첫 번째 웨이로그를 남겨보세요" : "이 카테고리엔 아직 리뷰가 없어요"}
@@ -611,7 +611,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
           </p>
           {activeCat === "all" && (
             <button onClick={onPrimary}
-              className="mt-5 px-6 py-2.5 rounded-full bg-mint-500 text-white text-[14px] font-bold active:scale-95 transition">
+              className="mt-5 px-6 py-2.5 rounded-full bg-brand-500 text-white text-[14px] font-bold active:scale-95 transition">
               웨이로그 쓰기
             </button>
           )}
@@ -637,7 +637,7 @@ const ChallengeFeedCard = ({ dayNum, dailyLogs, dark, onOpen }) => {
     <button onClick={onOpen}
       className={cls("w-full text-left block border-y active:opacity-90 transition", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
       <div className="px-4 py-3 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center">
           <Dumbbell size={16} className="text-white" strokeWidth={2}/>
         </div>
         <div className="flex-1">
@@ -645,7 +645,7 @@ const ChallengeFeedCard = ({ dayNum, dailyLogs, dark, onOpen }) => {
           <p className="text-[11px] text-[#737373]">스폰서 · Waylog</p>
         </div>
       </div>
-      <div className="relative w-full aspect-square bg-gradient-to-br from-mint-500 via-mint-600 to-black overflow-hidden">
+      <div className="relative w-full aspect-square bg-gradient-to-br from-brand-500 via-brand-600 to-black overflow-hidden">
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
           <p className="text-[11px] uppercase tracking-[0.3em] opacity-80 font-bold mb-1">DAY</p>
           <p className="text-[120px] font-black leading-none tabular-nums">{dayNum}</p>
@@ -711,7 +711,7 @@ const ExploreScreen = ({ reviews, onOpen, favs, toggleFav, dark, onProductClick,
           <button key={c.key} onClick={() => setActiveCat(c.key)}
             className={cls("shrink-0 px-4 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap transition",
               activeCat === c.key
-                ? "bg-mint-500 text-white"
+                ? "bg-brand-500 text-white"
                 : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
             {c.label}
           </button>
@@ -807,10 +807,10 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
         <button onClick={onChallengeOpen}
           className="relative block w-full h-[85vh] overflow-hidden active:scale-[0.995] transition">
           {/* 배경 — 그라디언트 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-mint-600 via-mint-700 to-black"/>
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-700 to-black"/>
           {/* 장식 도형 */}
           <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-white/5 blur-2xl"/>
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-mint-400/20 blur-3xl"/>
+          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-brand-300/20 blur-3xl"/>
 
           {/* 상단 정보 */}
           <div className="absolute top-5 inset-x-0 px-5">
@@ -868,9 +868,9 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
         /* 챌린지 미시작 — 시작 CTA 풀스크린 */
         <button onClick={onChallengeStart}
           className="relative block w-full h-[85vh] overflow-hidden active:scale-[0.995] transition">
-          <div className="absolute inset-0 bg-gradient-to-br from-mint-600 via-mint-800 to-black"/>
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-800 to-black"/>
           <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-white/5 blur-2xl"/>
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-mint-400/20 blur-3xl"/>
+          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-brand-300/20 blur-3xl"/>
 
           <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
             <Trophy size={64} className="text-white/90 mb-5"/>
@@ -952,14 +952,14 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
     return (
       <div className={cls("min-h-screen px-6 py-20 text-center", dark ? "bg-black text-white" : "bg-white text-black")}>
         <div className={cls("w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-          <User size={28} strokeWidth={1.5} className="text-mint-500"/>
+          <User size={28} strokeWidth={1.5} className="text-brand-500"/>
         </div>
         <p className="text-[16px] font-bold">로그인 해주세요</p>
         <p className={cls("text-[14px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
           프로필을 보려면 로그인이 필요해요
         </p>
         <button onClick={onAuthOpen}
-          className="mt-6 px-6 py-2.5 rounded-full bg-mint-500 text-white text-[14px] font-bold active:scale-95 transition">
+          className="mt-6 px-6 py-2.5 rounded-full bg-brand-500 text-white text-[14px] font-bold active:scale-95 transition">
           로그인
         </button>
       </div>
@@ -1004,7 +1004,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
         </p>
         {r.likes > 0 && (
           <span className={cls("text-[11px] inline-flex items-center gap-0.5 mt-1 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-            <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+            <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
             {r.likes}
           </span>
         )}
@@ -1025,7 +1025,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
             <p className={cls("text-[12px] mt-0.5 truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{user.email}</p>
             {challengeActive && (
               <div className={cls("mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-bold",
-                dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-700")}>
+                dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
                 <Dumbbell size={12}/> 바디키 D+{dayNum}
               </div>
             )}
@@ -1073,7 +1073,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
         {/* 챌린지 바로가기 — 활성일 때만 */}
         {challengeActive && (
           <button onClick={onChallengeOpen}
-            className="w-full mt-3 rounded-2xl overflow-hidden active:scale-[0.99] transition bg-gradient-to-br from-mint-500 to-mint-700">
+            className="w-full mt-3 rounded-2xl overflow-hidden active:scale-[0.99] transition bg-gradient-to-br from-brand-500 to-brand-700">
             <div className="px-4 py-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
                 <Dumbbell size={18} className="text-white" strokeWidth={2}/>
@@ -1101,13 +1101,13 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
               aria-label={label}
               className="flex-1 flex flex-col items-center justify-center py-3 gap-1 relative active:opacity-60">
               <Icon size={18} strokeWidth={2}
-                className={cls(active ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
+                className={cls(active ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
               <span className={cls("text-[11px] font-bold",
-                active ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+                active ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
                 {label}{count > 0 && ` ${count}`}
               </span>
               {active && (
-                <div className="absolute bottom-0 inset-x-4 h-[2px] bg-mint-500 rounded-full"/>
+                <div className="absolute bottom-0 inset-x-4 h-[2px] bg-brand-500 rounded-full"/>
               )}
             </button>
           );
@@ -1176,7 +1176,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
 const EmptyGridHint = ({ dark, icon: Icon, title, desc }) => (
   <div className="py-16 text-center px-6">
     <div className={cls("w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-      <Icon size={22} strokeWidth={1.8} className="text-mint-500"/>
+      <Icon size={22} strokeWidth={1.8} className="text-brand-500"/>
     </div>
     <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>{title}</p>
     <p className={cls("text-[13px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{desc}</p>
@@ -1254,7 +1254,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           <button onClick={() => { setActiveCat(null); setActiveTag(null); }}
             className={cls("text-[13px] px-3.5 py-2 rounded-full whitespace-nowrap font-bold shrink-0 transition",
               !activeCat && !activeTag
-                ? "bg-mint-500 text-white"
+                ? "bg-brand-500 text-white"
                 : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
             전체
           </button>
@@ -1262,7 +1262,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
             <button key={k} onClick={() => { setActiveCat(k === activeCat ? null : k); setActiveTag(null); }}
               className={cls("text-[13px] px-3.5 py-2 rounded-full whitespace-nowrap font-bold shrink-0 transition",
                 activeCat === k
-                  ? "bg-mint-500 text-white"
+                  ? "bg-brand-500 text-white"
                   : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
               {c.label}
             </button>
@@ -1270,7 +1270,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           {/* activeTag 가 외부(상세 태그 클릭 등) 에서 설정된 경우 표시+해제 가능하도록 fallback */}
           {activeTag && (
             <button onClick={() => setActiveTag(null)}
-              className="text-[13px] px-3.5 py-2 rounded-full whitespace-nowrap font-semibold shrink-0 transition bg-mint-500 text-white inline-flex items-center gap-1">
+              className="text-[13px] px-3.5 py-2 rounded-full whitespace-nowrap font-semibold shrink-0 transition bg-brand-500 text-white inline-flex items-center gap-1">
               #{activeTag} <X size={11}/>
             </button>
           )}
@@ -1283,7 +1283,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
             <button key={s.k} onClick={() => setSort(s.k)}
               className={cls("text-[12px] px-3 py-1 rounded-full font-bold transition",
                 sort === s.k
-                  ? "bg-mint-500 text-white"
+                  ? "bg-brand-500 text-white"
                   : dark ? "bg-[#1a1a1a] text-[#a8a8a8]" : "bg-[#f2f2f2] text-[#737373]")}>
               {s.label}
             </button>
@@ -1311,7 +1311,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           const highlight = r.id === highlightId;
           return (
             <button key={r.id} data-rid={r.id} onClick={() => onOpen(r)}
-              className={cls("text-left active:scale-[0.98] transition", highlight && "ring-2 ring-mint-500 rounded-xl")}>
+              className={cls("text-left active:scale-[0.98] transition", highlight && "ring-2 ring-brand-500 rounded-xl")}>
               {/* 이미지 — 정사각형 1:1. 세로 높이 줄여 화면당 카드 수 ↑, 스캔 용이 */}
               <div className={cls("relative w-full aspect-square rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                 {r.img
@@ -1320,7 +1320,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                     /* 이미지 없는 포스트 — 에디토리얼 quote 스타일 */
                     <div className={cls("w-full h-full p-3 flex flex-col justify-center relative ring-1",
                       dark ? "bg-[#0f0f0f] ring-white/5" : "bg-[#fafafa] ring-black/5")}>
-                      <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r bg-mint-500/70"/>
+                      <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r bg-brand-500/70"/>
                       <p className={cls("text-[12.5px] font-medium line-clamp-4 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
                         {r.body || r.title || "웨이로그"}
                       </p>
@@ -1344,7 +1344,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   aria-label={isFav ? "좋아요 취소" : "좋아요"}
                   className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/40 backdrop-blur flex items-center justify-center active:scale-90 transition">
                   <Heart size={16} strokeWidth={2}
-                    className={isFav ? "fill-mint-500 text-mint-500" : "text-white"}/>
+                    className={isFav ? "fill-accent-500 text-accent-500" : "text-white"}/>
                 </button>
               </div>
 
@@ -1357,8 +1357,8 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
               <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
                 {r.product ? (
                   <>
-                    <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
-                    <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-mint-300" : "text-mint-700")}>
+                    <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-brand-300" : "text-brand-600")}/>
+                    <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
                       {r.product}
                     </span>
                   </>
@@ -1372,7 +1372,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                 )}
                 {r.likes > 0 && (
                   <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                    <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+                    <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                     {r.likes}
                   </span>
                 )}
@@ -1397,7 +1397,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   <div className="flex items-baseline justify-between mb-3">
                     <h4 className={cls("text-[15px] font-black inline-flex items-center gap-2", dark ? "text-white" : "text-black")}>
                       <span className={cls("w-[3px] rounded-full h-[14px] self-center",
-                        sec.key === "today" ? "bg-mint-500" : dark ? "bg-[#404040]" : "bg-[#d4d4d4]")}/>
+                        sec.key === "today" ? "bg-brand-500" : dark ? "bg-[#404040]" : "bg-[#d4d4d4]")}/>
                       {sec.label}
                     </h4>
                     <span className={cls("text-[11px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{sec.items.length}개</span>
@@ -1625,7 +1625,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                   <div className="flex-1 text-center">
                     <div className="flex flex-wrap justify-center gap-1">
                       {topTags.map((t) => (
-                        <span key={t} className={cls("text-[11px] font-semibold", dark ? "text-mint-400" : "text-mint-700")}>#{t}</span>
+                        <span key={t} className={cls("text-[11px] font-semibold", dark ? "text-brand-300" : "text-brand-700")}>#{t}</span>
                       ))}
                     </div>
                     <p className={cls("text-[12px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>인기 태그</p>
@@ -1660,7 +1660,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                 <div className={cls("px-3 pb-3 space-y-3 animate-fade-in border-t", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
                   {/* 장점 */}
                   <div className="pt-3">
-                    <p className={cls("text-[12px] font-bold uppercase tracking-wider mb-2", dark ? "text-mint-400" : "text-mint-600")}>장점</p>
+                    <p className={cls("text-[12px] font-bold uppercase tracking-wider mb-2", dark ? "text-brand-300" : "text-brand-600")}>장점</p>
                     <div className="space-y-1.5">
                       {aiSummary.data.pros.map((p, i) => (
                         <div key={i} className="flex items-start gap-2">
@@ -1716,7 +1716,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
             )}
             {!hasReviews && (
               <button onClick={() => onCompose && onCompose(product)}
-                className="flex-1 py-2 rounded-lg text-[14px] font-bold bg-mint-500 text-white flex items-center justify-center gap-2 active:opacity-80 transition">
+                className="flex-1 py-2 rounded-lg text-[14px] font-bold bg-brand-500 text-white flex items-center justify-center gap-2 active:opacity-80 transition">
                 <PenLine size={14}/> 리뷰 작성
               </button>
             )}
@@ -1732,7 +1732,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                     <button key={s.key} onClick={() => setSortBy(s.key)}
                       className={cls("text-[12px] px-3 py-1 rounded-full font-bold transition",
                         sortBy === s.key
-                          ? "bg-mint-500 text-white"
+                          ? "bg-brand-500 text-white"
                           : dark ? "bg-[#1a1a1a] text-[#a8a8a8]" : "bg-[#f2f2f2] text-[#737373]")}>
                       {s.label}
                     </button>
@@ -1755,7 +1755,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       <p className={cls("text-[11px] truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{rv.author || "익명"}</p>
                       {rv.likes > 0 && (
                         <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                          <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+                          <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                           {rv.likes}
                         </span>
                       )}
@@ -1767,7 +1767,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
           ) : (
             <div className="py-12 text-center">
               <div className={cls("w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-                <PenLine size={22} strokeWidth={1.8} className="text-mint-500"/>
+                <PenLine size={22} strokeWidth={1.8} className="text-brand-500"/>
               </div>
               <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>아직 리뷰가 없어요</p>
               <p className={cls("text-[13px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>첫 번째 리뷰를 작성해보세요</p>
@@ -1800,7 +1800,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
         {/* 플로팅 리뷰 작성 버튼 (리뷰가 있을 때) */}
         {hasReviews && (
           <button onClick={() => onCompose && onCompose(product)}
-            className="sticky bottom-4 ml-auto mr-4 mb-4 w-12 h-12 rounded-full bg-mint-500 text-white flex items-center justify-center active:opacity-80 transition shadow-lg">
+            className="sticky bottom-4 ml-auto mr-4 mb-4 w-12 h-12 rounded-full bg-brand-500 text-white flex items-center justify-center active:opacity-80 transition shadow-lg">
             <PenLine size={18}/>
           </button>
         )}
@@ -1882,21 +1882,21 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
         <div className={cls("flex mt-5 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
           <button onClick={() => setMainTab("catalog")}
             className="flex-1 py-3 text-[14px] font-bold transition relative inline-flex items-center justify-center gap-1.5">
-            <Package size={14} className={mainTab === "catalog" ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
-            <span className={mainTab === "catalog" ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>제품 카탈로그</span>
-            <span className={cls("tabular-nums text-[12px]", mainTab === "catalog" ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            <Package size={14} className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
+            <span className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>제품 카탈로그</span>
+            <span className={cls("tabular-nums text-[12px]", mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
               {catalogLoading ? "…" : CATALOG.length}
             </span>
-            {mainTab === "catalog" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-mint-500 rounded-full"/>}
+            {mainTab === "catalog" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-brand-500 rounded-full"/>}
           </button>
           <button onClick={() => setMainTab("favs")}
             className="flex-1 py-3 text-[14px] font-bold transition relative inline-flex items-center justify-center gap-1.5">
-            <Heart size={14} className={cls(mainTab === "favs" ? "fill-mint-500 text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
-            <span className={mainTab === "favs" ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>저장됨</span>
-            <span className={cls("tabular-nums text-[12px]", mainTab === "favs" ? "text-mint-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            <Heart size={14} className={cls(mainTab === "favs" ? "fill-accent-500 text-accent-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
+            <span className={mainTab === "favs" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>저장됨</span>
+            <span className={cls("tabular-nums text-[12px]", mainTab === "favs" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
               {list.length}
             </span>
-            {mainTab === "favs" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-mint-500 rounded-full"/>}
+            {mainTab === "favs" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-brand-500 rounded-full"/>}
           </button>
         </div>
       </div>
@@ -1923,7 +1923,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                 className={cls(
                   "px-3.5 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap shrink-0 transition",
                   catalogCat === c.key
-                    ? "bg-mint-500 text-white"
+                    ? "bg-brand-500 text-white"
                     : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]"
                 )}>
                 {c.label}
@@ -1951,7 +1951,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={18}/>
                     </div>
                     {/* brand 슬롯 — 없어도 공간 예약 (타일 높이 통일) */}
-                    <p className={cls("text-[9.5px] font-bold mt-1 truncate h-[13px] leading-[13px]", dark ? "text-mint-400" : "text-mint-700")}>
+                    <p className={cls("text-[9.5px] font-bold mt-1 truncate h-[13px] leading-[13px]", dark ? "text-brand-300" : "text-brand-700")}>
                       {p.brand || "\u00A0"}
                     </p>
                     {/* 제품명 — 2줄 고정 (1줄이어도 2줄 공간 확보) */}
@@ -2013,15 +2013,15 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
       ) : list.length === 0 ? (
         <div className="text-center py-16 px-6">
           <div className={cls("w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ring-1", dark ? "ring-[#262626]" : "ring-[#dbdbdb]")}>
-            <Heart size={28} strokeWidth={1.8} className="text-mint-500"/>
+            <Heart size={28} strokeWidth={1.8} className="text-brand-500"/>
           </div>
           <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>저장한 항목이 없어요</p>
           <p className={cls("text-[14px] mt-1 max-w-xs mx-auto inline-flex items-center justify-center gap-1 flex-wrap", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-            피드 카드의 <Heart size={13} className="fill-mint-500 text-mint-500 inline-block"/> 하트를 누르면 여기에 저장돼요
+            피드 카드의 <Heart size={13} className="fill-accent-500 text-accent-500 inline-block"/> 하트를 누르면 여기에 저장돼요
           </p>
           <div>
             <button onClick={onBrowse}
-              className="mt-5 px-6 py-2 bg-mint-500 text-white text-[14px] font-bold rounded-lg active:opacity-80 transition">
+              className="mt-5 px-6 py-2 bg-brand-500 text-white text-[14px] font-bold rounded-lg active:opacity-80 transition">
               게시물 둘러보기
             </button>
           </div>
@@ -2041,7 +2041,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                     : (
                       <div className={cls("w-full h-full p-3 flex flex-col justify-center relative ring-1",
                         dark ? "bg-[#0f0f0f] ring-white/5" : "bg-[#fafafa] ring-black/5")}>
-                        <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r bg-mint-500/70"/>
+                        <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r bg-brand-500/70"/>
                         <p className={cls("text-[12.5px] font-medium line-clamp-4 leading-[1.5] pl-2", dark ? "text-white/85" : "text-[#333]")}>
                           {r.body || r.title || "웨이로그"}
                         </p>
@@ -2070,8 +2070,8 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                 <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
                   {r.product ? (
                     <>
-                      <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-mint-400" : "text-mint-600")}/>
-                      <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-mint-300" : "text-mint-700")}>
+                      <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-brand-300" : "text-brand-600")}/>
+                      <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
                         {r.product}
                       </span>
                     </>
@@ -2085,7 +2085,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                   )}
                   {r.likes > 0 && (
                     <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                      <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+                      <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                       {r.likes}
                     </span>
                   )}
@@ -2217,7 +2217,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
         <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>커뮤니티 글쓰기</p>
         <button onClick={submit} disabled={!content.trim()}
-          className={cls("text-sm font-black transition", content.trim() ? "text-mint-500" : dark ? "text-gray-600" : "text-gray-300")}>게시</button>
+          className={cls("text-sm font-black transition", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>게시</button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 작성자 */}
@@ -2300,7 +2300,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
       <button onClick={onOpenChallengeCommunity}
         className={cls("w-full px-4 py-3 flex items-center gap-3 text-left active:opacity-80 transition border-b",
           dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-mint-500 to-mint-700 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shrink-0">
           <Dumbbell size={18} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
@@ -2324,12 +2324,12 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
     {posts.length === 0 && (
       <div className="px-6 py-16 text-center">
         <div className={cls("w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center", dark ? "bg-[#121212]" : "bg-[#f2f2f2]")}>
-          <Users size={28} strokeWidth={1.5} className="text-mint-500"/>
+          <Users size={28} strokeWidth={1.5} className="text-brand-500"/>
         </div>
         <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>첫 이야기를 남겨보세요</p>
         <p className={cls("text-[14px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>웨이로그 커뮤니티에 가벼운 일상을 공유해보세요</p>
         <button onClick={() => user ? onCompose() : onRequireAuth()}
-          className="mt-5 px-6 py-2.5 rounded-full bg-mint-500 text-white text-[14px] font-bold active:scale-95 transition">
+          className="mt-5 px-6 py-2.5 rounded-full bg-brand-500 text-white text-[14px] font-bold active:scale-95 transition">
           {user ? "글쓰기" : "로그인하기"}
         </button>
       </div>
@@ -2356,14 +2356,14 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
         )}
         {p.product && (
           <div className={cls("ml-12 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
-            <ShoppingBag size={13} className={dark ? "text-mint-400" : "text-mint-600"}/>
+            <ShoppingBag size={13} className={dark ? "text-brand-300" : "text-brand-600"}/>
             <span className={cls("text-[12px] font-semibold truncate", dark ? "text-white" : "text-black")}>{p.product.name}</span>
             {p.product.brand && <span className="text-[11px] text-[#737373] shrink-0">{p.product.brand}</span>}
           </div>
         )}
         <div className="ml-12 flex items-center gap-5 mt-3">
           <button onClick={() => onLike(p.id)} className="inline-flex items-center gap-1.5 active:scale-90 transition">
-            <Heart size={20} strokeWidth={1.8} className={p.liked ? "fill-mint-500 text-mint-500" : dark ? "text-white" : "text-black"}/>
+            <Heart size={20} strokeWidth={1.8} className={p.liked ? "fill-accent-500 text-accent-500" : dark ? "text-white" : "text-black"}/>
             {p.likes > 0 && <span className={cls("text-[13px] font-semibold tabular-nums", dark ? "text-white" : "text-black")}>{p.likes}</span>}
           </button>
           <button onClick={() => setExpanded((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
@@ -2432,7 +2432,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
-                    {isMine && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-600")}>내 댓글</span>}
+                    {isMine && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>}
                     <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                   </div>
                   <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
@@ -2440,13 +2440,13 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                   </p>
                   <div className="flex items-center gap-3 mt-1.5">
                     <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
-                      className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                      className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                       답글 달기 <span className="text-xs">&#8629;</span>
-                      {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-mint-900/40" : "bg-mint-50")}>{replies.length}</span>}
+                      {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-brand-900/40" : "bg-brand-50")}>{replies.length}</span>}
                     </button>
                     <button onClick={() => onToggleLike(postId, c.id)}
-                      className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", likedByMe ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                      <Heart size={11} className={likedByMe ? "fill-mint-500" : ""}/>
+                      className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", likedByMe ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+                      <Heart size={11} className={likedByMe ? "fill-accent-500" : ""}/>
                       {(c.likedBy || []).length > 0 && <span>{(c.likedBy || []).length}</span>}
                     </button>
                   </div>
@@ -2471,13 +2471,13 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2">
                             <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
-                            {isMyReply && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-600")}>내 댓글</span>}
+                            {isMyReply && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>}
                             <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
                           </div>
                           <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
                             {reply.mentionTo && (
                               <button onClick={() => onUserClick && onUserClick({ author: reply.mentionTo, avatar: "" })}
-                                className={cls("font-bold mr-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                                className={cls("font-bold mr-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                                 @{reply.mentionTo}
                               </button>
                             )}
@@ -2485,12 +2485,12 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                           </p>
                           <div className="flex items-center gap-3 mt-1">
                             <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
-                              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                               답글 달기 <span className="text-xs">&#8629;</span>
                             </button>
                             <button onClick={() => onToggleLike(postId, reply.id)}
-                              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", replyLikedByMe ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                              <Heart size={10} className={replyLikedByMe ? "fill-mint-500" : ""}/>
+                              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", replyLikedByMe ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+                              <Heart size={10} className={replyLikedByMe ? "fill-accent-500" : ""}/>
                               {(reply.likedBy || []).length > 0 && <span>{(reply.likedBy || []).length}</span>}
                             </button>
                           </div>
@@ -2506,7 +2506,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
                   })}
                   {!isExpanded && hiddenCount > 0 && (
                     <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
-                      className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                      className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                       <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
                     </button>
                   )}
@@ -2523,7 +2523,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
         })}
       </div>
       {replyTo && (
-        <div className={cls("mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between text-xs", dark ? "bg-mint-800/40 text-mint-200 ring-1 ring-mint-700/50" : "bg-mint-100 text-mint-800 ring-1 ring-mint-200")}>
+        <div className={cls("mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between text-xs", dark ? "bg-brand-800/40 text-brand-200 ring-1 ring-brand-700/50" : "bg-brand-100 text-brand-800 ring-1 ring-brand-200")}>
           <span className="inline-flex items-center gap-1.5"><span className="text-sm">&#8629;</span> <span className="font-black">@{replyTo.author}</span>에게 답글 작성 중</span>
           <button onClick={() => setReplyTo(null)} aria-label="답글 취소" className="active:scale-90"><X size={12}/></button>
         </div>
@@ -2534,7 +2534,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
           className={cls("flex-1 bg-transparent outline-none text-xs px-2", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
         <button onClick={submit} disabled={!text.trim()}
-          className={cls("px-3 py-1.5 text-xs font-bold rounded-full transition", text.trim() ? "bg-mint-500 text-white active:scale-95" : dark ? "bg-gray-800 text-gray-500" : "bg-gray-200 text-gray-400")}>
+          className={cls("px-3 py-1.5 text-xs font-bold rounded-full transition", text.trim() ? "bg-brand-500 text-white active:scale-95" : dark ? "bg-gray-800 text-gray-500" : "bg-gray-200 text-gray-400")}>
           등록
         </button>
       </div>
@@ -2608,7 +2608,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                 <div className="flex items-center justify-between px-4 pb-2">
                   <p className={cls("text-[13px] font-black uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>최근 검색</p>
                   <button onClick={() => clearRecents && clearRecents()}
-                    className={cls("text-[13px] font-bold active:opacity-60", dark ? "text-mint-400" : "text-mint-700")}>
+                    className={cls("text-[13px] font-bold active:opacity-60", dark ? "text-brand-300" : "text-brand-700")}>
                     모두 지우기
                   </button>
                 </div>
@@ -2674,7 +2674,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                 <button onClick={() => setFilterCat("all")}
                   className={cls("shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-bold transition",
                     filterCat === "all"
-                      ? "bg-mint-500 text-white"
+                      ? "bg-brand-500 text-white"
                       : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
                   전체
                 </button>
@@ -2682,7 +2682,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                   <button key={k} onClick={() => setFilterCat(k)}
                     className={cls("shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-bold transition",
                       filterCat === k
-                        ? "bg-mint-500 text-white"
+                        ? "bg-brand-500 text-white"
                         : dark ? "bg-[#1a1a1a] text-white border border-[#262626]" : "bg-white text-black border border-[#dbdbdb]")}>
                     {c.label}
                   </button>
@@ -2778,7 +2778,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                             </span>
                             {r.likes > 0 && (
                               <span className={cls("text-[11px] inline-flex items-center gap-0.5 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                                <Heart size={10} strokeWidth={2.2} className="fill-mint-500 text-mint-500"/>
+                                <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                                 {r.likes}
                               </span>
                             )}
@@ -2800,7 +2800,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
             {results.length === 0 && productResults.length === 0 && (
               <div className="py-16 text-center px-6">
                 <div className={cls("w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-                  <Search size={22} strokeWidth={1.8} className="text-mint-500"/>
+                  <Search size={22} strokeWidth={1.8} className="text-brand-500"/>
                 </div>
                 <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>
                   "{q}" 검색 결과가 없어요
@@ -2933,7 +2933,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         <button onClick={() => toggleFav(r.id)} aria-label="좋아요"
           className="absolute right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
           style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
-          <Heart size={18} className={favs.has(r.id) ? "text-mint-500 fill-mint-500" : "text-white"}/>
+          <Heart size={18} className={favs.has(r.id) ? "text-accent-500 fill-accent-500" : "text-white"}/>
         </button>
         <button onClick={() => setShareOpen(true)} aria-label="공유"
           className="absolute right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
@@ -2989,7 +2989,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                   className={cls("px-4 py-1 rounded-lg text-[13px] font-semibold transition active:opacity-70 shrink-0",
                     isFollowingAuthor
                       ? (dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")
-                      : "bg-mint-500 text-white hover:bg-mint-600")}>
+                      : "bg-brand-500 text-white hover:bg-brand-600")}>
                   {isFollowingAuthor ? "팔로잉" : "팔로우"}
                 </button>
               )}
@@ -3014,7 +3014,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                   if (part.startsWith("#") && part.length > 1) {
                     return (
                       <button key={i} onClick={() => onHashtagClick && onHashtagClick(part.slice(1))}
-                        className={cls("active:opacity-60", dark ? "text-mint-400" : "text-mint-700")}>
+                        className={cls("active:opacity-60", dark ? "text-brand-300" : "text-brand-700")}>
                         {part}
                       </button>
                     );
@@ -3027,7 +3027,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         </p>
         {/* 태그들 — IG 링크 블루 */}
         {r.tags && r.tags.length > 0 && (
-          <p className={cls("mt-1.5 text-[14px] leading-[1.4]", dark ? "text-mint-400" : "text-mint-700")}>
+          <p className={cls("mt-1.5 text-[14px] leading-[1.4]", dark ? "text-brand-300" : "text-brand-700")}>
             {r.tags.map((t, i) => (
               <button key={t} onClick={() => onHashtagClick && onHashtagClick(t)}
                 className={cls("active:opacity-60", i > 0 && "ml-1")}>
@@ -3119,7 +3119,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       <div className="flex items-baseline gap-2">
                         <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
                         {isMyComment && (
-                          <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-600")}>내 댓글</span>
+                          <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
                         )}
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
                       </div>
@@ -3128,13 +3128,13 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       </p>
                       <div className="flex items-center gap-3 mt-1.5">
                         <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                           답글 달기 <span className="text-xs">&#8629;</span>
-                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-mint-900/40" : "bg-mint-50")}>{replies.length}</span>}
+                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-brand-900/40" : "bg-brand-50")}>{replies.length}</span>}
                         </button>
                         <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, c.id)}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                          <Heart size={11} className={(c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-mint-500" : ""}/>
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+                          <Heart size={11} className={(c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
                           {(c.likedBy || []).length > 0 && <span>{(c.likedBy || []).length}</span>}
                         </button>
                         {user && c.author !== user.nickname && (
@@ -3165,14 +3165,14 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                             <div className="flex items-baseline gap-2">
                               <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
                               {isMyReply && (
-                                <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-600")}>내 댓글</span>
+                                <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
                               )}
                               <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
                             </div>
                             <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
                               {reply.mentionTo && (
                                 <button onClick={() => onUserClick && onUserClick({ author: reply.mentionTo, avatar: "" })}
-                                  className={cls("font-bold mr-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                                  className={cls("font-bold mr-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                                   @{reply.mentionTo}
                                 </button>
                               )}
@@ -3180,12 +3180,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                             </p>
                             <div className="flex items-center gap-3 mt-1">
                               <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
-                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                                 답글 달기 <span className="text-xs">&#8629;</span>
                               </button>
                               <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, reply.id)}
-                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                                <Heart size={10} className={(reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-mint-500" : ""}/>
+                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+                                <Heart size={10} className={(reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
                                 {(reply.likedBy || []).length > 0 && <span>{(reply.likedBy || []).length}</span>}
                               </button>
                               {user && reply.author !== user.nickname && (
@@ -3207,7 +3207,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                       })}
                       {!isExpanded && hiddenCount > 0 && (
                         <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-mint-400" : "text-mint-600")}>
+                          className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
                           <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
                         </button>
                       )}
@@ -3224,7 +3224,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             })}
           </div>
           {replyTo && (
-            <div className={cls("mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between text-xs animate-pulse", dark ? "bg-mint-800/40 text-mint-200 ring-1 ring-mint-700/50" : "bg-mint-100 text-mint-800 ring-1 ring-mint-200")}>
+            <div className={cls("mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between text-xs animate-pulse", dark ? "bg-brand-800/40 text-brand-200 ring-1 ring-brand-700/50" : "bg-brand-100 text-brand-800 ring-1 ring-brand-200")}>
               <span className="inline-flex items-center gap-1.5"><span className="text-sm">&#8629;</span> <span className="font-black">@{replyTo.author}</span>에게 답글 작성 중</span>
               <button onClick={() => setReplyTo(null)} aria-label="답글 취소" className="active:scale-90"><X size={12}/></button>
             </div>
@@ -3249,7 +3249,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
               }
             }}
               disabled={!comment.trim()}
-              className={cls("text-[14px] font-semibold transition", comment.trim() ? "text-mint-700 active:opacity-60" : "text-mint-700/40")}>
+              className={cls("text-[14px] font-semibold transition", comment.trim() ? "text-brand-700 active:opacity-60" : "text-brand-700/40")}>
               게시
             </button>
           </div>
@@ -3428,7 +3428,7 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
                   className={cls("px-4 py-1.5 rounded-full text-xs font-bold transition active:scale-95 shrink-0",
                     isFollowed
                       ? dark ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600"
-                      : "bg-mint-500 text-white")}>
+                      : "bg-brand-500 text-white")}>
                   {isFollowed ? "팔로잉" : "팔로우"}
                 </button>
               )}
@@ -3494,7 +3494,7 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
               className={cls("mt-4 px-8 py-2.5 rounded-full font-black text-sm transition active:scale-95 inline-flex items-center gap-2",
                 isFollowing
                   ? dark ? "bg-gray-800 text-gray-300 border border-gray-700" : "bg-white text-gray-700 border border-gray-200"
-                  : "bg-gradient-to-r from-mint-500 to-teal-500 text-white shadow-lg shadow-mint-500/30")}>
+                  : "bg-brand-500 text-white shadow-lg shadow-brand-500/30")}>
               {isFollowing ? <><Check size={14}/> 팔로잉</> : <><Plus size={14}/> 팔로우</>}
             </button>
           )}
@@ -3637,8 +3637,8 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
 
         {!photo && !analyzing && (
           <label className={cls("flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border-2 border-dashed cursor-pointer transition active:scale-[0.98]",
-            dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-mint-200 bg-mint-50/50 text-gray-500")}>
-            <Camera size={36} className="text-mint-500"/>
+            dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-brand-200 bg-brand-50/50 text-gray-500")}>
+            <Camera size={36} className="text-brand-500"/>
             <span className="text-sm font-bold">식단 사진 촬영 / 선택</span>
             <span className="text-xs opacity-70">사진을 올리면 AI가 자동 분석해요</span>
             <input type="file" accept="image/*" className="hidden" onChange={handlePhoto}/>
@@ -3647,7 +3647,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
 
         {analyzing && (
           <div className={cls("py-12 rounded-2xl text-center", dark ? "bg-gray-800" : "bg-gray-50")}>
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-mint-400 to-teal-500 mx-auto flex items-center justify-center mb-4 animate-pulse">
+            <div className="w-16 h-16 rounded-full bg-brand-500 mx-auto flex items-center justify-center mb-4 animate-pulse">
               <Sparkles size={28} className="text-white"/>
             </div>
             <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>AI가 분석 중이에요...</p>
@@ -3672,7 +3672,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                     <p className={cls("text-xs mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>AI 분석 실패 — 추천 식단으로 대체했어요. 직접 수정해주세요</p>
                   )}
                   {result.source === "vision" && !editMode && (
-                    <p className={cls("text-xs mt-0.5", dark ? "text-mint-400" : "text-mint-600")}>사진 분석 결과예요. 맞지 않으면 수정해주세요</p>
+                    <p className={cls("text-xs mt-0.5", dark ? "text-brand-300" : "text-brand-600")}>사진 분석 결과예요. 맞지 않으면 수정해주세요</p>
                   )}
                 </div>
                 <button onClick={() => setEditMode(!editMode)}
@@ -3687,12 +3687,12 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                       className={cls("w-full px-3 py-2 rounded-xl text-sm font-bold", dark ? "bg-gray-700 text-white" : "bg-white text-gray-900")}/>
                     {reanalyzing && (
                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                        <RefreshCw size={14} className={cls("animate-spin", dark ? "text-mint-400" : "text-mint-500")}/>
+                        <RefreshCw size={14} className={cls("animate-spin", dark ? "text-brand-300" : "text-brand-500")}/>
                       </div>
                     )}
                   </div>
                   {reanalyzing && (
-                    <p className={cls("text-xs font-medium mt-1", dark ? "text-mint-400" : "text-mint-600")}>
+                    <p className={cls("text-xs font-medium mt-1", dark ? "text-brand-300" : "text-brand-600")}>
                       "{editName}" 영양 정보 재분석 중...
                     </p>
                   )}
@@ -3724,7 +3724,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                   <p className={cls("text-base font-bold mb-3", dark ? "text-white" : "text-gray-900")}>{result.name}</p>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
-                      <p className="text-lg font-black text-mint-500">{result.cal}</p>
+                      <p className="text-lg font-black text-brand-500">{result.cal}</p>
                       <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>kcal</p>
                     </div>
                     <div className={cls("p-2 rounded-xl", dark ? "bg-gray-700" : "bg-white")}>
@@ -3744,7 +3744,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
               )}
             </div>
             <button onClick={handleSave}
-              className="w-full py-3.5 bg-gradient-to-r from-mint-500 to-teal-500 text-white rounded-2xl font-black text-sm shadow-lg active:scale-[0.98] transition">
+              className="w-full py-3.5 bg-brand-500 text-white rounded-2xl font-black text-sm shadow-lg active:scale-[0.98] transition">
               저장하기
             </button>
           </div>
@@ -3790,7 +3790,7 @@ const ExerciseModal = ({ onClose, onSave, dark, editing = null }) => {
             <button key={et.key} onClick={() => setType(et.key)}
               className={cls("p-3 rounded-2xl flex flex-col items-center gap-1.5 transition active:scale-95",
                 type === et.key
-                  ? "bg-gradient-to-br from-mint-500 to-teal-500 text-white shadow-lg"
+                  ? "bg-brand-500 text-white shadow-lg"
                   : dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700")}>
               <et.Icon size={20}/>
               <span className="text-xs font-bold">{et.label}</span>
@@ -3820,16 +3820,16 @@ const ExerciseModal = ({ onClose, onSave, dark, editing = null }) => {
         </div>
 
         {type && minutes && parseInt(minutes) > 0 && (
-          <div className={cls("p-4 rounded-2xl mb-4 text-center", dark ? "bg-gray-800" : "bg-mint-50")}>
+          <div className={cls("p-4 rounded-2xl mb-4 text-center", dark ? "bg-gray-800" : "bg-brand-50")}>
             <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>예상 소비 칼로리</p>
-            <p className="text-3xl font-black text-mint-500 mt-1">{calc()} <span className="text-sm">kcal</span></p>
+            <p className="text-3xl font-black text-brand-500 mt-1">{calc()} <span className="text-sm">kcal</span></p>
           </div>
         )}
 
         <button onClick={handleSave} disabled={!type || !minutes || parseInt(minutes) <= 0}
           className={cls("w-full py-3.5 rounded-2xl font-black text-sm shadow-lg active:scale-[0.98] transition",
             type && minutes && parseInt(minutes) > 0
-              ? "bg-gradient-to-r from-mint-500 to-teal-500 text-white"
+              ? "bg-brand-500 text-white"
               : dark ? "bg-gray-800 text-gray-600" : "bg-gray-200 text-gray-400")}>
           {editing ? "수정 완료" : "저장하기"}
         </button>
@@ -3892,14 +3892,14 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>변화 그래프</p>
-        <button onClick={handleSaveImage} aria-label="이미지 저장" className="text-mint-500"><Download size={20}/></button>
+        <button onClick={handleSaveImage} aria-label="이미지 저장" className="text-brand-500"><Download size={20}/></button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className={cls("flex gap-1 p-1 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-100")}>
           {tabs.map((t) => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={cls("flex-1 py-2 rounded-xl text-xs font-bold transition",
-                activeTab === t.key ? "bg-gradient-to-r from-mint-500 to-teal-500 text-white shadow" : dark ? "text-gray-400" : "text-gray-500")}>
+                activeTab === t.key ? "bg-brand-500 text-white shadow" : dark ? "text-gray-400" : "text-gray-500")}>
               {t.label}
             </button>
           ))}
@@ -3930,7 +3930,7 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
                 }));
                 const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
                 const area = `${line} L${pts[pts.length-1].x},130 L${pts[0].x},130 Z`;
-                const color = activeTab === "bodyFat" ? "#f43f5e" : activeTab === "muscle" ? "#8b5cf6" : activeTab === "calories" ? "#f59e0b" : "#00C9A7";
+                const color = activeTab === "bodyFat" ? "#f43f5e" : activeTab === "muscle" ? "#8b5cf6" : activeTab === "calories" ? "#f59e0b" : "#3A4A5C";
                 return (
                   <>
                     <defs>
@@ -4007,7 +4007,7 @@ const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className={cls("p-2 rounded-xl text-center", dark ? "bg-gray-700" : "bg-gray-50")}>
-          <p className="text-base font-black text-mint-500">{totalCal}</p>
+          <p className="text-base font-black text-brand-500">{totalCal}</p>
           <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>섭취 kcal</p>
         </div>
         <div className={cls("p-2 rounded-xl text-center", dark ? "bg-gray-700" : "bg-gray-50")}>
@@ -4019,7 +4019,7 @@ const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
           <p className={cls("text-xs font-bold", dark ? "text-gray-400" : "text-gray-500")}>미션 달성</p>
         </div>
       </div>
-      <p className={cls("text-xs p-3 rounded-xl italic leading-relaxed", dark ? "bg-gray-700 text-gray-300" : "bg-mint-50 text-mint-700")}>
+      <p className={cls("text-xs p-3 rounded-xl italic leading-relaxed", dark ? "bg-gray-700 text-gray-300" : "bg-brand-50 text-brand-700")}>
         "{encouragement}"
       </p>
     </div>
@@ -4082,7 +4082,7 @@ const MissionEditModal = ({ weekNum, title, missions, hasCustom, onSave, onReset
               <button type="button" onClick={() => cycleIcon(idx)} aria-label="아이콘 변경"
                 className={cls("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 active:scale-90 transition",
                   dark ? "bg-gray-700" : "bg-white")}>
-                <MissionIcon iconKey={m.icon} size={16} className="text-mint-500"/>
+                <MissionIcon iconKey={m.icon} size={16} className="text-brand-500"/>
               </button>
               <input value={m.label} onChange={(e) => setLabel(idx, e.target.value)} placeholder="미션 이름" maxLength={40}
                 className={cls("flex-1 bg-transparent outline-none text-sm font-medium min-w-0",
@@ -4116,7 +4116,7 @@ const MissionEditModal = ({ weekNum, title, missions, hasCustom, onSave, onReset
             </button>
           )}
           <button type="button" onClick={handleSave} disabled={!canSave}
-            className={cls("py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-mint-500 to-teal-500 text-white active:scale-[0.98] transition",
+            className={cls("py-3 rounded-xl text-sm font-bold bg-brand-500 text-white active:scale-[0.98] transition",
               !canSave && "opacity-50 cursor-not-allowed")}>
             저장
           </button>
@@ -4292,7 +4292,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                     transform="rotate(-90 70 70)"/>
                   <defs>
                     <linearGradient id="challengeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#00C9A7"/>
+                      <stop offset="0%" stopColor="#3A4A5C"/>
                       <stop offset="100%" stopColor="#f59e0b"/>
                     </linearGradient>
                   </defs>
@@ -4318,7 +4318,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   <div key={s.label} className={cls("p-3 rounded-xl text-center border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
                     <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{s.label}</p>
                     <p className={cls("text-[16px] font-bold tabular-nums mt-0.5",
-                      isPositive ? "text-mint-500" : isNegative ? "text-red-500" : (dark ? "text-white" : "text-black"))}>
+                      isPositive ? "text-brand-500" : isNegative ? "text-red-500" : (dark ? "text-white" : "text-black"))}>
                       {isPositive ? "+" : ""}{s.val}
                       <span className="text-[11px] font-medium opacity-60">{s.unit}</span>
                     </p>
@@ -4372,7 +4372,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   </button>
                   <div className={cls("px-2.5 py-1 rounded text-[11px] font-bold tabular-nums",
                     completedCount === weekMissions.missions.length
-                      ? "bg-mint-500 text-white"
+                      ? "bg-brand-500 text-white"
                       : (dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-white text-[#737373]"))}>
                     {completedCount === weekMissions.missions.length ? "완료" : `${Math.round((completedCount / weekMissions.missions.length) * 100)}%`}
                   </div>
@@ -4386,10 +4386,10 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                       className={cls("w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition active:opacity-70",
                         done ? (dark ? "bg-[#262626]" : "bg-white") : (dark ? "bg-black" : "bg-white"))}>
                       <div className={cls("w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition-all",
-                        done ? "border-mint-500 bg-mint-500" : (dark ? "border-[#262626]" : "border-[#dbdbdb]"))}>
+                        done ? "border-brand-500 bg-brand-500" : (dark ? "border-[#262626]" : "border-[#dbdbdb]"))}>
                         {done && <Check size={12} className="text-white" strokeWidth={3}/>}
                       </div>
-                      <MissionIcon iconKey={m.icon} size={14} className={cls("shrink-0 mt-1", done ? "text-mint-500" : (dark ? "text-[#a8a8a8]" : "text-[#737373]"))}/>
+                      <MissionIcon iconKey={m.icon} size={14} className={cls("shrink-0 mt-1", done ? "text-brand-500" : (dark ? "text-[#a8a8a8]" : "text-[#737373]"))}/>
                       <span className={cls("text-[13px] flex-1 min-w-0 break-words leading-snug", done ? "line-through opacity-60" : "", dark ? "text-white" : "text-black")}>
                         {m.label}
                       </span>
@@ -4430,7 +4430,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                           {meal ? meal.name : "기록하기"}
                         </p>
                       </div>
-                      {meal && <span className={cls("text-[12px] font-semibold tabular-nums shrink-0", dark ? "text-mint-400" : "text-mint-600")}>{meal.cal}kcal</span>}
+                      {meal && <span className={cls("text-[12px] font-semibold tabular-nums shrink-0", dark ? "text-brand-300" : "text-brand-600")}>{meal.cal}kcal</span>}
                       {!meal && <Plus size={14} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>}
                     </button>
                   );
@@ -4512,8 +4512,8 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
             else setSubTab(k);
           }}
             className="flex flex-col items-center gap-1 active:scale-95 transition">
-            <Icon size={20} className={subTab === k ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500"}/>
-            <span className={cls("text-xs font-bold", subTab === k ? "text-mint-500" : dark ? "text-gray-400" : "text-gray-500")}>{label}</span>
+            <Icon size={20} className={subTab === k ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500"}/>
+            <span className={cls("text-xs font-bold", subTab === k ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>{label}</span>
           </button>
         ))}
       </nav>
@@ -4567,7 +4567,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
       {/* Mission toast */}
       {missionToast && (
         <div className="fixed inset-x-0 bottom-28 z-50 flex justify-center pointer-events-none px-4">
-          <div className="bg-gradient-to-r from-mint-500 to-teal-500 text-white text-sm font-black px-5 py-3 rounded-full shadow-xl animate-toast">
+          <div className="bg-brand-500 text-white text-sm font-black px-5 py-3 rounded-full shadow-xl animate-toast">
             {missionToast}
           </div>
         </div>
@@ -4582,7 +4582,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
       <button onClick={onStart}
         className={cls("mx-4 mt-3 w-[calc(100%-2rem)] p-4 rounded-xl flex items-center gap-3 text-left border active:opacity-80 transition",
           dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-mint-400 to-mint-700 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-300 to-brand-700 flex items-center justify-center shrink-0">
           <Trophy size={18} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
@@ -4625,7 +4625,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
   // 진행 중 + hero: 홈 상단의 메인 카드로 크게 노출 (Hero 카드를 대체)
   if (hero) {
     return (
-      <div className="mx-4 mt-4 rounded-3xl p-6 bg-gradient-to-br from-mint-500 to-cyan-600 text-white relative overflow-hidden shadow-xl">
+      <div className="mx-4 mt-4 rounded-3xl p-6 bg-gradient-to-br from-brand-500 to-cyan-600 text-white relative overflow-hidden shadow-xl">
         <Dumbbell className="absolute right-4 top-4 opacity-25" size={64}/>
         <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-white/10"/>
         <p className="text-xs opacity-80 font-bold tracking-wider uppercase relative">8주 챌린지 · Week {weekNum}</p>
@@ -4637,7 +4637,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
           <div className="h-full bg-white rounded-full transition-all" style={{ width: `${pct}%` }}/>
         </div>
         <button onClick={onOpen}
-          className="mt-5 inline-flex items-center gap-2 px-6 py-3 bg-white text-mint-600 rounded-full font-black text-base shadow-2xl shadow-black/20 active:scale-95 transition hover:scale-105 relative">
+          className="mt-5 inline-flex items-center gap-2 px-6 py-3 bg-white text-brand-600 rounded-full font-black text-base shadow-2xl shadow-black/20 active:scale-95 transition hover:scale-105 relative">
           <Target size={16}/>
           오늘 미션 보기
           <span className="text-lg">→</span>
@@ -4650,7 +4650,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
     <button onClick={onOpen}
       className={cls("mx-4 mt-3 w-[calc(100%-2rem)] p-4 rounded-xl flex items-center gap-3 text-left relative overflow-hidden active:opacity-80 transition border",
         dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-mint-400 to-mint-700 flex items-center justify-center shrink-0">
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-300 to-brand-700 flex items-center justify-center shrink-0">
         <Dumbbell size={20} className="text-white"/>
       </div>
       <div className="flex-1 min-w-0">
@@ -4659,7 +4659,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
           <span className={cls("text-[12px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>/ {CHALLENGE_DAYS}일</span>
         </div>
         <div className={cls("w-full h-1 rounded-full mt-1.5 overflow-hidden", dark ? "bg-[#262626]" : "bg-[#dbdbdb]")}>
-          <div className="h-full bg-mint-500 rounded-full transition-all" style={{ width: `${pct}%` }}/>
+          <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }}/>
         </div>
         <p className={cls("text-[12px] mt-1.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
           오늘 {missionsDone}/{missionsTotal} · Week {weekNum} {weekMissions.title}
@@ -4696,7 +4696,7 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
           <div className="flex-1 min-w-0">
             <h3 className={cls("text-xl font-black tracking-tight", dark ? "text-white" : "text-gray-900")}>{author}</h3>
             {userData?.bio && <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>{userData.bio}</p>}
-            <p className={cls("text-xs mt-1.5 font-bold", dark ? "text-mint-400" : "text-mint-600")}>웨이로그 {reviews.length}개 작성</p>
+            <p className={cls("text-xs mt-1.5 font-bold", dark ? "text-brand-300" : "text-brand-600")}>웨이로그 {reviews.length}개 작성</p>
           </div>
         </div>
         {reviews.length > 0 ? (
@@ -4723,7 +4723,7 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
               className={cls("flex-1 py-3 rounded-2xl text-sm font-black transition active:scale-95 inline-flex items-center justify-center gap-1.5",
                 isFollowing
                   ? dark ? "bg-gray-800 text-gray-300 border border-gray-700" : "bg-gray-100 text-gray-700"
-                  : "bg-gradient-to-r from-mint-500 to-teal-500 text-white shadow-md")}>
+                  : "bg-brand-500 text-white shadow-md")}>
               {isFollowing ? <><Check size={14}/> 팔로잉</> : <><Plus size={14}/> 팔로우</>}
             </button>
           )}
@@ -4734,7 +4734,7 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
         </div>
         {!isMe && currentUser && (
           <button onClick={() => { onToggleBlock && onToggleBlock(author); close(); }}
-            className={cls("w-full mt-3 py-2 text-xs font-bold active:opacity-60", isBlocked ? "text-mint-500" : "text-rose-500")}>
+            className={cls("w-full mt-3 py-2 text-xs font-bold active:opacity-60", isBlocked ? "text-brand-500" : "text-rose-500")}>
             {isBlocked ? "차단 해제" : "이 사용자 차단하기"}
           </button>
         )}
@@ -4882,15 +4882,9 @@ function AppInner() {
     import("./utils/platform.js").then(({ setNativeStatusBar }) => setNativeStatusBar(!!dark));
   }, [dark]);
 
-  // --- 인증 (Supabase 우선, 실패 시 로컬 폴백) ---
-  const [user, setUserRaw] = useState(null);
+  // --- 인증 — Supabase 를 single source of truth 로. 로컬 폴백(waylog:user) 제거 ---
+  const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-
-  // user를 설정할 때 로컬에도 저장 (폴백용)
-  const setUser = (u) => {
-    setUserRaw(u);
-    try { if (u) localStorage.setItem("waylog:user", JSON.stringify(u)); else localStorage.removeItem("waylog:user"); } catch {}
-  };
 
   // 세션 한 번당 profile 은 한 번만 fetch (토큰 리프레시 때마다 재요청 방지)
   const profileCacheRef = useRef({ userId: null, avatar: "" });
@@ -4911,33 +4905,24 @@ function AppInner() {
 
   useEffect(() => {
     let cancelled = false;
-    const loadLocal = () => {
-      try { const saved = localStorage.getItem("waylog:user"); if (saved) setUserRaw(JSON.parse(saved)); } catch {}
-    };
     if (!supabase) {
-      loadLocal();
       setAuthLoading(false);
       return;
     }
 
-    // getSession — 3초 타임아웃. lock에 걸리면 즉시 포기.
-    const safeGetSession = () => Promise.race([
-      supabase.auth.getSession(),
-      new Promise((resolve) => setTimeout(() => resolve({ data: { session: null }, error: null }), 3000)),
-    ]).catch(() => ({ data: { session: null }, error: null }));
-
     (async () => {
       try {
-        const { data } = await safeGetSession();
+        // 네이티브 Preferences 마이그레이션 대기 — 웹에서는 즉시 resolve.
+        // 이걸 기다려야 setSession 으로 복원된 세션을 getSession 이 픽업함.
+        await migrationReady;
+        const { data } = await supabase.auth.getSession();
         const session = data?.session || null;
         if (cancelled) return;
         if (session?.user) {
           setUser(await buildUserFromSession(session));
-        } else {
-          loadLocal();
         }
-      } catch {
-        if (!cancelled) loadLocal();
+      } catch (e) {
+        console.warn("초기 세션 로드 실패:", e);
       } finally {
         if (!cancelled) setAuthLoading(false);
       }
@@ -6387,7 +6372,7 @@ function AppInner() {
           style={{ height: `${pullY}px`, width: "60px", marginTop: "-10px" }}>
           <div className={cls("rounded-full p-2 shadow-lg", dark ? "bg-gray-800" : "bg-white")}>
             <RefreshCw size={18}
-              className={cls("text-mint-500", refreshing && "animate-spin")}
+              className={cls("text-brand-500", refreshing && "animate-spin")}
               style={{ transform: refreshing ? undefined : `rotate(${pullY * 4}deg)`, transition: "transform 0.1s" }}/>
           </div>
         </div>
@@ -6400,7 +6385,7 @@ function AppInner() {
           {/* 로고 — 모든 탭에서 Waylog 로고 일관 노출 */}
           <button onClick={() => { setTab("home"); nav.reset(); }} className="active:opacity-60">
             <h1 className="text-[22px] font-black leading-none tracking-tight text-black dark:text-white">
-              Waylog<span className="text-mint-500">·</span>
+              Waylog<span className="text-brand-500">·</span>
             </h1>
           </button>
 
@@ -6439,7 +6424,7 @@ function AppInner() {
                       <div className="flex gap-3">
                         {unreadCount > 0 && (
                           <button onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
-                            className="text-[13px] font-bold text-mint-700 active:opacity-60">
+                            className="text-[13px] font-bold text-brand-700 active:opacity-60">
                             모두 읽음
                           </button>
                         )}
@@ -6518,7 +6503,7 @@ function AppInner() {
           }}
             aria-label={tab === "comm" ? "커뮤니티 글쓰기" : "새 웨이로그 작성"}
             className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-14 h-14 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition",
-              tab === "comm" ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-mint-500")}>
+              tab === "comm" ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-brand-500")}>
             <Plus size={26} className="text-white" strokeWidth={2.5}/>
           </button>
         </div>
@@ -6539,7 +6524,7 @@ function AppInner() {
           <div className={cls("text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl animate-toast inline-flex items-center gap-1.5 max-w-full",
             toast.action ? "pointer-events-auto" : "",
             toast.type === "error" ? "bg-rose-600/95" :
-            toast.type === "success" ? "bg-mint-600/95" :
+            toast.type === "success" ? "bg-brand-600/95" :
             "bg-gray-900/95")}>
             {toast.type === "error" && <X size={12} className="shrink-0"/>}
             {toast.type === "success" && <Check size={12} className="shrink-0"/>}
@@ -6696,10 +6681,10 @@ function AppInner() {
           getChallengeDay={getChallengeDay}/>
       )}</Suspense>
 
-      {/* 하단 네비 — 4탭 라벨 포함, 민트 액센트 */}
+      {/* 하단 네비 — 4탭 라벨 포함, 브랜드(더스티네이비) 액센트. 탭 라벨 개편은 4단계. */}
       <nav className={cls("fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl border-t grid grid-cols-4 z-20 backdrop-blur-xl",
-        dark ? "bg-black/90 border-[#262626]" : "bg-white/90 border-[#dbdbdb]")}
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)", paddingTop: "0.625rem" }}>
+        dark ? "bg-ink-900/95 border-ink-800" : "bg-white/95 border-ink-200")}
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)", paddingTop: "0.5rem" }}>
         {[
           { k: "home", icon: Sparkles, label: "추천" },
           { k: "feed", icon: Grid3x3, label: "오늘뭐썼지" },
@@ -6709,15 +6694,13 @@ function AppInner() {
           const active = tab === k;
           return (
             <button key={k} onClick={() => { setTab(k); nav.reset(); }}
-              className="flex flex-col items-center gap-1 active:scale-95 transition relative">
-              <div className="relative">
-                <Icon size={22} strokeWidth={active ? 2.4 : 1.8}
-                  className={cls("transition-all duration-200", active && "-translate-y-[1px]",
-                    active ? "text-mint-500" : dark ? "text-[#a8a8a8]" : "text-[#737373]")}/>
-                {active && <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-mint-500"/>}
-              </div>
-              <span className={cls("text-[11px] tracking-tight transition-all duration-200",
-                active ? "font-black text-mint-500" : dark ? "font-medium text-[#a8a8a8]" : "font-medium text-[#737373]")}>
+              aria-label={label} aria-current={active ? "page" : undefined}
+              className="min-h-tap flex flex-col items-center justify-center gap-1 active:scale-95 transition relative">
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.6}
+                className={cls("transition-colors duration-200",
+                  active ? "text-brand-700 dark:text-brand-200" : dark ? "text-ink-400" : "text-ink-500")}/>
+              <span className={cls("text-[11px] tracking-tight transition-colors duration-200",
+                active ? "font-semibold text-brand-700 dark:text-brand-200" : dark ? "font-medium text-ink-400" : "font-medium text-ink-500")}>
                 {label}
               </span>
             </button>

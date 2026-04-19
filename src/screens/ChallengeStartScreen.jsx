@@ -89,9 +89,9 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
     return false;
   };
 
-  const inputCls = cls("w-full px-3 py-2.5 rounded-lg text-[14px] border outline-none",
-    dark ? "bg-[#121212] border-[#262626] text-white placeholder-[#737373] focus:border-[#737373]"
-         : "bg-[#fafafa] border-[#dbdbdb] text-black placeholder-[#8e8e8e] focus:border-[#a8a8a8]");
+  const inputCls = cls("w-full min-h-tap px-4 py-3 rounded-btn text-[15px] border outline-none focus:ring-2 focus:ring-brand-500/20",
+    dark ? "bg-ink-900 border-ink-700 text-ink-50 placeholder-ink-400 focus:border-brand-500"
+         : "bg-white border-ink-200 text-ink-900 placeholder-ink-400 focus:border-brand-500");
 
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
@@ -100,8 +100,8 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
         <div className="flex gap-1">
           {[0,1,2,3,4].map((i) => (
             <div key={i} className={cls("h-[3px] rounded-full transition-all",
-              i === step ? "w-6 bg-mint-500" :
-              i < step ? "w-3 bg-mint-500/60" :
+              i === step ? "w-6 bg-brand-500" :
+              i < step ? "w-3 bg-brand-500/60" :
               (dark ? "w-3 bg-[#262626]" : "w-3 bg-[#dbdbdb]"))}/>
           ))}
         </div>
@@ -111,7 +111,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
       <div className="flex-1 overflow-y-auto px-6 pb-8">
         {step === 0 && (
           <div className="flex flex-col items-center justify-center text-center pt-10 animate-fade-in">
-            <div className={cls("w-24 h-24 rounded-full bg-gradient-to-br from-mint-400 to-mint-700 flex items-center justify-center mb-8")}>
+            <div className={cls("w-24 h-24 rounded-full bg-brand-500 flex items-center justify-center mb-8")}>
               <Trophy size={44} className="text-white"/>
             </div>
             <h2 className={cls("text-[26px] font-bold tracking-tight", dark ? "text-white" : "text-black")}>바디키 8주 챌린지</h2>
@@ -211,12 +211,12 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
               {[
                 { key: "lose", Icon: Flame, color: "from-rose-400 to-orange-500", label: "체중 감량", desc: "체지방 줄이기에 집중" },
                 { key: "muscle", Icon: Dumbbell, color: "from-sky-400 to-blue-500", label: "근력 강화", desc: "근육량 늘리기에 집중" },
-                { key: "health", Icon: Leaf, color: "from-mint-400 to-teal-500", label: "건강 유지", desc: "균형 잡힌 생활 습관" },
+                { key: "health", Icon: Leaf, color: "from-brand-300 to-teal-500", label: "건강 유지", desc: "균형 잡힌 생활 습관" },
               ].map((g) => (
                 <button key={g.key} onClick={() => { setGoal(g.key); setWarning(""); }}
                   className={cls("w-full p-3.5 rounded-2xl flex items-center gap-3 text-left transition active:scale-[0.98] border-2",
                     goal === g.key
-                      ? "bg-mint-500/5 border-mint-500"
+                      ? "bg-brand-500/5 border-brand-500"
                       : (dark ? "bg-[#121212] border-[#262626]" : "bg-white border-[#dbdbdb]"))}>
                   <div className={cls("w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br", g.color)}>
                     <g.Icon size={20} className="text-white"/>
@@ -276,7 +276,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                 <button key={t.key} onClick={() => setCoachTone(t.key)}
                   className={cls("w-full p-3.5 rounded-2xl text-left transition active:scale-[0.98] border-2",
                     coachTone === t.key
-                      ? "bg-mint-500/5 border-mint-500"
+                      ? "bg-brand-500/5 border-brand-500"
                       : (dark ? "bg-[#121212] border-[#262626]" : "bg-white border-[#dbdbdb]"))}>
                   <div className="flex items-center gap-3 mb-2">
                     <div className={cls("w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br", t.color)}>
@@ -299,7 +299,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
 
         {step === 4 && (
           <div className="pt-10 text-center animate-fade-in">
-            <div className={cls("w-20 h-20 rounded-full bg-gradient-to-br from-mint-400 to-mint-700 flex items-center justify-center mx-auto mb-6")}>
+            <div className={cls("w-20 h-20 rounded-full bg-brand-500 flex items-center justify-center mx-auto mb-6")}>
               <Check size={40} className="text-white" strokeWidth={2.5}/>
             </div>
             <h2 className={cls("text-[26px] font-bold tracking-tight", dark ? "text-white" : "text-black")}>준비 완료</h2>
@@ -342,8 +342,8 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
           <button onClick={handleNext} disabled={!canNext()}
             className={cls("flex-[2] py-3 rounded-2xl text-[14px] font-bold transition active:scale-[0.98]",
               canNext()
-                ? "bg-mint-500 text-white"
-                : "bg-mint-500/30 text-white cursor-not-allowed")}>
+                ? "bg-brand-500 text-white"
+                : "bg-brand-500/30 text-white cursor-not-allowed")}>
             {step === 4 ? "챌린지 시작" : step === 0 ? "시작하기" : "다음"}
           </button>
         </div>

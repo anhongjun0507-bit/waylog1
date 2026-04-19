@@ -17,7 +17,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const cardRef = useRef(null);
 
   const cat = CATEGORIES[review.category] || CATEGORIES.food;
-  const accent = CAT_SOLID[review.category] || "#00C9A7";
+  const accent = CAT_SOLID[review.category] || "#3A4A5C";
   const shareUrl = `waylog.kr/r/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
@@ -180,7 +180,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
               {/* 브랜딩 */}
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-mint-400 to-teal-500 flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
                     <Sparkles size={10} className="text-white"/>
                   </div>
                   <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
@@ -196,7 +196,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
           <button onClick={handleSaveImage} disabled={saving}
             className={cls("w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition active:scale-[0.98]",
               saving ? "opacity-60 cursor-wait" : "",
-              "bg-gradient-to-r from-mint-500 to-teal-500 text-white shadow-lg shadow-mint-500/20")}>
+              "bg-brand-500 text-white shadow-lg shadow-brand-500/20")}>
             {saving ? (
               <><RefreshCw size={16} className="animate-spin"/> 이미지 생성 중...</>
             ) : (
@@ -207,7 +207,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
           <button onClick={handleCopyLink}
             className={cls("w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]",
               copied
-                ? dark ? "bg-mint-900/40 text-mint-300" : "bg-mint-50 text-mint-700"
+                ? dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700"
                 : dark ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-700")}>
             {copied ? <><Check size={16}/> 복사됨!</> : <><ExternalLink size={16}/> 링크 복사</>}
           </button>

@@ -157,12 +157,12 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
     }
   };
 
-  // IG 스타일 입력 — 연한 회색 라운드 박스
-  const inputCls = cls("w-full text-[14px] outline-none rounded-[3px] px-3 py-2.5 mt-2 border transition-colors",
-    dark ? "bg-[#121212] text-white placeholder-[#737373] border-[#262626] focus:border-[#737373]"
-         : "bg-[#fafafa] text-black placeholder-[#8e8e8e] border-[#dbdbdb] focus:border-[#a8a8a8]");
-  const inputInvalid = "!border-red-500";
-  const inputValid = "!border-[#dbdbdb]";
+  // DS 리뉴얼 — 15px 본문, 48px 터치 타겟, 브랜드 포커스 링.
+  const inputCls = cls("w-full min-h-tap text-[15px] outline-none rounded-btn px-4 py-3 mt-2 border transition-colors focus:ring-2 focus:ring-brand-500/20",
+    dark ? "bg-ink-900 text-ink-50 placeholder-ink-400 border-ink-700 focus:border-brand-500"
+         : "bg-white text-ink-900 placeholder-ink-400 border-ink-200 focus:border-brand-500");
+  const inputInvalid = "!border-error";
+  const inputValid = "!border-ink-200";
 
   const isRecover = mode === "forgot-password";
   const headerTitle = {
@@ -189,7 +189,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           {/* IG 식 로고 — 크게, 세로 정렬 */}
           <h1 className={cls("text-[42px] font-black leading-none tracking-tight", dark ? "text-white" : "text-black")}
             style={{ fontFamily: "'Pretendard', serif" }}>
-            Waylog<span className="text-mint-500">·</span>
+            Waylog<span className="text-brand-500">·</span>
           </h1>
           <p className={cls("text-[13px] mt-6", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
             {mode === "signup" && "친구들의 라이프스타일을 보려면 가입하세요."}
@@ -202,7 +202,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           <div className="mb-4 flex flex-col items-center">
             <div className="relative">
               <Avatar id={avatar} size={48} className="w-24 h-24" rounded="rounded-full"/>
-              <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 flex items-center justify-center cursor-pointer active:scale-90 transition border-2"
+              <label className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center cursor-pointer active:scale-90 transition border-2"
                 style={{ borderColor: dark ? "#000" : "#fff" }}>
                 <Camera size={14} className="text-white"/>
                 <input type="file" accept="image/*" className="hidden" onChange={handleFileChange}/>
@@ -243,10 +243,10 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             </div>
             {mode === "signup" && password && (
               <div className="mt-2 flex flex-col gap-0.5">
-                <p className={cls("text-[12px] inline-flex items-center gap-1", password.length >= 8 ? "text-mint-500" : "text-red-500")}>
+                <p className={cls("text-[12px] inline-flex items-center gap-1", password.length >= 8 ? "text-brand-500" : "text-red-500")}>
                   <Check size={10}/> 8자 이상
                 </p>
-                <p className={cls("text-[12px] inline-flex items-center gap-1", /[a-zA-Z]/.test(password) && /[0-9]/.test(password) ? "text-mint-500" : "text-red-500")}>
+                <p className={cls("text-[12px] inline-flex items-center gap-1", /[a-zA-Z]/.test(password) && /[0-9]/.test(password) ? "text-brand-500" : "text-red-500")}>
                   <Check size={10}/> 영문 + 숫자 포함
                 </p>
               </div>
@@ -277,7 +277,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           </div>
         )}
         {info && (
-          <div className={cls("text-[12px] mt-3 p-2.5 rounded flex items-start gap-2", dark ? "bg-mint-900/30 text-mint-400" : "bg-mint-50 text-mint-700")}>
+          <div className={cls("text-[12px] mt-3 p-2.5 rounded flex items-start gap-2", dark ? "bg-brand-900/30 text-brand-300" : "bg-brand-50 text-brand-700")}>
             <Check size={14} className="mt-0.5 shrink-0"/>
             <span>{info}</span>
           </div>
@@ -285,7 +285,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
 
         <button onClick={submit} disabled={loading}
           className={cls("w-full py-3 rounded-full text-white text-[14px] font-bold mt-6 active:scale-[0.98] transition",
-            loading ? "bg-mint-500/50 cursor-wait" : "bg-mint-500 hover:bg-mint-600")}>
+            loading ? "bg-brand-500/50 cursor-wait" : "bg-brand-500 hover:bg-brand-600")}>
           {loading ? (
             <span className="inline-flex items-center gap-2"><RefreshCw size={14} className="animate-spin"/> 처리 중</span>
           ) : (
@@ -300,7 +300,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
         {mode === "login" && (
           <div className="flex items-center justify-center mt-6">
             <button onClick={() => { setMode("forgot-password"); setError(""); setInfo(""); setRecoverInput(""); }}
-              className={cls("text-[12px]", dark ? "text-mint-400" : "text-mint-700")}>
+              className={cls("text-[12px]", dark ? "text-brand-300" : "text-brand-700")}>
               비밀번호를 잊으셨나요?
             </button>
           </div>
@@ -334,7 +334,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             <p className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               {mode === "signup" ? "계정이 있으신가요? " : "계정이 없으신가요? "}
               <button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); setInfo(""); }}
-                className="text-mint-700 font-semibold">
+                className="text-brand-700 font-semibold">
                 {mode === "signup" ? "로그인" : "가입하기"}
               </button>
             </p>
@@ -344,10 +344,19 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
         {!isRecover && (
           <button onClick={async () => {
             try {
-              // 1. localStorage 인증 관련 키 전부 정리
+              // 1. auth 관련 localStorage 키만 선별 삭제.
+              //   - sb-* : Supabase 기본 세션 키 (신 포맷)
+              //   - supabase* : Supabase 기타 내부 키
+              //   - waylog-auth-v2 / waylog-direct-token / waylog:user / waylog:auth-ver : 구버전 잔재
+              //   - waylog:migrated-auth-v3 : 다음 로드에서 재정리 트리거 되도록 제거
+              // waylog:dark · waylog:taste · waylog:community-clean-ver 등 비-auth 키는 보존.
+              const AUTH_LEGACY = [
+                'waylog-auth-v2', 'waylog-direct-token', 'waylog:user',
+                'waylog:auth-ver', 'waylog:migrated-auth-v3',
+              ];
               const keys = Object.keys(localStorage);
               for (const key of keys) {
-                if (key.startsWith('sb-') || key.startsWith('waylog-auth') || key.startsWith('waylog:')) {
+                if (key.startsWith('sb-') || key.startsWith('supabase') || AUTH_LEGACY.includes(key)) {
                   localStorage.removeItem(key);
                 }
               }

@@ -1,21 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 // reports/analytics 는 하단에서 정의.
 
-// Supabase 클라이언트 생성 전, 구버전 세션 키를 정리.
-// GoTrueClient가 stale 토큰을 복구하다 내부 lock에 걸리는 것을 방지.
-try {
-  const AUTH_VER = 4;
-  const cur = +(localStorage.getItem('waylog:auth-ver') || 0);
-  if (cur < AUTH_VER) {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('sb-') || key.startsWith('supabase')) {
-        localStorage.removeItem(key);
-      }
-    }
-    localStorage.setItem('waylog:auth-ver', String(AUTH_VER));
-  }
-} catch {}
-
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
@@ -30,10 +15,54 @@ if (!isConfigured) {
 // 대신 utils/platform.js 의 initDeepLinkHandler 가 명시적으로 setSession 호출.
 const isNativeApp = typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.()
 
+// Supabase 기본 storageKey 포맷은 `sb-<project-ref>-auth-token`.
+// 마이그레이션(구→신) 시 대상 키 계산을 위해 여기서도 동일하게 유도.
+const getDefaultStorageKey = (url) => {
+  try {
+    const host = new URL(url).hostname
+    const ref = host.split('.')[0]
+    return `sb-${ref}-auth-token`
+  } catch {
+    return 'sb-auth-token'
+  }
+}
+const NEW_STORAGE_KEY = getDefaultStorageKey(supabaseUrl)
+const MIGRATION_FLAG = 'waylog:migrated-auth-v3'
+
+// ===== 1회성 마이그레이션 — 구버전(`waylog-auth-v2` 등) → Supabase 기본 키 =====
+// 목적: 기존 배포 사용자가 재로그인 없이 세션 유지. 실행 후 구키/우회 키 전부 삭제.
+// 실패 시 조용히 해당 키만 삭제(세션은 소실되어도 앱은 정상 동작 — 재로그인 안내).
+//
+// 웹(동기): localStorage 에서 직접 수행. createClient 전에 완료돼 Supabase 가 신키를 바로 픽업.
+// 네이티브(비동기): Preferences 접근은 Promise 기반이라 createClient 뒤로 밀림.
+// 대신 migrationReady 가 resolve 된 뒤 supabase.auth.setSession() 으로 세션을 주입.
+const migrateLocalStorage = () => {
+  if (typeof localStorage === 'undefined') return
+  try {
+    if (localStorage.getItem(MIGRATION_FLAG) === '1') return
+    const oldSession = localStorage.getItem('waylog-auth-v2')
+    if (oldSession) {
+      try {
+        JSON.parse(oldSession) // 파싱 가능할 때만 복사
+        if (!localStorage.getItem(NEW_STORAGE_KEY)) {
+          localStorage.setItem(NEW_STORAGE_KEY, oldSession)
+        }
+      } catch {}
+      localStorage.removeItem('waylog-auth-v2')
+    }
+    // auth 잔재 키 일괄 삭제 (user 캐시/우회 토큰/구버전 리셋 플래그)
+    localStorage.removeItem('waylog:user')
+    localStorage.removeItem('waylog-direct-token')
+    localStorage.removeItem('waylog:auth-ver')
+    localStorage.setItem(MIGRATION_FLAG, '1')
+  } catch {}
+}
+// 웹 마이그레이션은 createClient 전에 동기적으로 수행.
+migrateLocalStorage()
+
 // 네이티브에서는 @capacitor/preferences (iOS Keychain / Android SharedPreferences) 로 세션 저장.
 // 이유: Capacitor WebView 의 localStorage 는 유실 가능성이 있어 자동 로그인이 끊김.
-// 웹에서는 undefined 를 넘겨 기본 localStorage 사용 (기존 동작 유지).
-const AUTH_STORAGE_KEY = 'waylog-auth-v2'
+// 웹에서는 undefined 를 넘겨 기본 localStorage 사용 (기본 동작).
 let capacitorStorage = null
 if (isNativeApp) {
   capacitorStorage = {
@@ -57,28 +86,13 @@ if (isNativeApp) {
       } catch {}
     },
   }
-  // 1회성 마이그레이션: 기존 localStorage 에 세션 있으면 Preferences 로 복사.
-  // 이전 버전 사용자가 업데이트 후 재로그인 요구받지 않도록.
-  // 실패해도 무시 (새로 로그인하면 됨).
-  ;(async () => {
-    try {
-      const MIGRATED_KEY = 'waylog:auth-migrated-to-prefs'
-      if (localStorage.getItem(MIGRATED_KEY)) return
-      const existing = localStorage.getItem(AUTH_STORAGE_KEY)
-      if (existing) {
-        const { Preferences } = await import('@capacitor/preferences')
-        const { value } = await Preferences.get({ key: AUTH_STORAGE_KEY })
-        if (!value) await Preferences.set({ key: AUTH_STORAGE_KEY, value: existing })
-      }
-      localStorage.setItem(MIGRATED_KEY, '1')
-    } catch {}
-  })()
 }
 
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        storageKey: AUTH_STORAGE_KEY,
+        // storageKey 옵션 제거 — Supabase 기본값(`sb-<ref>-auth-token`) 사용.
+        // 구키 `waylog-auth-v2` 는 migrateLocalStorage() / migrationReady 에서 신키로 복사 후 삭제.
         storage: capacitorStorage || undefined,
         autoRefreshToken: true,
         persistSession: true,
@@ -88,6 +102,41 @@ export const supabase = isConfigured
     })
   : null
 
+// 네이티브용 비동기 마이그레이션.
+// Preferences 의 구키 값을 읽어 Supabase 에 setSession 으로 주입 → GoTrueClient 가
+// 신키로 자동 저장. 기존 구키는 삭제. App.jsx 초기 로드 훅은 이 Promise 를 await 후
+// getSession() 을 호출해야 재로그인 플래시가 없음.
+// 웹에서는 즉시 resolve — 웹 마이그레이션은 이미 동기 완료.
+export const migrationReady = (async () => {
+  if (!isNativeApp || !supabase) return
+  try {
+    const { Preferences } = await import('@capacitor/preferences')
+    const flagRes = await Preferences.get({ key: MIGRATION_FLAG })
+    if (flagRes.value === '1') return
+
+    const oldRes = await Preferences.get({ key: 'waylog-auth-v2' })
+    // 구마이그레이션 플래그(이전 버전 localStorage→Preferences 용) 도 함께 정리
+    await Preferences.remove({ key: 'waylog:auth-migrated-to-prefs' })
+    await Preferences.remove({ key: 'waylog-auth-v2' })
+    await Preferences.set({ key: MIGRATION_FLAG, value: '1' })
+
+    if (oldRes.value) {
+      try {
+        const parsed = JSON.parse(oldRes.value)
+        // Supabase v2 세션 형태: { access_token, refresh_token, ... }
+        if (parsed?.access_token && parsed?.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: parsed.access_token,
+            refresh_token: parsed.refresh_token,
+          })
+        }
+      } catch {}
+    }
+  } catch (e) {
+    console.warn('native auth 마이그레이션 실패:', e)
+  }
+})()
+
 // 네이티브에서는 OAuth 리다이렉트 URL 로 이 값을 Supabase 로그인 옵션에 넘겨야 함
 export const OAUTH_REDIRECT_URL = isNativeApp
   ? "com.waylog.app://auth-callback"
@@ -96,167 +145,32 @@ export const OAUTH_REDIRECT_URL = isNativeApp
 const noop = { data: null, error: null }
 const noopArr = { data: [], error: null }
 
-// GoTrueClient에 의존하지 않는 인증 토큰 관리.
-// directSignIn 시 여기에 저장하고, supabase 클라이언트가 세션을 가져가면 그것도 사용.
-let _accessToken = null
-export const setDirectToken = (token) => { _accessToken = token }
-export const getAccessToken = async () => {
-  // 1) GoTrueClient에서 가져오기 (2초 타임아웃)
-  if (supabase) {
-    try {
-      const { data } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 1500)),
-      ])
-      if (data?.session?.access_token) return data.session.access_token
-    } catch {}
-  }
-  // 2) 직접 로그인 시 저장한 토큰
-  if (_accessToken) return _accessToken
-  // 3) directSignIn이 저장한 토큰
-  try {
-    const dt = localStorage.getItem('waylog-direct-token')
-    if (dt) return dt
-  } catch {}
-  // 4) localStorage에서 직접 읽기 (storageKey 기반)
-  try {
-    const raw = localStorage.getItem('waylog-auth-v2')
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed?.access_token) return parsed.access_token
-    }
-  } catch {}
-  return null
-}
-
-// Supabase REST API 직접 호출 헬퍼 — GoTrueClient 완전 우회
-// AbortController + 15초 기본 타임아웃으로 무한 대기 방지.
-// 외부에서 signal 을 주입하면 (예: 사용자 로그아웃 시 abort) 즉시 취소 가능.
-const DEFAULT_REST_TIMEOUT = 15000
-const directRest = async (method, path, body = null, { signal: externalSignal, timeoutMs = DEFAULT_REST_TIMEOUT } = {}) => {
-  const token = await getAccessToken()
-  if (!token) return { data: null, error: { message: 'no_auth_token' } }
-  const headers = {
-    'Content-Type': 'application/json',
-    apikey: supabaseAnonKey,
-    Authorization: `Bearer ${token}`,
-    Prefer: (method === 'POST' || method === 'PATCH') ? 'return=representation' : undefined,
-  }
-  Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
-
-  // 내부 타임아웃 controller — 외부 signal 과 merge
-  const controller = new AbortController()
-  const timeoutId = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null
-  const onExternalAbort = () => controller.abort()
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort()
-    else externalSignal.addEventListener('abort', onExternalAbort, { once: true })
-  }
-
-  try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-      method, headers,
-      signal: controller.signal,
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return { data: null, error: { message: err.message || err.error || `HTTP ${res.status}` } }
-    }
-    const data = await res.json().catch(() => null)
-    return { data: Array.isArray(data) ? data[0] : data, error: null }
-  } catch (e) {
-    if (e?.name === 'AbortError') {
-      return { data: null, error: { message: externalSignal?.aborted ? 'aborted' : 'timeout' } }
-    }
-    return { data: null, error: { message: e?.message || 'network_error' } }
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId)
-    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort)
-  }
-}
-
-// GoTrueClient를 완전히 우회하는 직접 로그인.
-// 어떤 클라이언트 상태에서도 멈추지 않는다.
-const directSignIn = async (email, password) => {
-  const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
-    body: JSON.stringify({ email, password }),
-  })
-  const body = await res.json()
-  if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || 'Login failed' } }
-  // 토큰 저장 — 이후 REST API 호출에서 사용
-  _accessToken = body.access_token
-  try { localStorage.setItem('waylog-direct-token', body.access_token) } catch {}
-  // setSession도 시도 (lock 걸리면 무시)
-  if (supabase) {
-    try { supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token }).catch(() => {}) }
-    catch {}
-  }
-  return { data: { user: body.user, session: body }, error: null }
-}
-
-const directSignUp = async (email, password, nickname) => {
-  const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey },
-    body: JSON.stringify({ email, password, data: { nickname } }),
-  })
-  const body = await res.json()
-  if (!res.ok) return { data: null, error: { message: body.error_description || body.msg || body.error || 'Signup failed' } }
-  if (body.access_token && supabase) {
-    try { supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token }).catch(() => {}) }
-    catch {}
-  }
-  return { data: { user: body.user || body, session: body.access_token ? body : null }, error: null }
-}
-
+// Auth API — Supabase GoTrueClient 를 단일 권위(single source of truth)로 사용.
+// 이전 버전의 getAccessToken / directRest / directSignIn / directSignUp 우회 경로는
+// 중복 저장소(waylog-direct-token) 와 Supabase 내부 세션 간 경쟁으로 silent fail 을
+// 유발해 제거됨. 네트워크 지연/문제는 호출측에서 명시적으로 에러 UI 노출.
 export const auth = {
   async signUp(email, password, nickname) {
     if (!supabase) return noop
-    // GoTrueClient 2초 시도 → 실패 시 직접 API 호출
     try {
-      const result = await Promise.race([
-        supabase.auth.signUp({ email, password, options: { data: { nickname } } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
-      ])
-      return result
-    } catch {
-      return directSignUp(email, password, nickname)
+      return await supabase.auth.signUp({ email, password, options: { data: { nickname } } })
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '가입 중 네트워크 오류가 발생했어요. 다시 시도해주세요.' } }
     }
   },
   async signIn(email, password) {
     if (!supabase) return noop
-    // GoTrueClient 2초 시도 → 실패 시 직접 API 호출
     try {
-      const result = await Promise.race([
-        supabase.auth.signInWithPassword({ email, password }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
-      ])
-      return result
-    } catch {
-      return directSignIn(email, password)
+      return await supabase.auth.signInWithPassword({ email, password })
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '로그인 중 네트워크 오류가 발생했어요. 다시 시도해주세요.' } }
     }
   },
   async signOut() {
     if (!supabase) return noop
-    // 서버 응답 성공/실패와 무관하게 로컬 토큰 잔존 방지를 위해 항상 정리.
-    // getAccessToken() 이 waylog-direct-token fallback 을 읽어 이전 사용자로
-    // 인증된 요청을 보내는 버그 방지.
-    const cleanupLocal = () => {
-      _accessToken = null
-      try { localStorage.removeItem('waylog-direct-token') } catch {}
-    }
     try {
-      const result = await Promise.race([
-        supabase.auth.signOut(),
-        new Promise((resolve) => setTimeout(() => resolve({ error: null }), 2000)),
-      ])
-      cleanupLocal()
-      return result
+      return await supabase.auth.signOut()
     } catch (e) {
-      cleanupLocal()
       return { error: e }
     }
   },
@@ -355,16 +269,11 @@ export const reviews = {
   },
   async create(review) {
     if (!supabase) return noop
-    // 1) GoTrueClient 경유 시도 (2초 타임아웃)
     try {
-      const result = await Promise.race([
-        supabase.from('reviews').insert(review).select().single(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
-      ])
-      if (result?.data?.id) return result
-    } catch {}
-    // 2) 직접 REST API 폴백 — GoTrueClient 완전 우회
-    return directRest('POST', 'reviews', review)
+      return await supabase.from('reviews').insert(review).select().single()
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '리뷰 작성 중 오류가 발생했어요. 다시 시도해주세요.' } }
+    }
   },
   async delete(id) {
     if (!supabase) return noop
@@ -373,15 +282,11 @@ export const reviews = {
   },
   async update(id, updates) {
     if (!supabase) return noop
-    // GoTrueClient 경유 2초 타임아웃 → 실패 시 직접 REST 폴백 (내부 15초 타임아웃).
     try {
-      const result = await Promise.race([
-        supabase.from('reviews').update(updates).eq('id', id).select().single(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
-      ])
-      if (result?.data?.id || result?.data === null) return result
-    } catch {}
-    return directRest('PATCH', `reviews?id=eq.${encodeURIComponent(id)}`, updates)
+      return await supabase.from('reviews').update(updates).eq('id', id).select().single()
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '리뷰 수정 중 오류가 발생했어요. 다시 시도해주세요.' } }
+    }
   },
 }
 
@@ -411,15 +316,11 @@ export const communityApi = {
   },
   async create(post) {
     if (!supabase) return noop
-    // reviews.create 와 동일 패턴: GoTrueClient 2초 시도 → REST 폴백
     try {
-      const result = await Promise.race([
-        supabase.from('community_posts').insert(post).select().single(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
-      ])
-      if (result?.data?.id) return result
-    } catch {}
-    return directRest('POST', 'community_posts', post)
+      return await supabase.from('community_posts').insert(post).select().single()
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '게시물 작성 중 오류가 발생했어요. 다시 시도해주세요.' } }
+    }
   },
   async delete(id) {
     if (!supabase) return noop
@@ -774,40 +675,15 @@ export const storage = {
     if (!supabase) return { url: null, error: null }
     const path = `${userId}/${Date.now()}-${fileName}`
     const contentType = file?.type || (fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
-    // 1) GoTrueClient 경유 시도
     try {
-      const { data, error } = await Promise.race([
-        supabase.storage.from('review-media').upload(path, file, { cacheControl: '31536000', upsert: false, contentType }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 5000)),
-      ])
-      if (!error && data?.path) {
-        const { data: urlData } = supabase.storage.from('review-media').getPublicUrl(data.path)
-        return { url: urlData.publicUrl, error: null }
-      }
-    } catch {}
-    // 2) 직접 fetch 폴백 — 30초 타임아웃(이미지/동영상 크기 고려)
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
-    try {
-      const token = await getAccessToken()
-      if (!token) return { url: null, error: { message: 'no_auth_token' } }
-      const res = await fetch(`${supabaseUrl}/storage/v1/object/review-media/${path}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, apikey: supabaseAnonKey, 'Content-Type': contentType, 'Cache-Control': 'max-age=31536000' },
-        body: file,
-        signal: controller.signal,
-      })
-      if (res.ok) {
-        const publicUrl = `${supabaseUrl}/storage/v1/object/public/review-media/${path}`
-        return { url: publicUrl, error: null }
-      }
-      const err = await res.json().catch(() => ({}))
-      return { url: null, error: { message: err.message || `HTTP ${res.status}` } }
+      const { data, error } = await supabase.storage
+        .from('review-media')
+        .upload(path, file, { cacheControl: '31536000', upsert: false, contentType })
+      if (error) return { url: null, error }
+      const { data: urlData } = supabase.storage.from('review-media').getPublicUrl(data.path)
+      return { url: urlData.publicUrl, error: null }
     } catch (e) {
-      if (e?.name === 'AbortError') return { url: null, error: { message: 'timeout' } }
-      return { url: null, error: e }
-    } finally {
-      clearTimeout(timeoutId)
+      return { url: null, error: { message: e?.message || '미디어 업로드 중 오류가 발생했어요. 다시 시도해주세요.' } }
     }
   },
   async deleteMedia(path) {

@@ -63,16 +63,16 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                 <div key={f.label}>
                   <label className={cls("text-[11px] font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{f.label}</label>
                   <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" inputMode="decimal" step="0.1"
-                    className={cls("w-full px-3 py-2 rounded-lg text-[14px] font-semibold border outline-none",
-                      dark ? "bg-black text-white border-[#262626] focus:border-[#737373]"
-                           : "bg-white text-black border-[#dbdbdb] focus:border-[#a8a8a8]")}/>
+                    className={cls("w-full min-h-tap px-4 py-3 rounded-btn text-[15px] font-semibold border outline-none focus:ring-2 focus:ring-brand-500/20",
+                      dark ? "bg-ink-900 text-ink-50 border-ink-700 focus:border-brand-500"
+                           : "bg-white text-ink-900 border-ink-200 focus:border-brand-500")}/>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setAdding(false)} className={cls("flex-1 py-2 rounded-lg text-[14px] font-semibold", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>취소</button>
               <button onClick={handleAdd} disabled={!weight}
-                className={cls("flex-1 py-2 rounded-lg text-[14px] font-bold transition", weight ? "bg-mint-500 text-white active:opacity-80" : "bg-mint-500/30 text-white cursor-not-allowed")}>
+                className={cls("flex-1 py-2 rounded-lg text-[14px] font-bold transition", weight ? "bg-brand-500 text-white active:opacity-80" : "bg-brand-500/30 text-white cursor-not-allowed")}>
                 저장
               </button>
             </div>
@@ -98,7 +98,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                       {item.val || "-"}<span className="text-[11px] font-medium opacity-60 ml-0.5">{item.unit}</span>
                     </p>
                     {d !== null && (
-                      <p className={cls("text-[11px] font-semibold tabular-nums mt-0.5", good ? "text-mint-500" : "text-red-500")}>
+                      <p className={cls("text-[11px] font-semibold tabular-nums mt-0.5", good ? "text-brand-500" : "text-red-500")}>
                         {d > 0 ? "+" : ""}{d.toFixed(1)}{item.unit}
                       </p>
                     )}

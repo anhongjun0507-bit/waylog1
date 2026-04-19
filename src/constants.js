@@ -52,18 +52,20 @@ export const MOODS = [
   { key: "wow",  Icon: Lightbulb, label: "영감",     strong: true,  color: "text-violet-500" },
 ];
 
-// 카테고리 정의 (라벨/그라디언트/칩 색상)
+// 카테고리 정의 — DS 리뉴얼(2026-04) 이후 단색 톤다운 팔레트(cat-* 토큰).
+// `color`(그라디언트)는 레거시 호환용으로 유지 — 3단계에서 실사용처 훑은 뒤 정리.
 export const CATEGORIES = {
-  food:    { label: "뉴트리션",   color: "from-amber-400 to-orange-500",   chip: "bg-amber-50 text-amber-700",     dchip: "bg-amber-900/40 text-amber-300" },
-  wellness:{ label: "웰니스",     color: "from-violet-400 to-purple-500",  chip: "bg-violet-50 text-violet-700",   dchip: "bg-violet-900/40 text-violet-300" },
-  beauty:  { label: "뷰티",       color: "from-rose-400 to-rose-600",      chip: "bg-rose-50 text-rose-700",       dchip: "bg-rose-900/40 text-rose-300" },
-  kitchen: { label: "퍼스널케어", color: "from-pink-400 to-fuchsia-500",   chip: "bg-pink-50 text-pink-700",       dchip: "bg-pink-900/40 text-pink-300" },
-  home:    { label: "홈리빙",     color: "from-sky-400 to-blue-500",       chip: "bg-sky-50 text-sky-700",         dchip: "bg-sky-900/40 text-sky-300" },
-  one4one: { label: "원포원",     color: "from-lime-400 to-green-500",     chip: "bg-lime-50 text-green-700",      dchip: "bg-green-900/40 text-green-300" },
+  food:    { label: "뉴트리션",   color: "from-amber-400 to-orange-500",   chip: "bg-cat-food/10 text-cat-food",         dchip: "bg-cat-food/20 text-cat-food" },
+  wellness:{ label: "웰니스",     color: "from-violet-400 to-purple-500",  chip: "bg-cat-wellness/10 text-cat-wellness", dchip: "bg-cat-wellness/20 text-cat-wellness" },
+  beauty:  { label: "뷰티",       color: "from-rose-400 to-rose-600",      chip: "bg-cat-beauty/10 text-cat-beauty",     dchip: "bg-cat-beauty/20 text-cat-beauty" },
+  kitchen: { label: "퍼스널케어", color: "from-pink-400 to-fuchsia-500",   chip: "bg-cat-kitchen/10 text-cat-kitchen",   dchip: "bg-cat-kitchen/20 text-cat-kitchen" },
+  home:    { label: "홈리빙",     color: "from-sky-400 to-blue-500",       chip: "bg-cat-home/10 text-cat-home",         dchip: "bg-cat-home/20 text-cat-home" },
+  one4one: { label: "원포원",     color: "from-lime-400 to-green-500",     chip: "bg-cat-one4one/10 text-cat-one4one",   dchip: "bg-cat-one4one/20 text-cat-one4one" },
 };
 
+// tailwind.config.js `colors.cat.*` 와 동기화 필수.
 export const CAT_SOLID = {
-  food: "#f59e0b", wellness: "#8b5cf6", beauty: "#f43f5e", kitchen: "#ec4899", home: "#0ea5e9", one4one: "#22c55e",
+  food: "#C68B3E", wellness: "#7D6A9E", beauty: "#B86B7A", kitchen: "#9A7B8C", home: "#6B8AA8", one4one: "#6F8E6A",
 };
 export const CAT_ICON = { food: Apple, wellness: Leaf, beauty: Wand2, kitchen: Droplets, home: Home, one4one: Gift };
 

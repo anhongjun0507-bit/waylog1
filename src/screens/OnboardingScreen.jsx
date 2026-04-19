@@ -8,7 +8,7 @@ export const OnboardingScreen = ({ onClose, dark }) => {
   const slides = [
     {
       Icon: Sparkles,
-      gradient: "from-mint-400 via-teal-500 to-cyan-500",
+      gradient: "from-brand-300 via-teal-500 to-cyan-500",
       title: "웨이로그에 오신 걸 환영해요",
       desc: "나만의 라이프스타일을 한 곳에 기록하고\n매주 자라나는 취향을 발견해보세요",
     },
@@ -50,12 +50,12 @@ export const OnboardingScreen = ({ onClose, dark }) => {
           {slides.map((_, i) => (
             <div key={i} className={cls("rounded-full transition-all duration-300",
               i === step
-                ? "w-6 h-1.5 bg-mint-500"
+                ? "w-6 h-1.5 bg-brand-500"
                 : (dark ? "w-1.5 h-1.5 bg-[#262626]" : "w-1.5 h-1.5 bg-[#dbdbdb]"))}/>
           ))}
         </div>
         <button onClick={() => isLast ? onClose() : setStep(step + 1)}
-          className="w-full py-3.5 bg-mint-500 text-white rounded-full font-bold text-[14px] active:scale-[0.98] transition flex items-center justify-center gap-2">
+          className="w-full py-3.5 bg-brand-500 text-white rounded-full font-bold text-[14px] active:scale-[0.98] transition flex items-center justify-center gap-2">
           {isLast ? "시작하기" : "다음"}
           {!isLast && <ChevronRight size={16} strokeWidth={2.5}/>}
         </button>

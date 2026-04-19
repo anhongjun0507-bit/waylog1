@@ -1,5 +1,7 @@
-/* Pretendard — 오늘의집/Threads 모두 산세리프 기반 */
+/* Pretendard — 본문/UI 산세리프 */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+/* Noto Serif KR — 히어로·시그니처·페이지 타이틀 한정 (DS 리뉴얼 2026-04) */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -32,11 +34,11 @@
   }
   /* 포커스 표시 — 키보드 탐색 (Tab) 시에만 노출, 마우스/터치 탭 시엔 숨김 */
   input:focus-visible, textarea:focus-visible, select:focus-visible {
-    outline: 2px solid #00C9A7;
+    outline: 2px solid #3A4A5C;
     outline-offset: 1px;
   }
   button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-    outline: 2px solid #00C9A7;
+    outline: 2px solid #3A4A5C;
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -87,7 +89,7 @@
 .tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
 
 button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-  outline: 2px solid #00C9A7;
+  outline: 2px solid #3A4A5C;
   outline-offset: 2px;
   border-radius: 4px;
 }

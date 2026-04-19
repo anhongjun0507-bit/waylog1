@@ -117,7 +117,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
                   </div>
                   {row.type === "toggle" && (
                     <button onClick={row.onChange}
-                      className={cls("relative w-[34px] h-[18px] rounded-full transition", row.value ? "bg-mint-500" : dark ? "bg-[#262626]" : "bg-[#dbdbdb]")}>
+                      className={cls("relative w-[34px] h-[18px] rounded-full transition", row.value ? "bg-brand-500" : dark ? "bg-[#262626]" : "bg-[#dbdbdb]")}>
                       <div className={cls("absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all", row.value ? "left-[18px]" : "left-[2px]")}/>
                     </button>
                   )}
@@ -171,9 +171,9 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
             <div className={cls("flex-1 overflow-y-auto px-6 pb-8 text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-600")}>
               {docOpen === "about" ? (
                 <div className="space-y-4">
-                  <div className={cls("p-3 rounded-2xl border-l-4 border-mint-500", dark ? "bg-mint-900/20" : "bg-mint-50")}>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-mint-300" : "text-mint-700")}>비공식 앱 안내</p>
-                    <p className={cls(dark ? "text-mint-200" : "text-mint-800")}>
+                  <div className={cls("p-3 rounded-2xl border-l-4 border-brand-500", dark ? "bg-brand-900/20" : "bg-brand-50")}>
+                    <p className={cls("font-black text-sm mb-1", dark ? "text-brand-200" : "text-brand-700")}>비공식 앱 안내</p>
+                    <p className={cls(dark ? "text-brand-200" : "text-brand-800")}>
                       웨이로그는 <b>Amway Corp. / 암웨이 코리아와 관련이 없는 독립 앱</b>입니다. 개인 사용자가 자신이 사용한 제품에 대한 후기를 기록하고 공유할 수 있도록 돕는 비영리 도구로 운영됩니다.
                     </p>
                   </div>
@@ -277,7 +277,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
                         <p className={cls("text-xs opacity-70", dark ? "text-gray-400" : "text-gray-500")}>차단됨</p>
                       </div>
                       <button onClick={() => onUnblock && onUnblock(author)}
-                        className="px-3 py-1.5 bg-mint-500 text-white text-xs font-black rounded-full active:scale-95 transition shrink-0">
+                        className="px-3 py-1.5 bg-brand-500 text-white text-xs font-black rounded-full active:scale-95 transition shrink-0">
                         해제
                       </button>
                     </div>
