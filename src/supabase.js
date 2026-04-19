@@ -15,45 +15,40 @@ if (!isConfigured) {
 // 대신 utils/platform.js 의 initDeepLinkHandler 가 명시적으로 setSession 호출.
 const isNativeApp = typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.()
 
-// Supabase 기본 storageKey 포맷은 `sb-<project-ref>-auth-token`.
-// 마이그레이션(구→신) 시 대상 키 계산을 위해 여기서도 동일하게 유도.
-const getDefaultStorageKey = (url) => {
-  try {
-    const host = new URL(url).hostname
-    const ref = host.split('.')[0]
-    return `sb-${ref}-auth-token`
-  } catch {
-    return 'sb-auth-token'
-  }
-}
-const NEW_STORAGE_KEY = getDefaultStorageKey(supabaseUrl)
-const MIGRATION_FLAG = 'waylog:migrated-auth-v3'
+const MIGRATION_FLAG = 'waylog:migrated-auth-v4'
 
-// ===== 1회성 마이그레이션 — 구버전(`waylog-auth-v2` 등) → Supabase 기본 키 =====
-// 목적: 기존 배포 사용자가 재로그인 없이 세션 유지. 실행 후 구키/우회 키 전부 삭제.
-// 실패 시 조용히 해당 키만 삭제(세션은 소실되어도 앱은 정상 동작 — 재로그인 안내).
+// ===== 1회성 마이그레이션 v4 — 공격적 초기화 =====
+// v3(2026-04-19) 는 waylog-auth-v2 를 sb-<ref>-auth-token 으로 "복사해서" 재로그인
+// 회피를 시도했으나, 옛 세션/sb-* 잔재가 Supabase GoTrueClient 내부 lock 과
+// 경쟁해 "응답 지연" 에러가 재발. localStorage.clear() 후에만 정상 복귀 확인.
 //
-// 웹(동기): localStorage 에서 직접 수행. createClient 전에 완료돼 Supabase 가 신키를 바로 픽업.
-// 네이티브(비동기): Preferences 접근은 Promise 기반이라 createClient 뒤로 밀림.
-// 대신 migrationReady 가 resolve 된 뒤 supabase.auth.setSession() 으로 세션을 주입.
+// v4 에서는 세션 복구를 포기하고 옛 키 + sb-*/supabase. 접두사 전부 삭제.
+// 모든 기존 사용자 1회 재로그인 요구 — 대신 lock 경쟁 원천 차단.
+// AuthScreen 상단 배너 UI 로 사용자에게 사전 안내.
+//
+// 웹(동기): localStorage 에서 직접 수행. createClient 전에 완료.
+// 네이티브(비동기): Preferences 는 migrationReady Promise 에서 처리.
 const migrateLocalStorage = () => {
   if (typeof localStorage === 'undefined') return
   try {
     if (localStorage.getItem(MIGRATION_FLAG) === '1') return
-    const oldSession = localStorage.getItem('waylog-auth-v2')
-    if (oldSession) {
-      try {
-        JSON.parse(oldSession) // 파싱 가능할 때만 복사
-        if (!localStorage.getItem(NEW_STORAGE_KEY)) {
-          localStorage.setItem(NEW_STORAGE_KEY, oldSession)
-        }
-      } catch {}
-      localStorage.removeItem('waylog-auth-v2')
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key) continue
+      if (
+        key === 'waylog-auth-v2' ||
+        key === 'waylog:user' ||
+        key === 'waylog-direct-token' ||
+        key === 'waylog:auth-ver' ||
+        key === 'waylog:migrated-auth-v3' ||  // v3 플래그도 제거 (유지보수 정리)
+        key.startsWith('sb-') ||              // Supabase 기본 세션 키 — 꼬인 잔재 포함 초기화
+        key.startsWith('supabase.')            // Supabase 내부 관리 키 기타
+      ) {
+        keysToRemove.push(key)
+      }
     }
-    // auth 잔재 키 일괄 삭제 (user 캐시/우회 토큰/구버전 리셋 플래그)
-    localStorage.removeItem('waylog:user')
-    localStorage.removeItem('waylog-direct-token')
-    localStorage.removeItem('waylog:auth-ver')
+    keysToRemove.forEach((k) => { try { localStorage.removeItem(k) } catch {} })
     localStorage.setItem(MIGRATION_FLAG, '1')
   } catch {}
 }
@@ -91,8 +86,7 @@ if (isNativeApp) {
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        // storageKey 옵션 제거 — Supabase 기본값(`sb-<ref>-auth-token`) 사용.
-        // 구키 `waylog-auth-v2` 는 migrateLocalStorage() / migrationReady 에서 신키로 복사 후 삭제.
+        // storageKey 옵션 없음 — Supabase 기본값(`sb-<ref>-auth-token`) 사용.
         storage: capacitorStorage || undefined,
         autoRefreshToken: true,
         persistSession: true,
@@ -102,11 +96,10 @@ export const supabase = isConfigured
     })
   : null
 
-// 네이티브용 비동기 마이그레이션.
-// Preferences 의 구키 값을 읽어 Supabase 에 setSession 으로 주입 → GoTrueClient 가
-// 신키로 자동 저장. 기존 구키는 삭제. App.jsx 초기 로드 훅은 이 Promise 를 await 후
-// getSession() 을 호출해야 재로그인 플래시가 없음.
-// 웹에서는 즉시 resolve — 웹 마이그레이션은 이미 동기 완료.
+// 네이티브용 비동기 마이그레이션 v4.
+// Preferences 에서 옛 auth 키 + sb-*/supabase. 접두사 전부 삭제 (세션 복구 없음).
+// App.jsx 초기 로드 훅은 이 Promise 를 await 후 getSession() 호출 → 삭제 완료 보장.
+// 웹에서는 즉시 resolve — 웹 마이그레이션은 migrateLocalStorage() 에서 동기 완료.
 export const migrationReady = (async () => {
   if (!isNativeApp || !supabase) return
   try {
@@ -114,24 +107,30 @@ export const migrationReady = (async () => {
     const flagRes = await Preferences.get({ key: MIGRATION_FLAG })
     if (flagRes.value === '1') return
 
-    const oldRes = await Preferences.get({ key: 'waylog-auth-v2' })
-    // 구마이그레이션 플래그(이전 버전 localStorage→Preferences 용) 도 함께 정리
-    await Preferences.remove({ key: 'waylog:auth-migrated-to-prefs' })
-    await Preferences.remove({ key: 'waylog-auth-v2' })
-    await Preferences.set({ key: MIGRATION_FLAG, value: '1' })
-
-    if (oldRes.value) {
-      try {
-        const parsed = JSON.parse(oldRes.value)
-        // Supabase v2 세션 형태: { access_token, refresh_token, ... }
-        if (parsed?.access_token && parsed?.refresh_token) {
-          await supabase.auth.setSession({
-            access_token: parsed.access_token,
-            refresh_token: parsed.refresh_token,
-          })
-        }
-      } catch {}
+    // 명시적 옛 키 (접두사로 안 잡히는 것들)
+    const explicit = [
+      'waylog-auth-v2',
+      'waylog:user',
+      'waylog-direct-token',
+      'waylog:auth-ver',
+      'waylog:migrated-auth-v3',
+      'waylog:auth-migrated-to-prefs',
+    ]
+    for (const k of explicit) {
+      try { await Preferences.remove({ key: k }) } catch {}
     }
+
+    // Preferences.keys() 로 나열해 sb-*/supabase. 접두사 일괄 삭제
+    try {
+      const { keys } = await Preferences.keys()
+      for (const k of (keys || [])) {
+        if (k.startsWith('sb-') || k.startsWith('supabase.')) {
+          try { await Preferences.remove({ key: k }) } catch {}
+        }
+      }
+    } catch {}
+
+    await Preferences.set({ key: MIGRATION_FLAG, value: '1' })
   } catch (e) {
     console.warn('native auth 마이그레이션 실패:', e)
   }
