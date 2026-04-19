@@ -4888,19 +4888,31 @@ function AppInner() {
 
   // 세션 한 번당 profile 은 한 번만 fetch (토큰 리프레시 때마다 재요청 방지)
   const profileCacheRef = useRef({ userId: null, avatar: "" });
-  const buildUserFromSession = async (session) => {
+  // 동기 빌드: 세션만으로 즉시 user 객체 생성. avatar 는 캐시 또는 user_metadata fallback.
+  // getProfile 을 blocking 경로에서 제거 — 새로고침 직후 GoTrueClient 내부 초기화와
+  // 경쟁해 쿼리가 hang 할 경우 authLoading 이 풀리지 않는 회귀 원인이었음.
+  const buildUserFromSession = (session) => {
     const meta = session.user.user_metadata || {};
-    let avatar = "";
-    if (profileCacheRef.current.userId === session.user.id) {
-      avatar = profileCacheRef.current.avatar;
-    } else {
-      try {
-        const { data: profile } = await supabaseAuth.getProfile(session.user.id);
-        if (profile?.avatar_url) avatar = profile.avatar_url;
-      } catch {}
-      profileCacheRef.current = { userId: session.user.id, avatar };
-    }
-    return { id: session.user.id, email: session.user.email, nickname: meta.nickname || session.user.email.split("@")[0], avatar, joinedAt: session.user.created_at };
+    const avatar = profileCacheRef.current.userId === session.user.id
+      ? profileCacheRef.current.avatar
+      : (meta.avatar_url || "");
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      nickname: meta.nickname || session.user.email.split("@")[0],
+      avatar,
+      joinedAt: session.user.created_at,
+    };
+  };
+  // 비동기 avatar hydrate: 실패/지연해도 user state 와 authLoading 해제는 이미 완료.
+  const hydrateProfileAvatar = async (userId) => {
+    if (!userId || profileCacheRef.current.userId === userId) return;
+    try {
+      const { data: profile } = await supabaseAuth.getProfile(userId);
+      const avatar = profile?.avatar_url || "";
+      profileCacheRef.current = { userId, avatar };
+      setUser((prev) => (prev && prev.id === userId ? { ...prev, avatar } : prev));
+    } catch {}
   };
 
   useEffect(() => {
@@ -4919,7 +4931,8 @@ function AppInner() {
         const session = data?.session || null;
         if (cancelled) return;
         if (session?.user) {
-          setUser(await buildUserFromSession(session));
+          setUser(buildUserFromSession(session));      // 동기, 즉시 완료
+          hydrateProfileAvatar(session.user.id);        // 백그라운드, 결과 대기 안 함
         }
       } catch (e) {
         console.warn("초기 세션 로드 실패:", e);
@@ -4940,7 +4953,8 @@ function AppInner() {
             return;
           }
           if (session?.user) {
-            setUser(await buildUserFromSession(session));
+            setUser(buildUserFromSession(session));
+            hydrateProfileAvatar(session.user.id);
             if (event === "SIGNED_IN") {
               setAuthOpen(false);
               // DB trigger 미설정 환경 방어: profile row 없으면 생성 (idempotent).
