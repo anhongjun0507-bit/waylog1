@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { useCatalog, useCatalogLoading } from "./catalog.js";
-import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage, follows as supabaseFollows, profilesApi as supabaseProfiles } from "./supabase.js";
+import { supabase, auth as supabaseAuth, reviews as supabaseReviews, favorites as supabaseFavorites, comments as supabaseComments, challenges as supabaseChallenges, moodsApi as supabaseMoods, notifications as supabaseNotifs, reports as supabaseReports, storage as supabaseStorage, follows as supabaseFollows, profilesApi as supabaseProfiles, communityApi as supabaseCommunity } from "./supabase.js";
 import { sanitizeImageUrl, sanitizeText, sanitizeInline } from "./utils/sanitize.js";
 import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
@@ -4950,6 +4950,8 @@ function AppInner() {
         try {
           if (event === "SIGNED_OUT") {
             setUser(null);
+            // 토큰 만료 등 logout() 경로를 안 타는 로그아웃에서도 이전 사용자 state 잔존 방지
+            resetUserState();
             return;
           }
           if (session?.user) {
@@ -5199,6 +5201,81 @@ function AppInner() {
     }
   };
 
+  // 커뮤니티 게시물 로드 — 비로그인 상태에서도 public 으로 가져옴 (RLS SELECT using(true))
+  const mapCommunityRow = (r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    userId: r.user_id,
+    author: sanitizeInline(r.profiles?.nickname, { maxLength: 60 }) || "익명",
+    avatar: sanitizeImageUrl(r.profiles?.avatar_url) || "",
+    createdAt: r.created_at,
+    content: sanitizeText(r.content, { maxLength: 1000 }),
+    likes: 0,    // 실제 count 는 fetchPostLikeCounts 에서 채움
+    comments: 0, // 실제 수 는 communityComments 에서 파생
+    liked: false, // 서버 fetch 후 likedPostIds 에서 파생
+    ...(r.product ? { product: r.product } : {}),
+    ...(r.image_url ? { image: sanitizeImageUrl(r.image_url) } : {}),
+  });
+
+  const mapCommunityCommentRow = (c) => ({
+    id: c.id,
+    author: sanitizeInline(c.profiles?.nickname, { maxLength: 60 }) || "익명",
+    avatar: sanitizeImageUrl(c.profiles?.avatar_url || ""),
+    authorId: c.user_id,
+    text: sanitizeText(c.content, { maxLength: 500 }),
+    time: "",
+    createdAt: new Date(c.created_at).getTime(),
+    parentId: c.parent_id || null,
+    mentionTo: c.mention_to ? sanitizeInline(c.mention_to, { maxLength: 60 }) : null,
+    likedBy: Array.isArray(c.community_comment_likes)
+      ? c.community_comment_likes.map((l) => l.user_id).filter(Boolean)
+      : [],
+  });
+
+  const communityHydratedRef = useRef(false);
+  useEffect(() => {
+    if (authLoading || communityHydratedRef.current) return;
+    communityHydratedRef.current = true;
+    (async () => {
+      const { data, error } = await supabaseCommunity.fetchAll(50);
+      if (error || !Array.isArray(data)) return;
+
+      const postIds = data.map((p) => p.id);
+      // 병렬로 좋아요 count / 댓글 fetch
+      const [{ data: likeCounts }, { data: commentRows }] = await Promise.all([
+        supabaseCommunity.fetchPostLikeCounts(postIds),
+        supabaseCommunity.fetchCommentsByPosts(postIds),
+      ]);
+
+      setCommunity(data.map((r) => ({
+        ...mapCommunityRow(r),
+        likes: (likeCounts && likeCounts[r.id]) || 0,
+      })));
+
+      // 댓글을 postId 별로 그룹화
+      if (Array.isArray(commentRows)) {
+        const grouped = {};
+        commentRows.forEach((c) => {
+          const mapped = mapCommunityCommentRow(c);
+          if (!grouped[c.post_id]) grouped[c.post_id] = [];
+          grouped[c.post_id].push(mapped);
+        });
+        setCommunityComments(grouped);
+      }
+    })();
+  }, [authLoading]);
+
+  // 내가 좋아요한 게시물 hydrate — 로그인 후 1회. `liked` 플래그는 render 시점에 파생.
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabaseCommunity.fetchMyPostLikes(user.id);
+      if (!cancelled && Array.isArray(data)) setLikedPostIds(new Set(data));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   // moods / notifications 하이드레이션 (로그인 시 1회)
   const moodsNotifsHydratedRef = useRef(false);
   useEffect(() => {
@@ -5255,10 +5332,14 @@ function AppInner() {
 
   const [recents, setRecents] = useStoredState("waylog:recents", []);
   const [commentsMap, setCommentsMap] = useState(SEED_COMMENTS);
-  // 커뮤니티 기본값 — 비어있음. 실제 사용자가 올린 글만 표시.
-  const [community, setCommunity] = useStoredState("waylog:community", []);
+  // 커뮤니티 — Supabase community_posts 테이블에서 fetch.
+  // 이전에는 localStorage 만 사용해 다른 사용자에게 보이지 않던 버그 수정 (2026-04-19).
+  const [community, setCommunity] = useState([]);
   // 커뮤니티 댓글: { [postId]: [{ id, author, avatar, authorId, text, time, createdAt, parentId, mentionTo, likedBy }] }
-  const [communityComments, setCommunityComments] = useStoredState("waylog:communityComments", {});
+  // 서버 `community_comments` 테이블에서 fetch. localStorage 저장 안 함 (2026-04-19 서버화).
+  const [communityComments, setCommunityComments] = useState({});
+  // 내가 좋아요한 커뮤니티 게시물 id 집합 (uuid string Set) — 서버 `community_post_likes` 에서 hydrate
+  const [likedPostIds, setLikedPostIds] = useState(() => new Set());
 
   const [authOpen, setAuthOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -5840,6 +5921,7 @@ function AppInner() {
         tags: data.tags.length ? data.tags : ["내웨이로그"],
         product_name: data.product, media: uploaded,
       };
+      let lastErrorMsg = "";
       for (let attempt = 0; attempt < 3; attempt++) {
         if (userIdRef.current !== uid) return; // 매 시도 전 사용자 확인
         try {
@@ -5848,13 +5930,18 @@ function AppInner() {
             setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, id: created.id } : r));
             return; // 성공 — setUserReviews wrapper 가 pending(숫자 ID) 에서 제거
           }
-        } catch {}
+          if (createErr?.message) lastErrorMsg = createErr.message;
+        } catch (e) {
+          if (e?.message) lastErrorMsg = e.message;
+        }
         if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); // 2초, 4초 대기
       }
       if (userIdRef.current !== uid) return;
       // 3회 실패 — 로컬 pending 으로 유지. 사용자가 즉시 수동 재시도 가능.
+      // 개발 환경에서만 원문 에러 노출 (스키마 정보 유출 방지 위해 프로덕션에선 간략 메시지)
+      const detailed = import.meta.env.DEV && lastErrorMsg ? ` — ${lastErrorMsg}` : "";
       setToast({
-        msg: "아직 서버에 저장되지 못했어요",
+        msg: `서버 저장 실패${detailed}. 네트워크 복구 시 자동 재시도`,
         type: "error",
         action: { label: "다시 시도", onClick: () => loadReviewsRef.current?.() },
       });
@@ -5997,6 +6084,33 @@ function AppInner() {
     setToast("모든 데이터가 삭제됐어요");
   };
 
+  // 세션 종료 시 사용자별 state 전체 리셋. logout() 과 onAuthStateChange(SIGNED_OUT) 양쪽에서 호출.
+  // 여기서는 토스트/서버 호출은 하지 않음 — 순수 로컬 state 정리만 담당.
+  // IndexedDB 의 pending 리뷰 키는 사용자별 격리라 지우지 않음 (같은 사용자 재로그인 시 복원 용이).
+  const resetUserState = () => {
+    setUserReviewsRaw([]);
+    setFavsArr([]);
+    setMoods({});
+    setTaste({ cats: {}, tags: {} });
+    setFollowingArr([]);
+    setBlockedArr([]);
+    setNotifications([]);
+    setCommentsMap({});
+    setChallenge(null);
+    setChallengeDailyLogs({});
+    setChallengeInbody([]);
+    setChallengeAnonPosts([]);
+    setCommunity([]);
+    setCommunityComments({});
+    setLikedPostIds(new Set());
+    setRecents([]);
+    // 재로그인 시 서버 hydration 을 다시 타도록 플래그 리셋
+    moodsNotifsHydratedRef.current = false;
+    challengeHydratedRef.current = false;
+    communityHydratedRef.current = false;
+    profileCacheRef.current = { userId: null, avatar: "" };
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabaseAuth.signOut() || {};
@@ -6008,68 +6122,133 @@ function AppInner() {
       console.warn("signOut 예외:", e);
     }
     setUser(null);
-    // 메모리 리뷰 state 초기화 (IndexedDB 는 사용자별 키라 유지됨 — 같은 사용자 재로그인 시 복원)
-    // setUserReviews wrapper 대신 raw setter 사용: 이전 사용자 ID 의 pending 키가 실수로 삭제되지 않도록
-    setUserReviewsRaw([]);
-    setFavsArr([]); setMoods({}); setTaste({ cats: {}, tags: {} });
-    setFollowingArr([]); setBlockedArr([]); setNotifications([]);
-    setChallenge(null); setChallengeDailyLogs({}); setChallengeInbody([]); setChallengeAnonPosts([]);
-    setRecents([]);
-    // 재로그인 시 서버 hydration 을 다시 타도록 플래그 리셋
-    moodsNotifsHydratedRef.current = false;
-    challengeHydratedRef.current = false;
-    profileCacheRef.current = { userId: null, avatar: "" };
+    resetUserState();
     setToast("로그아웃되었어요");
   };
 
-  const likePost = (id) => {
-    setCommunity((prev) => prev.map((p) => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+  const likePost = async (id) => {
+    if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+    // 임시 id (optimistic 게시물) 는 서버에 아직 없으므로 좋아요 스킵
+    if (typeof id !== "string" || id.startsWith("temp-")) return;
+    const wasLiked = likedPostIds.has(id);
+    // 낙관적 업데이트
+    setLikedPostIds((prev) => {
+      const next = new Set(prev);
+      if (wasLiked) next.delete(id); else next.add(id);
+      return next;
+    });
+    setCommunity((prev) => prev.map((p) => p.id === id
+      ? { ...p, likes: Math.max(0, (p.likes || 0) + (wasLiked ? -1 : 1)) }
+      : p));
+    // 서버 동기화
+    const { error } = wasLiked
+      ? await supabaseCommunity.unlikePost(user.id, id)
+      : await supabaseCommunity.likePost(user.id, id);
+    if (error) {
+      // 롤백
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.add(id); else next.delete(id);
+        return next;
+      });
+      setCommunity((prev) => prev.map((p) => p.id === id
+        ? { ...p, likes: Math.max(0, (p.likes || 0) + (wasLiked ? 1 : -1)) }
+        : p));
+      setToast("좋아요 반영에 실패했어요");
+    }
   };
 
-  const addCommunityPost = (text, product = null, image = null) => {
+  const addCommunityPost = async (text, product = null, image = null) => {
     if (!user) return;
-    const newPost = {
-      id: Date.now(),
+    const clean = sanitizeText(text, { maxLength: 1000 }).trim();
+    if (!clean) return;
+    // optimistic insert — 임시 id 로 즉시 표시, 서버 성공 시 교체 / 실패 시 제거
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      id: tempId,
       author: user.nickname,
       avatar: user.avatar,
       userId: user.id,
-      createdAt: Date.now(),
-      content: text,
+      user_id: user.id,
+      createdAt: new Date().toISOString(),
+      content: clean,
       likes: 0,
       comments: 0,
       liked: false,
       ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
       ...(image ? { image } : {}),
     };
-    setCommunity((prev) => [newPost, ...prev]);
+    setCommunity((prev) => [optimistic, ...prev]);
+
+    const payload = {
+      user_id: user.id,
+      content: clean,
+      ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
+      ...(image ? { image_url: image } : {}),
+    };
+    const { data: created, error } = await supabaseCommunity.create(payload);
+    if (error || !created?.id) {
+      setCommunity((prev) => prev.filter((p) => p.id !== tempId));
+      setToast("게시 실패 — 잠시 후 다시 시도");
+      return;
+    }
+    setCommunity((prev) => prev.map((p) => p.id === tempId
+      ? { ...optimistic, id: created.id, createdAt: created.created_at || optimistic.createdAt }
+      : p));
     setToast("게시됐어요");
   };
 
   // 커뮤니티 댓글 추가 — parentId 지정 시 답글, 깊이 2+ 이면 상위로 클램프
+  // optimistic: 로컬 Date.now() id → 서버 성공 시 UUID 로 교체.
   const addCommunityComment = (postId, text, parentId = null, mentionTo = null) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return false; }
+    // 임시 id 게시물에는 댓글 불가 (서버에 post 가 없음)
+    if (typeof postId !== "string" || postId.startsWith("temp-")) {
+      setToast("잠시 후 다시 시도해주세요");
+      return false;
+    }
     const clean = sanitizeText(text, { maxLength: 500 }).trim();
     if (!clean) return false;
     const existing = communityComments[postId] || [];
+    let validParentId = null;
     if (parentId != null) {
       const parent = existing.find((c) => c.id === parentId);
       if (!parent) parentId = null;
       else if (parent.parentId != null) parentId = parent.parentId;
+      // 서버에는 서버 UUID parent_id 만 보냄 (로컬 숫자 id 는 서버가 모름)
+      if (parent && typeof parent.id === "string") validParentId = parent.id;
     }
+    const localId = Date.now();
     const newComment = {
-      id: Date.now(),
+      id: localId,
       author: user.nickname,
       avatar: user.avatar,
       authorId: user.id,
       text: clean,
       time: "방금",
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       parentId,
       mentionTo: mentionTo ? sanitizeInline(mentionTo, { maxLength: 60 }) : null,
       likedBy: [],
     };
     setCommunityComments((prev) => ({ ...prev, [postId]: [...(prev[postId] || []), newComment] }));
-    setCommunity((prev) => prev.map((p) => p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p));
+    // 서버 동기화 (실패해도 로컬 유지 — review 댓글과 같은 관대한 정책)
+    if (supabase) {
+      supabaseCommunity.createComment({
+        user_id: user.id,
+        post_id: postId,
+        content: clean,
+        parent_id: validParentId,
+        mention_to: mentionTo ? sanitizeInline(mentionTo, { maxLength: 60 }) : null,
+      }).then(({ data }) => {
+        if (data?.id) {
+          setCommunityComments((prev) => ({
+            ...prev,
+            [postId]: (prev[postId] || []).map((c) => c.id === localId ? { ...c, id: data.id } : c),
+          }));
+        }
+      }).catch(() => {});
+    }
     return true;
   };
 
@@ -6077,25 +6256,47 @@ function AppInner() {
     setCommunityComments((prev) => {
       const list = prev[postId] || [];
       const filtered = list.filter((c) => c.id !== commentId && c.parentId !== commentId);
-      const removed = list.length - filtered.length;
-      if (removed > 0) {
-        setCommunity((pp) => pp.map((p) => p.id === postId ? { ...p, comments: Math.max(0, (p.comments || 0) - removed) } : p));
-      }
       return { ...prev, [postId]: filtered };
     });
+    // 서버 UUID 인 경우에만 서버 삭제
+    if (supabase && typeof commentId === "string") {
+      supabaseCommunity.deleteComment(commentId).catch(() => {});
+    }
   };
 
-  const toggleCommunityCommentLike = (postId, commentId) => {
+  const toggleCommunityCommentLike = async (postId, commentId) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
-    const key = user.id || user.nickname;
+    const key = user.id;
+    const current = (communityComments[postId] || []).find((c) => c.id === commentId);
+    if (!current) return;
+    const wasLiked = (current.likedBy || []).some((k) => k === key);
+    // 낙관적 업데이트
     setCommunityComments((prev) => ({
       ...prev,
       [postId]: (prev[postId] || []).map((c) => {
         if (c.id !== commentId) return c;
-        const liked = (c.likedBy || []).some((k) => k === key);
-        return { ...c, likedBy: liked ? (c.likedBy || []).filter((k) => k !== key) : [...(c.likedBy || []), key] };
+        const likedBy = c.likedBy || [];
+        return { ...c, likedBy: wasLiked ? likedBy.filter((k) => k !== key) : [...likedBy, key] };
       }),
     }));
+    // 서버 동기화 (UUID 댓글만)
+    if (supabase && typeof commentId === "string") {
+      const { error } = wasLiked
+        ? await supabaseCommunity.unlikeComment(user.id, commentId)
+        : await supabaseCommunity.likeComment(user.id, commentId);
+      if (error) {
+        // 롤백
+        setCommunityComments((prev) => ({
+          ...prev,
+          [postId]: (prev[postId] || []).map((c) => {
+            if (c.id !== commentId) return c;
+            const likedBy = c.likedBy || [];
+            return { ...c, likedBy: wasLiked ? [...likedBy, key] : likedBy.filter((k) => k !== key) };
+          }),
+        }));
+        setToast("좋아요 반영에 실패했어요");
+      }
+    }
   };
 
   const screens = {
@@ -6130,7 +6331,13 @@ function AppInner() {
     // 기존 feed/fav/comm 는 접근 경로만 남김 (deep link / back-compat)
     feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} highlightId={highlightId} />,
     fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct} loading={reviewsLoading}/>,
-    comm: <CommunityScreen dark={dark} posts={community} onLike={likePost} onUserClick={openUser}
+    comm: <CommunityScreen dark={dark}
+      posts={community.map((p) => ({
+        ...p,
+        comments: (communityComments[p.id] || []).length,
+        liked: likedPostIds.has(p.id),
+      }))}
+      onLike={likePost} onUserClick={openUser}
       user={user}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
       onCompose={() => setCommunityComposeOpen(true)}

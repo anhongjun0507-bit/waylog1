@@ -30,10 +30,56 @@ if (!isConfigured) {
 // 대신 utils/platform.js 의 initDeepLinkHandler 가 명시적으로 setSession 호출.
 const isNativeApp = typeof window !== "undefined" && !!window.Capacitor?.isNativePlatform?.()
 
+// 네이티브에서는 @capacitor/preferences (iOS Keychain / Android SharedPreferences) 로 세션 저장.
+// 이유: Capacitor WebView 의 localStorage 는 유실 가능성이 있어 자동 로그인이 끊김.
+// 웹에서는 undefined 를 넘겨 기본 localStorage 사용 (기존 동작 유지).
+const AUTH_STORAGE_KEY = 'waylog-auth-v2'
+let capacitorStorage = null
+if (isNativeApp) {
+  capacitorStorage = {
+    async getItem(key) {
+      try {
+        const { Preferences } = await import('@capacitor/preferences')
+        const { value } = await Preferences.get({ key })
+        return value
+      } catch { return null }
+    },
+    async setItem(key, value) {
+      try {
+        const { Preferences } = await import('@capacitor/preferences')
+        await Preferences.set({ key, value })
+      } catch {}
+    },
+    async removeItem(key) {
+      try {
+        const { Preferences } = await import('@capacitor/preferences')
+        await Preferences.remove({ key })
+      } catch {}
+    },
+  }
+  // 1회성 마이그레이션: 기존 localStorage 에 세션 있으면 Preferences 로 복사.
+  // 이전 버전 사용자가 업데이트 후 재로그인 요구받지 않도록.
+  // 실패해도 무시 (새로 로그인하면 됨).
+  ;(async () => {
+    try {
+      const MIGRATED_KEY = 'waylog:auth-migrated-to-prefs'
+      if (localStorage.getItem(MIGRATED_KEY)) return
+      const existing = localStorage.getItem(AUTH_STORAGE_KEY)
+      if (existing) {
+        const { Preferences } = await import('@capacitor/preferences')
+        const { value } = await Preferences.get({ key: AUTH_STORAGE_KEY })
+        if (!value) await Preferences.set({ key: AUTH_STORAGE_KEY, value: existing })
+      }
+      localStorage.setItem(MIGRATED_KEY, '1')
+    } catch {}
+  })()
+}
+
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        storageKey: 'waylog-auth-v2',
+        storageKey: AUTH_STORAGE_KEY,
+        storage: capacitorStorage || undefined,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: !isNativeApp,
@@ -195,13 +241,24 @@ export const auth = {
   },
   async signOut() {
     if (!supabase) return noop
+    // 서버 응답 성공/실패와 무관하게 로컬 토큰 잔존 방지를 위해 항상 정리.
+    // getAccessToken() 이 waylog-direct-token fallback 을 읽어 이전 사용자로
+    // 인증된 요청을 보내는 버그 방지.
+    const cleanupLocal = () => {
+      _accessToken = null
+      try { localStorage.removeItem('waylog-direct-token') } catch {}
+    }
     try {
       const result = await Promise.race([
         supabase.auth.signOut(),
         new Promise((resolve) => setTimeout(() => resolve({ error: null }), 2000)),
       ])
+      cleanupLocal()
       return result
-    } catch (e) { return { error: e } }
+    } catch (e) {
+      cleanupLocal()
+      return { error: e }
+    }
   },
   async getSession() {
     if (!supabase) return null
@@ -325,6 +382,116 @@ export const reviews = {
       if (result?.data?.id || result?.data === null) return result
     } catch {}
     return directRest('PATCH', `reviews?id=eq.${encodeURIComponent(id)}`, updates)
+  },
+}
+
+// UI(mapCommunityRow)에서 실제로 읽는 컬럼만 선택
+const COMMUNITY_COLS = 'id, user_id, content, product, image_url, likes_count, created_at'
+
+export const communityApi = {
+  async fetchAll(limit = 30) {
+    if (!supabase) return noopArr
+    try {
+      const { data, error } = await supabase.from('community_posts').select(COMMUNITY_COLS)
+        .order('created_at', { ascending: false }).limit(limit)
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
+    } catch (e) { return { data: [], error: e } }
+  },
+  async fetchPage({ cursor = null, limit = 30 } = {}) {
+    if (!supabase) return noopArr
+    try {
+      let q = supabase.from('community_posts').select(COMMUNITY_COLS)
+        .order('created_at', { ascending: false }).limit(limit)
+      if (cursor) q = q.lt('created_at', cursor)
+      const { data, error } = await q
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
+    } catch (e) { return { data: [], error: e } }
+  },
+  async create(post) {
+    if (!supabase) return noop
+    // reviews.create 와 동일 패턴: GoTrueClient 2초 시도 → REST 폴백
+    try {
+      const result = await Promise.race([
+        supabase.from('community_posts').insert(post).select().single(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), 2000)),
+      ])
+      if (result?.data?.id) return result
+    } catch {}
+    return directRest('POST', 'community_posts', post)
+  },
+  async delete(id) {
+    if (!supabase) return noop
+    try { return await supabase.from('community_posts').delete().eq('id', id) }
+    catch (e) { return { error: e } }
+  },
+
+  // ------- 게시물 좋아요 -------
+  async fetchMyPostLikes(userId) {
+    if (!supabase || !userId) return { data: [], error: null }
+    try {
+      const { data, error } = await supabase.from('community_post_likes')
+        .select('post_id').eq('user_id', userId)
+      return { data: (data || []).map((r) => r.post_id), error }
+    } catch (e) { return { data: [], error: e } }
+  },
+  async likePost(userId, postId) {
+    if (!supabase) return noop
+    try { return await supabase.from('community_post_likes').insert({ user_id: userId, post_id: postId }) }
+    catch (e) { return { error: e } }
+  },
+  async unlikePost(userId, postId) {
+    if (!supabase) return noop
+    try {
+      return await supabase.from('community_post_likes').delete()
+        .eq('user_id', userId).eq('post_id', postId)
+    } catch (e) { return { error: e } }
+  },
+  async fetchPostLikeCounts(postIds) {
+    // 게시물별 좋아요 개수 집계. likes_count 컬럼이 있지만 트리거가 없어 정확도를 위해 직접 집계.
+    if (!supabase || !Array.isArray(postIds) || postIds.length === 0) return { data: {}, error: null }
+    try {
+      const { data, error } = await supabase.from('community_post_likes')
+        .select('post_id').in('post_id', postIds)
+      const counts = {}
+      ;(data || []).forEach((r) => { counts[r.post_id] = (counts[r.post_id] || 0) + 1 })
+      return { data: counts, error }
+    } catch (e) { return { data: {}, error: e } }
+  },
+
+  // ------- 댓글 -------
+  async fetchCommentsByPosts(postIds) {
+    if (!supabase || !Array.isArray(postIds) || postIds.length === 0) return { data: [], error: null }
+    try {
+      const { data, error } = await supabase.from('community_comments')
+        .select('*, community_comment_likes (user_id)')
+        .in('post_id', postIds).order('created_at', { ascending: true })
+      if (error) return { data: [], error }
+      return { data: await enrichWithProfiles(data), error: null }
+    } catch (e) { return { data: [], error: e } }
+  },
+  async createComment(comment) {
+    if (!supabase) return noop
+    try { return await supabase.from('community_comments').insert(comment).select().single() }
+    catch (e) { return { data: null, error: e } }
+  },
+  async deleteComment(id) {
+    if (!supabase) return noop
+    try { return await supabase.from('community_comments').delete().eq('id', id) }
+    catch (e) { return { error: e } }
+  },
+  async likeComment(userId, commentId) {
+    if (!supabase) return noop
+    try { return await supabase.from('community_comment_likes').insert({ user_id: userId, comment_id: commentId }) }
+    catch (e) { return { error: e } }
+  },
+  async unlikeComment(userId, commentId) {
+    if (!supabase) return noop
+    try {
+      return await supabase.from('community_comment_likes').delete()
+        .eq('user_id', userId).eq('comment_id', commentId)
+    } catch (e) { return { error: e } }
   },
 }
 
