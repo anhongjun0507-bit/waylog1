@@ -432,7 +432,7 @@ const SwipePick = ({ reviews, onLike, onPass, dark }) => {
 // ---------- SCREENS ----------
 // HomeScreen — Waylog 라이프스타일 매거진 홈
 // 구조: 인사 → 카테고리 픽커 → (챌린지 배너) → 최신 웨이로그 피드
-const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, tg: _tg, challenge, dailyLogs: _dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult: _onChallengeResult, onProductClick: _onProductClick, loading = false }) => {
+const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, tg: _tg, challenge, dailyLogs: _dailyLogs, onChallengeStart, onChallengeOpen, onChallengeResult: _onChallengeResult, onProductClick: _onProductClick, onEditReview, onDeleteReview, loading = false }) => {
   const challengeActive = !!challenge && challenge.status !== "completed";
   const [activeCat, setActiveCat] = useState("all");
 
@@ -580,7 +580,8 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
 
       {/* 피드 포스트 */}
       {feedPosts.map((r) => (
-        <Card key={r.id} r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark}/>
+        <Card key={r.id} r={r} onOpen={onOpen} isFav={favs.has(r.id)} toggleFav={toggleFav} dark={dark}
+          user={user} onEdit={onEditReview} onDelete={onDeleteReview}/>
       ))}
 
       {/* 로딩 중엔 skeleton — empty state 먼저 보이면 "글이 없다"로 오해함 */}
@@ -6147,6 +6148,13 @@ function AppInner() {
   };
 
   const [deletingReviewId, setDeletingReviewId] = useState(null);
+  // 피드 카드의 ⋮ 메뉴에서 수정 선택 시 — 상세 진입 없이 바로 Compose 모달 오픈.
+  // DetailScreen 의 onEdit 과 동일 효과이되 onBack 단계 불필요.
+  const editReview = useCallback((rev) => {
+    setEditingReview(rev);
+    setCompose(true);
+  }, []);
+
   const deleteReview = useCallback(async (id) => {
     if (deletingReviewId === id) return false; // 중복 호출 방지
     setDeletingReviewId(id);
@@ -6589,6 +6597,8 @@ function AppInner() {
       onChallengeOpen={() => setChallengeMainOpen(true)}
       onChallengeResult={() => setChallengeMainOpen(true)}
       onProductClick={setSelectedCatalogProduct}
+      onEditReview={editReview}
+      onDeleteReview={(rev) => deleteReview(rev.id)}
       loading={reviewsLoading}/>
   );
   const feedEl = (

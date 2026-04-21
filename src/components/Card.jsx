@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Heart, MessageCircle, Bookmark, MoreHorizontal, Film, Images, ShoppingBag } from "lucide-react";
+import { Heart, MessageCircle, MoreHorizontal, Film, Images, ShoppingBag, PenLine, X } from "lucide-react";
 import { cls, formatRelativeTime } from "../utils/ui.js";
 import { getReviewProductNames } from "../utils/products.js";
 import { useCatalog } from "../catalog.js";
@@ -9,14 +9,18 @@ import { CATEGORIES } from "../constants.js";
 
 // Waylog 피드 카드 — 라이프스타일 매거진 톤
 // 레이아웃:
-//   Header: Avatar + 작성자 · 시간 + 더보기
+//   Header: Avatar + 작성자 · 시간 + (본인 글이면) ⋯ 메뉴
 //   Image: 정사각형 (매거진 사진) rounded
 //   Meta: 카테고리 칩 + 제품명 (있을 때)
 //   Title/Body: 제목 굵게 + 본문 2줄 클램프 + "더 보기"
-//   Action bar: 좋아요 + 댓글 + 저장 (공유/DM 제거)
-const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
+//   Action bar: 좋아요 + 댓글
+const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, onEdit, onDelete }) => {
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const catalog = useCatalog();
+  // DetailScreen 과 동일 패턴 — 닉네임 매칭. pending 로컬 리뷰(authorId 미설정)도 포용.
+  const isMine = !!(user && r.author && r.author === user.nickname && onEdit && onDelete);
 
   const timestamp = formatRelativeTime(r.createdAt || (r.date ? new Date(r.date).getTime() : null), "방금");
   const hasImg = !!r.img;
@@ -40,10 +44,49 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
             <p className={cls("text-[11px]", dark ? "text-ink-400" : "text-ink-500")}>{timestamp}</p>
           )}
         </div>
-        <button aria-label="더보기" className="active:opacity-60">
-          <MoreHorizontal size={18} className={dark ? "text-white" : "text-black"}/>
-        </button>
+        {isMine && (
+          <div className="relative shrink-0">
+            <button onClick={() => setMenuOpen((v) => !v)} aria-label="옵션 메뉴" className="p-1 active:opacity-60">
+              <MoreHorizontal size={18} className={dark ? "text-white" : "text-black"}/>
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)}/>
+                <div className={cls("absolute right-0 top-8 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
+                  <button onClick={() => { setMenuOpen(false); onEdit(r); }}
+                    className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
+                    <PenLine size={14}/> 수정하기
+                  </button>
+                  <div className={cls("h-px", dark ? "bg-gray-700" : "bg-gray-100")}/>
+                  <button onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
+                    className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
+                    <X size={14}/> 삭제하기
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+      {confirmDelete && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50 animate-fade-in" onClick={() => setConfirmDelete(false)}/>
+          <div className={cls("fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[61] w-[90%] max-w-sm rounded-2xl p-5 shadow-2xl animate-fade-in", dark ? "bg-gray-900" : "bg-white")}>
+            <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>이 웨이로그를 삭제할까요?</p>
+            <p className={cls("text-[13px] mt-1.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>삭제된 글은 복구할 수 없어요.</p>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setConfirmDelete(false)}
+                className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700")}>
+                취소
+              </button>
+              <button onClick={() => { setConfirmDelete(false); onDelete(r); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-rose-500 text-white active:opacity-80">
+                삭제
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Image — 4:3 landscape 비율로 카드 세로 부피 축소. 스크롤 피로 ↓ */}
       {hasImg && (
@@ -121,7 +164,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
         </button>
       )}
 
-      {/* Action bar — 좋아요 / 댓글 / 저장 */}
+      {/* Action bar — 좋아요 / 댓글 */}
       <div className="px-3 pt-3 pb-2 flex items-center gap-1">
         <button onClick={(e) => { e.stopPropagation(); toggleFav(r.id); }}
           aria-label={isFav ? "좋아요 취소" : "좋아요"} aria-pressed={isFav}
@@ -141,9 +184,6 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
               {r.comments}
             </span>
           )}
-        </button>
-        <button aria-label="저장" className="ml-auto p-1.5 active:scale-90 transition">
-          <Bookmark size={24} strokeWidth={1.8} className={dark ? "text-white" : "text-black"}/>
         </button>
       </div>
 
