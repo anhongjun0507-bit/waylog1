@@ -1355,13 +1355,13 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                 </button>
               </div>
 
-              {/* 제목 */}
-              <p className={cls("text-[14px] font-bold mt-2.5 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
+              {/* 제목 — 항상 2줄 공간 확보 (line-clamp-2 + min-h 2줄) → 그리드 행 높이 일정 */}
+              <p className={cls("text-[14px] font-bold mt-2.5 line-clamp-2 leading-[1.35] min-h-[2.7em]", dark ? "text-white" : "text-black")}>
                 {r.title || "제목 없음"}
               </p>
 
-              {/* 메타 한 줄 통합 — 제품 있으면 우선 노출, 없으면 아바타+저자. 3줄 고정 = 시각 부담 ↓ */}
-              <div className="flex items-start gap-1.5 mt-1.5 min-w-0">
+              {/* 메타 한 줄 통합 — 제품/저자 가변이지만 min-h 로 행 높이 고정 */}
+              <div className="flex items-start gap-1.5 mt-1.5 min-w-0 min-h-[2.5em]">
                 {r.product ? (
                   <>
                     <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
@@ -2069,12 +2069,12 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                   )}
                 </div>
 
-                <p className={cls("text-[14px] font-bold mt-2.5 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
+                <p className={cls("text-[14px] font-bold mt-2.5 line-clamp-2 leading-[1.35] min-h-[2.7em]", dark ? "text-white" : "text-black")}>
                   {r.title || "제목 없음"}
                 </p>
 
-                {/* 메타 한 줄 통합 — FeedScreen 과 동일 패턴 */}
-                <div className="flex items-start gap-1.5 mt-1.5 min-w-0">
+                {/* 메타 한 줄 통합 — FeedScreen 과 동일 패턴, min-h 로 행 높이 고정 */}
+                <div className="flex items-start gap-1.5 mt-1.5 min-w-0 min-h-[2.5em]">
                   {r.product ? (
                     <>
                       <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
