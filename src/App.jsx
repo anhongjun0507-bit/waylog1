@@ -6961,8 +6961,7 @@ function AppInner() {
           <Route path="/r/:id" element={<ReviewLegacyRedirect/>}/>
           <Route path="/profile/me" element={profileSelfEl}/>
           <Route path="/profile/:userId" element={<UserProfileRoute/>}/>
-          <Route path="/explore" element={exploreEl}/>
-          <Route path="/reels" element={reelsEl}/>
+          {/* /explore, /reels 은 1.0 에서 미노출. exploreEl/reelsEl 변수 정의는 1.1.0 복원 대비 유지. */}
           <Route path="*" element={<Navigate to="/" replace/>}/>
         </Routes>
       </div>
