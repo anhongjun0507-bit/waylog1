@@ -190,7 +190,15 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       const isImage = file.type.startsWith("image/");
       if (!isVideo && !isImage) { skippedUnsupported++; continue; }
       if (isVideo) {
-        if (file.size > 30 * 1024 * 1024) { setError(`${file.name}: 동영상은 30MB 이하만 가능해요`); continue; }
+        const allowedVideoTypes = ["video/mp4", "video/quicktime", "video/webm"];
+        if (!allowedVideoTypes.includes(file.type)) {
+          setError("동영상은 mp4, mov, webm 형식만 올릴 수 있어요.");
+          continue;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          setError("동영상은 최대 50MB까지 올릴 수 있어요. 짧게 편집해주세요.");
+          continue;
+        }
         const duration = await new Promise((resolve) => {
           const v = document.createElement("video");
           v.preload = "metadata";
