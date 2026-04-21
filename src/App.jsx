@@ -1354,12 +1354,15 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
               </p>
 
               {/* 메타 한 줄 통합 — 제품 있으면 우선 노출, 없으면 아바타+저자. 3줄 고정 = 시각 부담 ↓ */}
-              <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
+              <div className="flex items-start gap-1.5 mt-1.5 min-w-0">
                 {r.product ? (
                   <>
-                    <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-brand-300" : "text-brand-600")}/>
-                    <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
-                      {r.product}
+                    <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
+                    <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
+                      {(Array.isArray(r.products) && r.products.length > 0
+                        ? r.products.map((p) => p?.name).filter(Boolean)
+                        : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
+                      ).join(" · ")}
                     </span>
                   </>
                 ) : (
@@ -2067,12 +2070,15 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                 </p>
 
                 {/* 메타 한 줄 통합 — FeedScreen 과 동일 패턴 */}
-                <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
+                <div className="flex items-start gap-1.5 mt-1.5 min-w-0">
                   {r.product ? (
                     <>
-                      <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0", dark ? "text-brand-300" : "text-brand-600")}/>
-                      <span className={cls("text-[11px] font-semibold truncate min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
-                        {r.product}
+                      <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
+                      <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
+                        {(Array.isArray(r.products) && r.products.length > 0
+                          ? r.products.map((p) => p?.name).filter(Boolean)
+                          : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
+                        ).join(" · ")}
                       </span>
                     </>
                   ) : (
@@ -2122,7 +2128,12 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       <div className="flex-1 py-2 pr-2 min-w-0">
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{formatRelativeTime(r.createdAt || r.date)}</p>
                         <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-black")}>{r.title}</p>
-                        <p className={cls("text-xs line-clamp-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{r.product}</p>
+                        <p className={cls("text-xs line-clamp-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                          {(Array.isArray(r.products) && r.products.length > 0
+                            ? r.products.map((p) => p?.name).filter(Boolean)
+                            : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
+                          ).join(" · ")}
+                        </p>
                       </div>
                     </button>
                     <div className={cls("flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-t flex-wrap", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>

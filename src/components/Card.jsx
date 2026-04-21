@@ -73,22 +73,27 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
       )}
 
       {/* 카테고리 + 제품 메타 — 제품은 웨이로그 핵심 정보라 민트 칩으로 강조 */}
-      {(cat || r.product) && (
-        <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
-          {cat && (
-            <span className={cls("px-2.5 py-1 rounded-full text-[11px] font-bold", dark ? cat.dchip : cat.chip)}>
-              {cat.label}
-            </span>
-          )}
-          {r.product && (
-            <span className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold max-w-[200px]",
-              dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
-              <ShoppingBag size={10} strokeWidth={2.2} className="shrink-0"/>
-              <span className="truncate">{r.product}</span>
-            </span>
-          )}
-        </div>
-      )}
+      {(cat || r.product) && (() => {
+        const productNames = Array.isArray(r.products) && r.products.length > 0
+          ? r.products.map((p) => p?.name).filter(Boolean)
+          : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean);
+        return (
+          <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
+            {cat && (
+              <span className={cls("px-2.5 py-1 rounded-full text-[11px] font-bold", dark ? cat.dchip : cat.chip)}>
+                {cat.label}
+              </span>
+            )}
+            {productNames.map((name, i) => (
+              <span key={i} className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold max-w-[200px]",
+                dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
+                <ShoppingBag size={10} strokeWidth={2.2} className="shrink-0"/>
+                <span className="truncate">{name}</span>
+              </span>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 제목/본문 */}
       {hasImg && r.title && (

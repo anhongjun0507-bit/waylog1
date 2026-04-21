@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import {
-  Check, Download, ExternalLink, Heart, MessageCircle, RefreshCw, Share2, Sparkles, Star, X
+  Check, ExternalLink, Heart, RefreshCw, Share2, Sparkles, X
 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { sanitizeImageUrl } from "../utils/sanitize.js";
@@ -22,7 +22,6 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const shareHref = `${origin}/r/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
-  const rating = review.rating || (review.likes > 50 ? 5 : review.likes > 20 ? 4 : 3);
 
   // 카드를 PNG data URL 로 캡처
   const captureCard = async () => {
@@ -161,19 +160,12 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
               {bodyPreview && (
                 <p className="text-gray-600 text-xs leading-relaxed mb-3 line-clamp-2">"{bodyPreview}"</p>
               )}
-              {/* 별점 + 통계 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={14} className={i < rating ? "text-amber-400" : "text-gray-200"} fill={i < rating ? "#fbbf24" : "none"}/>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-gray-400 inline-flex items-center gap-1">
-                    <Heart size={11} fill={accent} style={{ color: accent }}/> {review.likes || 0}
-                  </span>
-                  <span className="text-xs text-gray-400">{review.date}</span>
-                </div>
+              {/* 통계 */}
+              <div className="flex items-center justify-end gap-3">
+                <span className="text-xs font-bold text-gray-400 inline-flex items-center gap-1">
+                  <Heart size={11} fill={accent} style={{ color: accent }}/> {review.likes || 0}
+                </span>
+                <span className="text-xs text-gray-400">{review.date}</span>
               </div>
               {/* 브랜딩 */}
               <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
