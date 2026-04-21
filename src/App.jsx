@@ -555,7 +555,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                       <span className="text-[11px] font-bold tabular-nums">{r.likes || 0}</span>
                     </div>
                   </div>
-                  <p className={cls("text-[12px] font-bold mt-1.5 line-clamp-2 leading-tight", dark ? "text-white" : "text-black")}>
+                  <p className={cls("text-[12px] font-bold mt-1.5 line-clamp-2 leading-tight min-h-[2.7em]", dark ? "text-white" : "text-black")}>
                     {r.title || "제목 없음"}
                   </p>
                 </button>
