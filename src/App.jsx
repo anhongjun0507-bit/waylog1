@@ -6577,62 +6577,78 @@ function AppInner() {
     return () => { sub?.remove?.(); };
   }, []);
 
-  // DetailScreenRoute 용 context — 리뷰 해결/렌더 로직을 Provider 로 주입.
-  // useMemo 적용 시도했으나 AppInner 내부 함수(openUser/toggleFollow/addComment 등) 가
-  // useCallback 없이 매 렌더 새 identity → useMemo deps 충족 불가 (경고 양산).
-  // 전면 useCallback 리팩토링 필요. 별도 작업. 현재는 inline 유지.
+  // DetailScreenRoute 용 context 를 위한 stable 헬퍼들.
+  // findLocal / fetchProfile 을 module-scope 로 끌어올릴 수는 없어 useCallback 으로 identity 고정.
+  const findLocalReview = useCallback(
+    (id) => reviews.find((rv) => String(rv.id) === String(id)) || null,
+    [reviews]
+  );
+
+  // state 미참조, module import 만 사용 → deps 빈 배열.
+  const fetchProfileById = useCallback(async (uid) => {
+    if (!supabase || !uid) return null;
+    try {
+      const { data, error } = await supabase.from("profiles")
+        .select("id, nickname, avatar_url").eq("id", uid).maybeSingle();
+      if (error || !data) return null;
+      return {
+        userId: data.id,
+        author: sanitizeInline(data.nickname, { maxLength: 60 }) || "익명",
+        avatar: sanitizeImageUrl(data.avatar_url) || "",
+      };
+    } catch { return null; }
+  }, []);
+
+  // DetailScreen 전체를 JSX 로 생성. 모든 내부 함수 useCallback 화 되어 있어 deps 가 변할 때만
+  // 새 identity. 이 함수 자체를 detailCtx.render 로 주입.
+  const renderDetail = useCallback((r, onBack) => (
+    <DetailScreen r={r} onBack={onBack} onOpen={openDetail}
+      reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
+      comments={(commentsMap[r.id] || []).filter((c) => !blocked.has(c.author))}
+      addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike}
+      user={user}
+      deleting={deletingReviewId === r.id}
+      onEdit={(rev) => { setEditingReview(rev); onBack(); setTimeout(() => setCompose(true), 280); }}
+      onDelete={async (rev) => { const ok = await deleteReview(rev.id); if (ok) onBack(); }}
+      onReport={(targetType = "review", targetId = r.id, reason = "inappropriate") => {
+        if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+        supabaseReports.create({ reporterId: user.id, targetType, targetId, reason })
+          .then(({ error }) => setToast(error ? "신고 접수 실패. 잠시 후 다시 시도해주세요" : "신고가 접수됐어요. 검토 후 조치할게요"))
+          .catch(() => setToast("신고 접수 실패"));
+      }}
+      onHashtagClick={(tag) => { onBack(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
+      onProductClick={setSelectedCatalogProduct}
+      onUserClick={openUser}
+      following={following}
+      onToggleFollow={toggleFollow}/>
+  ), [
+    reviews, favs, dark, commentsMap, blocked, following, deletingReviewId, user,
+    toggleFav, addComment, deleteComment, toggleCommentLike, deleteReview,
+    openDetail, openUser, toggleFollow,
+    setAuthOpen, setToast, setEditingReview, setCompose, setSearchQ, setSearch, setSelectedCatalogProduct,
+  ]);
+
+  const renderOtherProfile = useCallback((prof, onBack) => (
+    <UserProfileScreen author={prof.author} avatar={prof.avatar} userId={prof.userId}
+      reviews={reviews} currentUser={user}
+      isFollowing={!!prof.userId && following.has(prof.userId)}
+      following={following}
+      onToggleFollow={(id, name) => toggleFollow(id || prof.userId, name || prof.author)}
+      onClose={onBack} onOpen={openDetail} onUserClick={openUser} dark={dark}/>
+  ), [reviews, user, dark, following, toggleFollow, openDetail, openUser]);
+
   const detailCtx = {
-    findLocal: (id) => reviews.find((rv) => String(rv.id) === String(id)) || null,
+    findLocal: findLocalReview,
     fetchById: fetchReviewById,
     setToast,
-    render: (r, onBack) => (
-      <DetailScreen r={r} onBack={onBack} onOpen={openDetail}
-        reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
-        comments={(commentsMap[r.id] || []).filter((c) => !blocked.has(c.author))}
-        addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike}
-        user={user}
-        deleting={deletingReviewId === r.id}
-        onEdit={(rev) => { setEditingReview(rev); onBack(); setTimeout(() => setCompose(true), 280); }}
-        onDelete={async (rev) => { const ok = await deleteReview(rev.id); if (ok) onBack(); }}
-        onReport={(targetType = "review", targetId = r.id, reason = "inappropriate") => {
-          if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
-          supabaseReports.create({ reporterId: user.id, targetType, targetId, reason })
-            .then(({ error }) => setToast(error ? "신고 접수 실패. 잠시 후 다시 시도해주세요" : "신고가 접수됐어요. 검토 후 조치할게요"))
-            .catch(() => setToast("신고 접수 실패"));
-        }}
-        onHashtagClick={(tag) => { onBack(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
-        onProductClick={setSelectedCatalogProduct}
-        onUserClick={openUser}
-        following={following}
-        onToggleFollow={toggleFollow}/>
-    ),
+    render: renderDetail,
   };
 
-  // UserProfileRoute 용 context — 프로필 해결/렌더 로직을 Provider 로 주입. (동일 이유로 inline 유지)
   const profileCtx = {
     currentUserId: user?.id || null,
-    fetchProfile: async (uid) => {
-      if (!supabase || !uid) return null;
-      try {
-        const { data, error } = await supabase.from("profiles")
-          .select("id, nickname, avatar_url").eq("id", uid).maybeSingle();
-        if (error || !data) return null;
-        return {
-          userId: data.id,
-          author: sanitizeInline(data.nickname, { maxLength: 60 }) || "익명",
-          avatar: sanitizeImageUrl(data.avatar_url) || "",
-        };
-      } catch { return null; }
-    },
+    fetchProfile: fetchProfileById,
     setToast,
-    renderOther: (prof, onBack) => (
-      <UserProfileScreen author={prof.author} avatar={prof.avatar} userId={prof.userId}
-        reviews={reviews} currentUser={user}
-        isFollowing={!!prof.userId && following.has(prof.userId)}
-        following={following}
-        onToggleFollow={(id, name) => toggleFollow(id || prof.userId, name || prof.author)}
-        onClose={onBack} onOpen={openDetail} onUserClick={openUser} dark={dark}/>
-    ),
+    renderOther: renderOtherProfile,
   };
 
   return (
