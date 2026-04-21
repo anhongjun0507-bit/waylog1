@@ -290,7 +290,7 @@ export const reviews = {
 }
 
 // UI(mapCommunityRow)에서 실제로 읽는 컬럼만 선택
-const COMMUNITY_COLS = 'id, user_id, content, product, image_url, likes_count, created_at'
+const COMMUNITY_COLS = 'id, user_id, content, product, image_url, likes_count, is_anonymous, challenge_id, day_num, created_at'
 
 export const communityApi = {
   async fetchAll(limit = 30) {
@@ -569,18 +569,6 @@ export const challenges = {
   async addInbody(row) {
     if (!supabase) return noop
     try { return await supabase.from('inbody_records').insert(row).select().single() }
-    catch (e) { return { data: null, error: e } }
-  },
-  async fetchAnonPosts(limit = 50) {
-    if (!supabase) return noopArr
-    try {
-      return await supabase.from('challenge_anon_posts').select('*')
-        .order('created_at', { ascending: false }).limit(limit)
-    } catch (e) { return { data: [], error: e } }
-  },
-  async addAnonPost(row) {
-    if (!supabase) return noop
-    try { return await supabase.from('challenge_anon_posts').insert(row).select().single() }
     catch (e) { return { data: null, error: e } }
   },
 }

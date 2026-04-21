@@ -9,7 +9,7 @@ import {
   Trophy, Dumbbell, Activity,
   BarChart3, Download,
   Package, Send, Bookmark, Compass, Film, Images, Grid3x3, Tag, Menu, Settings as SettingsIcon,
-  MoreHorizontal, Clock, UserPlus, Play
+  MoreHorizontal, Clock, UserPlus, Play, CircleUser
 } from "lucide-react";
 
 import { useCatalog, useCatalogLoading } from "./catalog.js";
@@ -46,7 +46,6 @@ import { AppProvider, useAppContext } from "./contexts/AppContext.js";
 const AdminModerationScreen = lazy(() => import("./screens/AdminModerationScreen.jsx").then(m => ({ default: m.AdminModerationScreen })));
 const OnboardingScreen = lazy(() => import("./screens/OnboardingScreen.jsx").then(m => ({ default: m.OnboardingScreen })));
 const InbodyScreen = lazy(() => import("./screens/InbodyScreen.jsx").then(m => ({ default: m.InbodyScreen })));
-const AnonCommunityScreen = lazy(() => import("./screens/AnonCommunityScreen.jsx").then(m => ({ default: m.AnonCommunityScreen })));
 const ChallengeStartScreen = lazy(() => import("./screens/ChallengeStartScreen.jsx").then(m => ({ default: m.ChallengeStartScreen })));
 const AuthScreen = lazy(() => import("./screens/AuthScreen.jsx"));
 const ProfileScreen = lazy(() => import("./screens/ProfileScreen.jsx"));
@@ -785,7 +784,7 @@ const ExploreScreen = ({ reviews, onOpen, favs, toggleFav, dark, onProductClick,
 // ReelsScreen — 챌린지 탭 (바디키 통합)
 // IG Reels 같은 세로 전체화면 스크롤에 바디키 미션 카드들 배치
 // ============================================================
-const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs, onChallengeStart, onChallengeOpen, onChallengeCommunity }) => {
+const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs, onChallengeStart, onChallengeOpen }) => {
   // 영상 리뷰 추출
   const videoReviews = useMemo(() => {
     return reviews.filter((r) => r.media && r.media.some((m) => m.type === "video")).slice(0, 20);
@@ -851,10 +850,6 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
 
           {/* 우측 액션 바 (IG Reels 패턴) */}
           <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
-            <button onClick={(e) => { e.stopPropagation(); onChallengeCommunity(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
-              <Users size={26} strokeWidth={1.8}/>
-              <span className="text-[10px] font-semibold">커뮤니티</span>
-            </button>
             <button onClick={(e) => { e.stopPropagation(); onChallengeOpen(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
               <BarChart3 size={26} strokeWidth={1.8}/>
               <span className="text-[10px] font-semibold">기록</span>
@@ -2173,7 +2168,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
   );
 };
 
-const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
+const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge }) => {
   const [exiting, close] = useExit(onClose);
   const CATALOG = useCatalog();
   const [content, setContent] = useState("");
@@ -2181,7 +2176,10 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
   const [product, setProduct] = useState(null);
   const [productQuery, setProductQuery] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const dq = useDebouncedValue(productQuery, 200);
+  const hasActiveChallenge = !!(challenge?.startDate && challenge?.status !== "completed");
+  const dayNum = hasActiveChallenge ? getChallengeDay(challenge.startDate) : 0;
 
   const handleImage = (e) => {
     const file = e.target.files?.[0];
@@ -2211,7 +2209,12 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
 
   const submit = () => {
     if (!content.trim()) return;
-    onPost(content.trim(), product, image);
+    const meta = {
+      isAnonymous,
+      challengeId: isAnonymous && hasActiveChallenge ? challenge.id || null : null,
+      dayNum: isAnonymous && hasActiveChallenge ? dayNum : null,
+    };
+    onPost(content.trim(), product, image, meta);
     close();
   };
 
@@ -2290,31 +2293,32 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user }) => {
             </div>
           </div>
         )}
+
+        {/* 익명 옵션 */}
+        <label className={cls("flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer active:scale-[0.99] transition",
+          isAnonymous
+            ? dark ? "bg-brand-900/30 ring-1 ring-brand-500/40" : "bg-brand-50 ring-1 ring-brand-200"
+            : dark ? "bg-gray-800" : "bg-gray-100")}>
+          <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)}
+            className="w-4 h-4 accent-brand-500 shrink-0"/>
+          <div className="flex-1 min-w-0">
+            <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>익명으로 게시</p>
+            <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>
+              {hasActiveChallenge
+                ? `작성자 이름·아바타가 숨겨져요${isAnonymous ? ` · 바디키 Day ${dayNum} 배지 표시` : ""}`
+                : "작성자 이름·아바타가 숨겨져요"}
+            </p>
+          </div>
+        </label>
       </div>
     </div>
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, challenge, onOpenChallengeCommunity, onCompose }) => {
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, onCompose }) => {
   const [expanded, setExpanded] = useState({});
   return (
   <div className={dark ? "bg-[#0a0a0a]" : "bg-white"}>
-    {/* 챌린지 커뮤니티 배너 */}
-    {challenge && (
-      <button onClick={onOpenChallengeCommunity}
-        className={cls("w-full px-4 py-3 flex items-center gap-3 text-left active:opacity-80 transition border-b",
-          dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shrink-0">
-          <Dumbbell size={18} className="text-white"/>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>챌린지 커뮤니티</p>
-          <p className={cls("text-[12px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>익명으로 참가자들과 소통</p>
-        </div>
-        <ChevronRight size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>
-      </button>
-    )}
-
     {/* 글쓰기 진입 */}
     <button onClick={() => user ? onCompose() : onRequireAuth()}
       className={cls("w-full px-4 py-3 flex items-center gap-3 text-left active:opacity-80 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
@@ -2340,18 +2344,35 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
     )}
     {posts.map((p) => {
       const isOpen = !!expanded[p.id];
+      const isAnon = !!p.isAnonymous;
+      const HeaderTag = isAnon ? "div" : "button";
       return (
       <article key={p.id} className={cls("px-4 py-3 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <button onClick={() => onUserClick({ author: p.author, avatar: p.avatar, userId: p.user_id || p.userId })}
-          className="flex items-center gap-3 mb-2 active:opacity-80">
-          <Avatar id={p.avatar} size={12} className="w-9 h-9"/>
+        <HeaderTag
+          {...(isAnon ? {} : { onClick: () => onUserClick({ author: p.author, avatar: p.avatar, userId: p.userId || p.user_id }) })}
+          className={cls("flex items-center gap-3 mb-2", isAnon ? "" : "active:opacity-80")}>
+          {isAnon ? (
+            <div className={cls("w-9 h-9 rounded-full flex items-center justify-center shrink-0", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
+              <CircleUser size={20} className={dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
+            </div>
+          ) : (
+            <Avatar id={p.avatar} size={12} className="w-9 h-9"/>
+          )}
           <div className="text-left flex-1 min-w-0">
-            <div className="flex items-baseline gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{p.author}</p>
+              {isAnon && (
+                <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
+              )}
+              {isAnon && p.challengeId && p.dayNum && (
+                <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
+                  바디키 Day {p.dayNum}
+                </span>
+              )}
               <p className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>· {formatRelativeTime(p.createdAt, p.time)}</p>
             </div>
           </div>
-        </button>
+        </HeaderTag>
         <p className={cls("text-[15px] leading-[1.4] whitespace-pre-wrap ml-12", dark ? "text-white" : "text-black")}>{p.content}</p>
         {p.image && (
           <div className="ml-12 mt-3">
@@ -4786,6 +4807,12 @@ function AppInner() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [tab]);
 
+  // 레거시 익명 챌린지 커뮤니티 로컬 캐시 제거 (서버 이관 후 무의미).
+  // 1회만 시도 — 실패해도 무시.
+  useEffect(() => {
+    window.storage?.delete("waylog:challengeAnonPosts").catch(() => {});
+  }, []);
+
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const refreshingRef = useRef(false);
@@ -5214,20 +5241,26 @@ function AppInner() {
   };
 
   // 커뮤니티 게시물 로드 — 비로그인 상태에서도 public 으로 가져옴 (RLS SELECT using(true))
-  const mapCommunityRow = (r) => ({
-    id: r.id,
-    user_id: r.user_id,
-    userId: r.user_id,
-    author: sanitizeInline(r.profiles?.nickname, { maxLength: 60 }) || "익명",
-    avatar: sanitizeImageUrl(r.profiles?.avatar_url) || "",
-    createdAt: r.created_at,
-    content: sanitizeText(r.content, { maxLength: 1000 }),
-    likes: 0,    // 실제 count 는 fetchPostLikeCounts 에서 채움
-    comments: 0, // 실제 수 는 communityComments 에서 파생
-    liked: false, // 서버 fetch 후 likedPostIds 에서 파생
-    ...(r.product ? { product: r.product } : {}),
-    ...(r.image_url ? { image: sanitizeImageUrl(r.image_url) } : {}),
-  });
+  const mapCommunityRow = (r) => {
+    const isAnon = !!r.is_anonymous;
+    return {
+      id: r.id,
+      user_id: r.user_id, // 작성자 본인 판별용(삭제·수정) — 익명이라도 서버는 user_id 보관
+      userId: isAnon ? null : r.user_id, // 프로필 이동 차단: 익명이면 null
+      author: isAnon ? "익명" : (sanitizeInline(r.profiles?.nickname, { maxLength: 60 }) || "익명"),
+      avatar: isAnon ? "" : (sanitizeImageUrl(r.profiles?.avatar_url) || ""),
+      createdAt: r.created_at,
+      content: sanitizeText(r.content, { maxLength: 1000 }),
+      likes: 0,    // 실제 count 는 fetchPostLikeCounts 에서 채움
+      comments: 0, // 실제 수 는 communityComments 에서 파생
+      liked: false, // 서버 fetch 후 likedPostIds 에서 파생
+      isAnonymous: isAnon,
+      challengeId: r.challenge_id || null,
+      dayNum: r.day_num || null,
+      ...(r.product ? { product: r.product } : {}),
+      ...(r.image_url ? { image: sanitizeImageUrl(r.image_url) } : {}),
+    };
+  };
 
   const mapCommunityCommentRow = (c) => ({
     id: c.id,
@@ -5461,10 +5494,8 @@ function AppInner() {
   const [challenge, setChallenge] = useStoredState("waylog:challenge", null);
   const [challengeDailyLogs, setChallengeDailyLogs] = useStoredState("waylog:challengeLogs", {});
   const [challengeInbody, setChallengeInbody] = useStoredState("waylog:challengeInbody", []);
-  const [challengeAnonPosts, setChallengeAnonPosts] = useStoredState("waylog:challengeAnonPosts", []);
   const [challengeStartOpen, setChallengeStartOpen] = useState(false);
   const [challengeMainOpen, setChallengeMainOpen] = useState(false);
-  const [challengeCommunityOpen, setChallengeCommunityOpen] = useState(false);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const challengeHydratedRef = useRef(false);
 
@@ -5528,28 +5559,6 @@ function AppInner() {
     });
   };
 
-  const setChallengeAnonPostsSync = (updater) => {
-    setChallengeAnonPosts((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      if (supabase && user?.id && Array.isArray(next)) {
-        const prevIds = new Set(prev.map((p) => p.id));
-        const added = next.filter((p) => !prevIds.has(p.id));
-        added.forEach((post) => {
-          supabaseChallenges.addAnonPost({
-            user_id: user.id,
-            anon_id: post.anonId || challenge?.anonId || "익명",
-            content: post.content,
-            day_num: post.dayNum || null,
-          }).then(({ data: saved }) => {
-            if (saved?.id && saved.id !== post.id) {
-              setChallengeAnonPosts((cur) => cur.map((p) => p.id === post.id ? { ...p, id: saved.id } : p));
-            }
-          }).catch(() => {});
-        });
-      }
-      return next;
-    });
-  };
 
   // 챌린지 완료 자동 감지 — challenge.status/startDate 변경 시 trigger (setChallenge는 안정)
   useEffect(() => {
@@ -5590,12 +5599,6 @@ function AppInner() {
           if (Array.isArray(inbody) && inbody.length) {
             setChallengeInbody(inbody.map((i) => ({ id: i.id, measuredAt: i.measured_at, ...(i.data || {}) })));
           }
-        }
-        const { data: anon } = await supabaseChallenges.fetchAnonPosts(100);
-        if (Array.isArray(anon) && anon.length) {
-          setChallengeAnonPosts(anon.map((p) => ({
-            id: p.id, anonId: p.anon_id, content: p.content, dayNum: p.day_num, time: p.created_at,
-          })));
         }
       } catch (e) {
         console.warn("challenge hydrate 실패", e);
@@ -6151,7 +6154,6 @@ function AppInner() {
     setChallenge(null);
     setChallengeDailyLogs({});
     setChallengeInbody([]);
-    setChallengeAnonPosts([]);
     setCommunity([]);
     setCommunityComments({});
     setLikedPostIds(new Set());
@@ -6210,23 +6212,29 @@ function AppInner() {
     }
   };
 
-  const addCommunityPost = async (text, product = null, image = null) => {
+  const addCommunityPost = async (text, product = null, image = null, meta = {}) => {
     if (!user) return;
     const clean = sanitizeText(text, { maxLength: 1000 }).trim();
     if (!clean) return;
+    const isAnon = !!meta.isAnonymous;
+    const challengeId = meta.challengeId || null;
+    const dayNum = meta.dayNum || null;
     // optimistic insert — 임시 id 로 즉시 표시, 서버 성공 시 교체 / 실패 시 제거
     const tempId = `temp-${Date.now()}`;
     const optimistic = {
       id: tempId,
-      author: user.nickname,
-      avatar: user.avatar,
-      userId: user.id,
-      user_id: user.id,
+      author: isAnon ? "익명" : user.nickname,
+      avatar: isAnon ? "" : user.avatar,
+      userId: isAnon ? null : user.id,
+      user_id: user.id, // optimistic 비교용 — 서버 insert 는 본인 id 필요
       createdAt: new Date().toISOString(),
       content: clean,
       likes: 0,
       comments: 0,
       liked: false,
+      isAnonymous: isAnon,
+      challengeId,
+      dayNum,
       ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
       ...(image ? { image } : {}),
     };
@@ -6235,6 +6243,9 @@ function AppInner() {
     const payload = {
       user_id: user.id,
       content: clean,
+      is_anonymous: isAnon,
+      ...(challengeId ? { challenge_id: challengeId } : {}),
+      ...(dayNum ? { day_num: dayNum } : {}),
       ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
       ...(image ? { image_url: image } : {}),
     };
@@ -6367,8 +6378,7 @@ function AppInner() {
     reels: <ReelsScreen reviews={reviews} onOpen={openDetail} dark={dark} user={user}
       challenge={challenge} dailyLogs={challengeDailyLogs}
       onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
-      onChallengeOpen={() => setChallengeMainOpen(true)}
-      onChallengeCommunity={() => setChallengeCommunityOpen(true)}/>,
+      onChallengeOpen={() => setChallengeMainOpen(true)}/>,
     // 내 프로필 — posts grid + saved + tagged 탭
     profile: <ProfileSelfScreen user={user} reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
       onOpen={openDetail} onProductClick={setSelectedCatalogProduct}
@@ -6393,8 +6403,6 @@ function AppInner() {
       user={user}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
       onCompose={() => setCommunityComposeOpen(true)}
-      challenge={challenge}
-      onOpenChallengeCommunity={() => setChallengeCommunityOpen(true)}
       comments={communityComments}
       onAddComment={addCommunityComment}
       onDeleteComment={deleteCommunityComment}
@@ -6631,7 +6639,7 @@ function AppInner() {
       ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
-      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod, img) => { addCommunityPost(text, prod, img); setCommunityComposeOpen(false); }} dark={dark} user={user}/>}
+      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod, img, meta) => { addCommunityPost(text, prod, img, meta); setCommunityComposeOpen(false); }} dark={dark} user={user} challenge={challenge}/>}
       <Suspense fallback={null}>{authOpen && <AuthScreen onClose={() => setAuthOpen(false)} onAuth={(u) => {
         setUser(u);
         setToast(`${u.nickname}님 환영해요`);
@@ -6737,16 +6745,6 @@ function AppInner() {
         setInbodyRecords={setChallengeInbodySync}
         onClose={() => setChallengeMainOpen(false)}
         dark={dark}/>}
-
-      <Suspense fallback={null}>{challengeCommunityOpen && challenge && (
-        <AnonCommunityScreen
-          challenge={challenge}
-          onClose={() => setChallengeCommunityOpen(false)}
-          dark={dark}
-          anonPosts={challengeAnonPosts}
-          onAddPost={(p) => setChallengeAnonPostsSync((prev) => [...prev, p])}
-          getChallengeDay={getChallengeDay}/>
-      )}</Suspense>
 
       {/* 하단 네비 — 4탭 라벨 포함, 브랜드(더스티네이비) 액센트. 탭 라벨 개편은 4단계. */}
       <nav className={cls("fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl border-t grid grid-cols-4 z-20 backdrop-blur-xl",
