@@ -2851,17 +2851,24 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   const cat = CATEGORIES[r.category] || CATEGORIES.food;
   // 리뷰의 product 이름을 카탈로그와 매칭 — 이미지/공식 링크 노출 및 클릭 연결
   const CATALOG = useCatalog();
-  const matchedProduct = useMemo(() => {
-    const q = (r.product || "").trim();
-    if (!q || !Array.isArray(CATALOG) || CATALOG.length === 0) return null;
-    const exact = CATALOG.find((p) => p.name === q);
-    if (exact) return exact;
-    const qLower = q.toLowerCase();
-    return CATALOG.find((p) => {
-      const n = (p.name || "").toLowerCase();
-      return n === qLower || n.includes(qLower) || qLower.includes(n);
-    }) || null;
-  }, [CATALOG, r.product]);
+  const matchedProducts = useMemo(() => {
+    const names = Array.isArray(r.products) && r.products.length > 0
+      ? r.products.map((p) => p?.name).filter(Boolean)
+      : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return [];
+    const catalog = Array.isArray(CATALOG) ? CATALOG : [];
+    return names.map((name) => {
+      if (catalog.length === 0) return { name, product: null };
+      const exact = catalog.find((p) => p.name === name);
+      if (exact) return { name, product: exact };
+      const qLower = name.toLowerCase();
+      const fuzzy = catalog.find((p) => {
+        const n = (p.name || "").toLowerCase();
+        return n === qLower || n.includes(qLower) || qLower.includes(n);
+      });
+      return { name, product: fuzzy || null };
+    });
+  }, [CATALOG, r.product, r.products]);
   const [comment, setComment] = useStoredState(`waylog:draft:comment:${r.id}`, "");
   const [replyTo, setReplyTo] = useState(null);
   const [expandedReplies, setExpandedReplies] = useState({});
@@ -3057,50 +3064,54 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
           )}
         </div>
 
-        {(() => {
-          const clickable = !!(matchedProduct && onProductClick);
-          const content = (
-            <>
-              {matchedProduct?.imageUrl ? (
-                <div className={cls("w-14 h-14 rounded-xl overflow-hidden shrink-0", dark ? "bg-gray-700" : "bg-gray-100")}>
-                  <img src={matchedProduct.imageUrl} alt={matchedProduct.name} loading="lazy" decoding="async"
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.style.display = "none"; }}/>
-                </div>
+        {matchedProducts.length > 0 && (
+          <div className="mt-5 space-y-2">
+            <p className={cls("text-[10px] font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+              관련 상품 {matchedProducts.length > 1 && <span className="tabular-nums">· {matchedProducts.length}개</span>}
+            </p>
+            {matchedProducts.map(({ name, product }, idx) => {
+              const clickable = !!(product && onProductClick);
+              const content = (
+                <>
+                  {product?.imageUrl ? (
+                    <div className={cls("w-14 h-14 rounded-xl overflow-hidden shrink-0", dark ? "bg-gray-700" : "bg-gray-100")}>
+                      <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}/>
+                    </div>
+                  ) : (
+                    <div className={cls("w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shrink-0", cat.color)}>
+                      <ShoppingBag size={22} strokeWidth={2.2}/>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={cls("text-[14px] font-semibold line-clamp-2", dark ? "text-white" : "text-black")}>
+                      {product?.name || name}
+                    </p>
+                    {product && (
+                      <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                        {product.price ? `${product.price.toLocaleString()}원 · ` : ""}
+                        상세 보기
+                      </p>
+                    )}
+                  </div>
+                  {clickable && <ChevronRight size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>}
+                </>
+              );
+              return clickable ? (
+                <button key={idx} type="button" onClick={() => onProductClick(product)}
+                  className={cls("w-full p-3 rounded-xl flex items-center gap-3 text-left active:opacity-70 transition border",
+                    dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+                  {content}
+                </button>
               ) : (
-                <div className={cls("w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shrink-0", cat.color)}>
-                  <ShoppingBag size={22} strokeWidth={2.2}/>
+                <div key={idx} className={cls("p-3 rounded-xl flex items-center gap-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
+                  {content}
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={cls("text-[10px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                  관련 상품
-                </p>
-                <p className={cls("text-[14px] font-semibold line-clamp-2 mt-0.5", dark ? "text-white" : "text-black")}>
-                  {matchedProduct?.name || r.product}
-                </p>
-                {matchedProduct && (
-                  <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                    {matchedProduct.price ? `${matchedProduct.price.toLocaleString()}원 · ` : ""}
-                    상세 보기
-                  </p>
-                )}
-              </div>
-              {clickable && <ChevronRight size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>}
-            </>
-          );
-          return clickable ? (
-            <button type="button" onClick={() => onProductClick(matchedProduct)}
-              className={cls("mt-5 w-full p-3 rounded-xl flex items-center gap-3 text-left active:opacity-70 transition border",
-                dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-              {content}
-            </button>
-          ) : (
-            <div className={cls("mt-5 p-3 rounded-xl flex items-center gap-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-              {content}
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        )}
 
         {/* Comments — IG 스타일 */}
         <div className={cls("mt-5 pt-4 border-t", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
