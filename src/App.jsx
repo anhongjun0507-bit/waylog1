@@ -546,7 +546,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                       {idx + 1}
                     </span>
                     {rCat && (
-                      <span className="absolute top-2 right-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-black/60 text-white">
+                      <span className="absolute top-2 right-2 text-[11px] font-black px-2 py-0.5 rounded-full bg-black/60 text-white">
                         {rCat.label}
                       </span>
                     )}
@@ -853,11 +853,11 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
           <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
             <button onClick={(e) => { e.stopPropagation(); onChallengeOpen(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
               <BarChart3 size={26} strokeWidth={1.8}/>
-              <span className="text-[10px] font-semibold">기록</span>
+              <span className="text-[11px] font-semibold">기록</span>
             </button>
             <button onClick={(e) => { e.stopPropagation(); onChallengeOpen(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
               <Activity size={26} strokeWidth={1.8}/>
-              <span className="text-[10px] font-semibold">인바디</span>
+              <span className="text-[11px] font-semibold">인바디</span>
             </button>
           </div>
         </button>
@@ -995,7 +995,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
             : <div className="w-full h-full flex items-center justify-center"><Camera size={24} strokeWidth={1.5} className={dark ? "text-[#404040]" : "text-[#c7c7c7]"}/></div>}
           {rCat && (
             <div className="absolute top-2 left-2">
-              <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
+              <span className={cls("text-[11px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                 {rCat.label}
               </span>
             </div>
@@ -1151,7 +1151,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={28}/>
                       {pCat && (
                         <div className="absolute top-2 left-2">
-                          <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
+                          <span className={cls("text-[11px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                             {pCat.label}
                           </span>
                         </div>
@@ -1336,7 +1336,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   )}
                 {/* 카테고리 — 시각 무게 down (사이즈·대비·폰트 weight 낮춤). 제품 칩이 주인공 */}
                 {rCat && (
-                  <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                  <span className={cls("absolute top-2 left-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
                     dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                     {rCat.label}
                   </span>
@@ -1577,7 +1577,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
         <div className={cls("w-full h-64 flex items-center justify-center p-6 relative", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
           <ProductImage src={product.imageUrl} alt={product.name} className="max-w-full max-h-full object-contain" iconSize={56}/>
           {product.imageUrl && (
-            <span className={cls("absolute bottom-2 right-3 text-[10px] opacity-50", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+            <span className={cls("absolute bottom-2 right-3 text-[11px] opacity-50", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               이미지: amway.co.kr
             </span>
           )}
@@ -1587,7 +1587,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
           {/* 카테고리 + 브랜드 */}
           <div className="flex items-center gap-2">
             {cat && (
-              <span className={cls("text-[10px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+              <span className={cls("text-[11px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                 {cat.label}
               </span>
             )}
@@ -1655,7 +1655,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                   <div className="flex items-center gap-2">
                     <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>AI 분석 요약</p>
                     {aiSummary.isPlaceholder && (
-                      <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>DEMO</span>
+                      <span className={cls("text-[11px] font-bold px-1.5 py-0.5 rounded", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>DEMO</span>
                     )}
                   </div>
                   <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
@@ -1959,7 +1959,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={18}/>
                     </div>
                     {/* brand 슬롯 — 없어도 공간 예약 (타일 높이 통일) */}
-                    <p className={cls("text-[9.5px] font-bold mt-1 truncate h-[13px] leading-[13px]", dark ? "text-brand-300" : "text-brand-700")}>
+                    <p className={cls("text-[11px] font-bold mt-1 truncate h-[15px] leading-[15px]", dark ? "text-brand-300" : "text-brand-700")}>
                       {p.brand || "\u00A0"}
                     </p>
                     {/* 제품명 — 2줄 고정 (1줄이어도 2줄 공간 확보) */}
@@ -2056,7 +2056,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       </div>
                     )}
                   {rCat && (
-                    <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                    <span className={cls("absolute top-2 left-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
                       dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                       {rCat.label}
                     </span>
@@ -2379,10 +2379,10 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
               <div className="flex items-center gap-1.5 flex-wrap">
                 <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{p.author}</p>
                 {isAnon && (
-                  <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
+                  <span className={cls("text-[11px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
                 )}
                 {isAnon && p.challengeId && p.dayNum && (
-                  <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
+                  <span className={cls("text-[11px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
                     바디키 Day {p.dayNum}
                   </span>
                 )}
@@ -2841,7 +2841,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {rCat && (
-                              <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded", dark ? rCat.dchip : rCat.chip)}>
+                              <span className={cls("text-[11px] font-bold px-1.5 py-0.5 rounded", dark ? rCat.dchip : rCat.chip)}>
                                 {rCat.label}
                               </span>
                             )}
@@ -3141,7 +3141,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
 
         {matchedProducts.length > 0 && (
           <div className="mt-5 space-y-2">
-            <p className={cls("text-[10px] font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+            <p className={cls("text-[11px] font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               관련 상품 {matchedProducts.length > 1 && <span className="tabular-nums">· {matchedProducts.length}개</span>}
             </p>
             {matchedProducts.map(({ name, product }, idx) => {
@@ -4451,7 +4451,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                       Week {weekNum} · {weekMissions.title}
                     </p>
                     {hasCustomThisWeek && (
-                      <span className={cls("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
+                      <span className={cls("text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
                         dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
                         내 미션
                       </span>
@@ -4575,7 +4575,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
               <div className="flex items-center gap-2 mb-2">
                 {(() => { const CoachIcon = AI_COACH_TONES.find((t) => t.key === challenge?.coachTone)?.Icon || Sparkles; return <CoachIcon size={16} className={dark ? "text-white" : "text-black"}/>; })()}
                 <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>AI 코치</p>
-                <span className={cls("text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>BETA</span>
+                <span className={cls("text-[11px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>BETA</span>
               </div>
               <p className={cls("text-[14px] leading-relaxed", dark ? "text-white/90" : "text-black/90")}>
                 {coachMsg}
@@ -4700,7 +4700,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
           <Trophy size={18} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cls("text-[10px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>COMPLETED</p>
+          <p className={cls("text-[11px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>COMPLETED</p>
           <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>챌린지 완주</p>
           <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>8주간의 여정을 확인해보세요</p>
         </div>
@@ -6868,7 +6868,7 @@ function AppInner() {
               className="p-1 active:scale-90 transition relative">
                 <Heart size={24} strokeWidth={1.8} className={dark ? "text-white" : "text-black"}/>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 min-w-[16px] h-[16px] px-1 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center leading-none tabular-nums">
+                  <span className="absolute top-0 right-0 min-w-[16px] h-[16px] px-1 bg-red-500 rounded-full text-[11px] font-bold text-white flex items-center justify-center leading-none tabular-nums">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}

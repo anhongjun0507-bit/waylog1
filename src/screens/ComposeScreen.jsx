@@ -390,7 +390,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                         <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-0.5"/>
                       </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 text-[10px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
+                    <span className="absolute bottom-1 right-1 text-[11px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
                   </>
                 )}
                 <button onClick={() => removeMedia(m.id)}

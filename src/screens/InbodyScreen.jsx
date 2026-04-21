@@ -129,7 +129,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
                     {pts.map((p, i) => (
                       <g key={i}>
                         <circle cx={p.x} cy={p.y} r="3" fill={dark ? "#ffffff" : "#000000"}/>
-                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px]" fill={dark ? "#a8a8a8" : "#737373"}>{vals[i]}</text>
+                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[11px]" fill={dark ? "#a8a8a8" : "#737373"}>{vals[i]}</text>
                       </g>
                     ))}
                   </>
