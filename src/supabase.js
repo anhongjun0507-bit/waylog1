@@ -326,6 +326,14 @@ export const communityApi = {
     try { return await supabase.from('community_posts').delete().eq('id', id) }
     catch (e) { return { error: e } }
   },
+  async update(id, patch) {
+    if (!supabase) return noop
+    try {
+      return await supabase.from('community_posts').update(patch).eq('id', id).select().single()
+    } catch (e) {
+      return { data: null, error: { message: e?.message || '게시물 수정 중 오류가 발생했어요. 다시 시도해주세요.' } }
+    }
+  },
 
   // ------- 게시물 좋아요 -------
   async fetchMyPostLikes(userId) {

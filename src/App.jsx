@@ -2178,15 +2178,16 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
   );
 };
 
-const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge }) => {
+const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing }) => {
   const [exiting, close] = useExit(onClose);
   const CATALOG = useCatalog();
-  const [content, setContent] = useState("");
-  const [image, setImage] = useState(null);
-  const [product, setProduct] = useState(null);
+  const isEdit = !!editing;
+  const [content, setContent] = useState(editing?.content || "");
+  const [image, setImage] = useState(editing?.image || null);
+  const [product, setProduct] = useState(editing?.product || null);
   const [productQuery, setProductQuery] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(!!editing?.isAnonymous);
   const dq = useDebouncedValue(productQuery, 200);
   const hasActiveChallenge = !!(challenge?.startDate && challenge?.status !== "completed");
   const dayNum = hasActiveChallenge ? getChallengeDay(challenge.startDate) : 0;
@@ -2232,9 +2233,9 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge }) => {
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
-        <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>커뮤니티 글쓰기</p>
+        <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>{isEdit ? "커뮤니티 수정" : "커뮤니티 글쓰기"}</p>
         <button onClick={submit} disabled={!content.trim()}
-          className={cls("text-sm font-black transition", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>게시</button>
+          className={cls("text-sm font-black transition", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>{isEdit ? "수정" : "게시"}</button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 작성자 */}
@@ -2325,8 +2326,10 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge }) => {
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, onCompose }) => {
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, onCompose, onEditPost, onDeletePost }) => {
   const [expanded, setExpanded] = useState({});
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   return (
   <div className={dark ? "bg-[#0a0a0a]" : "bg-white"}>
     {/* 글쓰기 진입 */}
@@ -2356,33 +2359,81 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
       const isOpen = !!expanded[p.id];
       const isAnon = !!p.isAnonymous;
       const HeaderTag = isAnon ? "div" : "button";
+      // 본인 글 판별 — 익명 여부 무관하게 user_id 로 판단. 서버 pending(temp-*) 은 메뉴 숨김.
+      const isMine = !!(user && p.user_id && p.user_id === user.id && typeof p.id === "string" && !p.id.startsWith("temp-"));
       return (
       <article key={p.id} className={cls("px-4 py-3 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <HeaderTag
-          {...(isAnon ? {} : { onClick: () => onUserClick({ author: p.author, avatar: p.avatar, userId: p.userId || p.user_id }) })}
-          className={cls("flex items-center gap-3 mb-2", isAnon ? "" : "active:opacity-80")}>
-          {isAnon ? (
-            <div className={cls("w-9 h-9 rounded-full flex items-center justify-center shrink-0", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
-              <CircleUser size={20} className={dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
+        <div className="flex items-start gap-3 mb-2">
+          <HeaderTag
+            {...(isAnon ? {} : { onClick: () => onUserClick({ author: p.author, avatar: p.avatar, userId: p.userId || p.user_id }) })}
+            className={cls("flex items-center gap-3 flex-1 min-w-0", isAnon ? "" : "active:opacity-80")}>
+            {isAnon ? (
+              <div className={cls("w-9 h-9 rounded-full flex items-center justify-center shrink-0", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
+                <CircleUser size={20} className={dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
+              </div>
+            ) : (
+              <Avatar id={p.avatar} size={12} className="w-9 h-9"/>
+            )}
+            <div className="text-left flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{p.author}</p>
+                {isAnon && (
+                  <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
+                )}
+                {isAnon && p.challengeId && p.dayNum && (
+                  <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
+                    바디키 Day {p.dayNum}
+                  </span>
+                )}
+                <p className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>· {formatRelativeTime(p.createdAt, p.time)}</p>
+              </div>
             </div>
-          ) : (
-            <Avatar id={p.avatar} size={12} className="w-9 h-9"/>
+          </HeaderTag>
+          {isMine && (
+            <div className="relative shrink-0">
+              <button onClick={() => setMenuOpenId(menuOpenId === p.id ? null : p.id)}
+                aria-label="옵션 메뉴"
+                className={cls("p-1 active:opacity-60", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                <MoreHorizontal size={18}/>
+              </button>
+              {menuOpenId === p.id && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)}/>
+                  <div className={cls("absolute right-0 top-8 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
+                    <button onClick={() => { setMenuOpenId(null); onEditPost && onEditPost(p); }}
+                      className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
+                      <PenLine size={14}/> 수정하기
+                    </button>
+                    <div className={cls("h-px", dark ? "bg-gray-700" : "bg-gray-100")}/>
+                    <button onClick={() => { setMenuOpenId(null); setConfirmDeleteId(p.id); }}
+                      className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
+                      <X size={14}/> 삭제하기
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
-          <div className="text-left flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{p.author}</p>
-              {isAnon && (
-                <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
-              )}
-              {isAnon && p.challengeId && p.dayNum && (
-                <span className={cls("text-[10px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
-                  바디키 Day {p.dayNum}
-                </span>
-              )}
-              <p className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>· {formatRelativeTime(p.createdAt, p.time)}</p>
+        </div>
+        {confirmDeleteId === p.id && (
+          <>
+            <div className="fixed inset-0 z-[60] bg-black/50 animate-fade-in" onClick={() => setConfirmDeleteId(null)}/>
+            <div className={cls("fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[61] w-[90%] max-w-sm rounded-2xl p-5 shadow-2xl animate-fade-in", dark ? "bg-gray-900" : "bg-white")}>
+              <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>이 게시물을 삭제할까요?</p>
+              <p className={cls("text-[13px] mt-1.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>삭제된 게시물은 복구할 수 없어요.</p>
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setConfirmDeleteId(null)}
+                  className={cls("flex-1 py-2.5 rounded-xl text-sm font-bold", dark ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700")}>
+                  취소
+                </button>
+                <button onClick={() => { const id = confirmDeleteId; setConfirmDeleteId(null); onDeletePost && onDeletePost(id); }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-rose-500 text-white active:opacity-80">
+                  삭제
+                </button>
+              </div>
             </div>
-          </div>
-        </HeaderTag>
+          </>
+        )}
         <p className={cls("text-[15px] leading-[1.4] whitespace-pre-wrap ml-12", dark ? "text-white" : "text-black")}>{p.content}</p>
         {p.image && (
           <div className="ml-12 mt-3">
@@ -4975,6 +5026,8 @@ function AppInner() {
   const [composeProduct, setComposeProduct] = useState(null);
   const [editingReview, setEditingReview] = useState(null);
   const [communityComposeOpen, setCommunityComposeOpen] = useState(false);
+  const [editingCommunityPost, setEditingCommunityPost] = useState(null);
+  const [deletingCommunityPostId, setDeletingCommunityPostId] = useState(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [armClearNotif, setArmClearNotif] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
@@ -5566,7 +5619,7 @@ function AppInner() {
     modalOpenRef.current = !!(
       location.pathname.startsWith("/review/") ||
       location.pathname.startsWith("/profile/") ||
-      search || compose || communityComposeOpen || authOpen || profileOpen || settingsOpen ||
+      search || compose || communityComposeOpen || editingCommunityPost || authOpen || profileOpen || settingsOpen ||
       adminOpen || onboardingOpen || selectedUser || selectedCatalogProduct ||
       challengeStartOpen || challengeMainOpen || notifOpen
     );
@@ -6347,6 +6400,83 @@ function AppInner() {
     setToast("게시됐어요");
   };
 
+  // 커뮤니티 글 삭제 — optimistic 제거 + 서버 동기화. 본인 글만 성공(RLS).
+  const deleteCommunityPost = async (id) => {
+    if (!user || deletingCommunityPostId === id) return false;
+    if (typeof id !== "string" || id.startsWith("temp-")) {
+      setToast("잠시 후 다시 시도해주세요");
+      return false;
+    }
+    setDeletingCommunityPostId(id);
+    try {
+      if (supabase) {
+        const { error } = await supabaseCommunity.delete(id);
+        if (error) { setToast("삭제 실패. 네트워크를 확인해주세요"); return false; }
+      }
+      setCommunity((prev) => prev.filter((p) => p.id !== id));
+      setCommunityComments((prev) => { const m = { ...prev }; delete m[id]; return m; });
+      setToast("게시물이 삭제됐어요");
+      return true;
+    } finally {
+      setDeletingCommunityPostId(null);
+    }
+  };
+
+  // 커뮤니티 글 수정 — content / product / image / is_anonymous 패치.
+  // 로컬 optimistic 반영 후 서버 update. 실패 시 이전 상태로 롤백.
+  const updateCommunityPost = async (id, { content, product, image, isAnonymous }) => {
+    if (!user) return false;
+    if (typeof id !== "string" || id.startsWith("temp-")) {
+      setToast("잠시 후 다시 시도해주세요");
+      return false;
+    }
+    const clean = sanitizeText(content, { maxLength: 1000 }).trim();
+    if (!clean) { setToast("내용을 입력해주세요"); return false; }
+    const isAnon = !!isAnonymous;
+    const prev = community.find((p) => p.id === id);
+    if (!prev) return false;
+
+    const nextProduct = product
+      ? { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl }
+      : null;
+
+    // optimistic — 로컬 카드 상태 업데이트
+    setCommunity((list) => list.map((p) => {
+      if (p.id !== id) return p;
+      const patched = {
+        ...p,
+        content: clean,
+        isAnonymous: isAnon,
+        author: isAnon ? "익명" : user.nickname,
+        avatar: isAnon ? "" : user.avatar,
+        userId: isAnon ? null : user.id,
+      };
+      if (nextProduct) patched.product = nextProduct;
+      else delete patched.product;
+      if (image) patched.image = image;
+      else delete patched.image;
+      return patched;
+    }));
+
+    if (supabase) {
+      const payload = {
+        content: clean,
+        is_anonymous: isAnon,
+        product: nextProduct,
+        image_url: image || null,
+      };
+      const { error } = await supabaseCommunity.update(id, payload);
+      if (error) {
+        // 롤백
+        setCommunity((list) => list.map((p) => p.id === id ? prev : p));
+        setToast("수정 실패. 네트워크를 확인해주세요");
+        return false;
+      }
+    }
+    setToast("게시물이 수정됐어요");
+    return true;
+  };
+
   // 커뮤니티 댓글 추가 — parentId 지정 시 답글, 깊이 2+ 이면 상위로 클램프
   // optimistic: 로컬 Date.now() id → 서버 성공 시 UUID 로 교체.
   const addCommunityComment = (postId, text, parentId = null, mentionTo = null) => {
@@ -6476,6 +6606,8 @@ function AppInner() {
       user={user}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
       onCompose={() => setCommunityComposeOpen(true)}
+      onEditPost={(p) => setEditingCommunityPost(p)}
+      onDeletePost={deleteCommunityPost}
       comments={communityComments}
       onAddComment={addCommunityComment}
       onDeleteComment={deleteCommunityComment}
@@ -6539,7 +6671,7 @@ function AppInner() {
   backHandlerRef.current = ({ canGoBack: sysCanGoBack } = {}) => {
     // 1. 작성 중 모달 (데이터 손실 위험 최우선)
     if (compose) { setCompose(false); setEditingReview(null); setComposeProduct(null); return; }
-    if (communityComposeOpen) { setCommunityComposeOpen(false); return; }
+    if (communityComposeOpen || editingCommunityPost) { setCommunityComposeOpen(false); setEditingCommunityPost(null); return; }
     // 2. 일반 전체화면 모달
     if (authOpen) { setAuthOpen(false); return; }
     if (settingsOpen) { setSettingsOpen(false); return; }
@@ -6860,7 +6992,21 @@ function AppInner() {
 
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
-      {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod, img, meta) => { addCommunityPost(text, prod, img, meta); setCommunityComposeOpen(false); }} dark={dark} user={user} challenge={challenge}/>}
+      {(communityComposeOpen || editingCommunityPost) && user && (
+        <CommunityComposeModal
+          onClose={() => { setCommunityComposeOpen(false); setEditingCommunityPost(null); }}
+          onPost={(text, prod, img, meta) => {
+            if (editingCommunityPost) {
+              updateCommunityPost(editingCommunityPost.id, { content: text, product: prod, image: img, isAnonymous: meta?.isAnonymous });
+            } else {
+              addCommunityPost(text, prod, img, meta);
+            }
+            setCommunityComposeOpen(false);
+            setEditingCommunityPost(null);
+          }}
+          dark={dark} user={user} challenge={challenge}
+          editing={editingCommunityPost}/>
+      )}
       <Suspense fallback={null}>{authOpen && <AuthScreen onClose={() => setAuthOpen(false)} onAuth={(u) => {
         setUser(u);
         setToast(`${u.nickname}님 환영해요`);
