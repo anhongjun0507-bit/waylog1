@@ -19,8 +19,9 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, 
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const catalog = useCatalog();
-  // DetailScreen 과 동일 패턴 — 닉네임 매칭. pending 로컬 리뷰(authorId 미설정)도 포용.
-  const isMine = !!(user && r.author && r.author === user.nickname && onEdit && onDelete);
+  // authorId 우선, 닉네임 폴백 — 사용자가 닉네임 변경해도 본인 글 판정 유지.
+  // pending 로컬 리뷰(authorId 미설정)는 닉네임으로 커버.
+  const isMine = !!(user && onEdit && onDelete && (r.authorId === user.id || r.author === user.nickname));
 
   const timestamp = formatRelativeTime(r.createdAt || (r.date ? new Date(r.date).getTime() : null), "방금");
   const hasImg = !!r.img;

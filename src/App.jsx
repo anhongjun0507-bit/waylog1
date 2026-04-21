@@ -2508,7 +2508,7 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
           const isExpanded = expandedReplies[c.id];
           const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
           const hiddenCount = replies.length - 1;
-          const isMine = user && c.author === user.nickname;
+          const isMine = !!(user && (c.authorId === user.id || c.author === user.nickname));
           const likedByMe = (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname);
           return (
             <div key={c.id}>
@@ -2952,7 +2952,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [zoomedImg, setZoomedImg] = useState(null); // { urls: string[], index: number } | null
   const [shareOpen, setShareOpen] = useState(false);
-  const isMine = user && r.author === user.nickname;
+  const isMine = !!(user && (r.authorId === user.id || r.author === user.nickname));
   const galleryRef = useRef(null);
 
   const handleGalleryScroll = () => {
