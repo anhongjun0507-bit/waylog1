@@ -13,6 +13,8 @@ try {
   const VER = 1
   const cur = +(localStorage.getItem('waylog:community-clean-ver') || 0)
   if (cur < VER) {
+    // ASI 방어용 leading semicolon — eslint 기본룰과 충돌하나 안전 패턴 유지.
+    // eslint-disable-next-line no-extra-semi
     ;(async () => {
       try {
         await window.storage?.delete?.('waylog:community')
