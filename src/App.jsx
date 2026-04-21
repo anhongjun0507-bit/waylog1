@@ -2230,7 +2230,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   };
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
         <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>{isEdit ? "커뮤니티 수정" : "커뮤니티 글쓰기"}</p>
