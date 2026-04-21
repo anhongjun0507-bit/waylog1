@@ -17,7 +17,7 @@
 
 ## 프로젝트 규칙 (절대 준수)
 - **`App.jsx`는 추가 분리 금지** — 명시적 분리 요청 전까지 현재 구조 유지 (새 화면/위젯은 `screens/` 또는 `components/`에 추가)
-- **브랜드 컬러**: 민트 `#00C9A7` (의도된 브랜드). 단, 현재 구현은 일부 자산이 `emerald-500 → cyan-600` 그라디언트 사용 — 자산별 색상 수정 시 확인 필요
+- **브랜드 컬러**: 블루 `#0071CE` (`brand-500`). 팔레트는 `tailwind.config.js` `colors.brand.*` 참조. chip 표준 조합: `bg-brand-50 text-brand-700` (라이트) / `bg-brand-900/40 text-brand-200` (다크). 다크모드 링크·포인트는 `brand-300 이상` 사용 (L≥0.376)
 - **카테고리 6종** (`src/constants.js` `CATEGORIES`):
   - 뉴트리션 (`food`), 웰니스 (`wellness`), 뷰티 (`beauty`), 퍼스널케어 (`kitchen`), 홈리빙 (`home`), 원포원 (`one4one`)
 - **언어**: 모든 UI 텍스트 한국어
@@ -61,7 +61,7 @@
 ## 환경/인프라 메모
 - **Supabase**: `reviews ↔ profiles` 직접 FK 없음 (PostgREST embed 우회 필요), Storage RLS 정책 적용됨, `avatars`/`review-media` 버킷 public
 - **Android**: Sandbox 빌드 불가 → GitHub Actions에서 빌드, keystore/Secret 6개 등록 완료
-- **Play Store**: 앱 아이콘 `resources/icon-background.svg` (`#10b981 → #0891b2` 그라디언트). 브랜드 민트(`#00C9A7`)와 불일치 있음 — 필요 시 정리
+- **Play Store**: 앱 아이콘 `resources/icon-background.svg` / `icon-only.svg` / `splash.svg` 모두 브랜드 블루(`#0071CE`)로 통일. PNG 아이콘은 별도 `scripts/generate-android-icons.mjs` 실행 시 재생성
 
 ## 현재 진행 중 TODO
 - **P0**: 테스트 데이터 제거, magic wand placeholder 교체

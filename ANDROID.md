@@ -153,8 +153,8 @@ npx capacitor-assets generate --android
 
 ### 5-3. 현재 브랜드 컬러
 ```
-primary:     #10b981 (emerald-500)
-background:  #ffffff  / 다크모드 #0b0f19
+primary:     #0071CE (brand-500, Blue)
+background:  #ffffff  / 다크모드 #000000
 ```
 
 ---

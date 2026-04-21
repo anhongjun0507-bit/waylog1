@@ -36,7 +36,6 @@ import {
   filterStalePending, filterStaleEdits,
 } from "./utils/reviewSync.js";
 // 디자인 시스템: W (Waylog Pinterest+IG+Shop), B (Bodyki Withings)
-import { W } from "./themes/index.js";
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
   ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
@@ -1275,7 +1274,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
         </div>
       </div>
       <div className="px-4 mt-1 mb-3 flex justify-between items-center">
-        <span className={cls("text-[13px] font-bold", W.text.muted(dark))}>{filtered.length}개의 포스트</span>
+        <span className={cls("text-[13px] font-bold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{filtered.length}개의 포스트</span>
         <div className="flex gap-1">
           {[{ k: "latest", label: "최신" }, { k: "likes", label: "인기" }].map((s) => (
             <button key={s.k} onClick={() => setSort(s.k)}
@@ -1427,11 +1426,11 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
       {hasMore && !loading && filtered.length > 0 && (
         <div ref={loadMoreRef} className="py-6 flex items-center justify-center">
           {loadingMore ? (
-            <span className={cls("inline-flex items-center gap-2 text-[13px] font-medium", W.text.muted(dark))}>
+            <span className={cls("inline-flex items-center gap-2 text-[13px] font-medium", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               <RefreshCw size={14} className="animate-spin"/> 더 불러오는 중...
             </span>
           ) : (
-            <span className={cls("text-[13px]", W.text.faint(dark))}>아래로 스크롤해서 더 보기</span>
+            <span className={cls("text-[13px]", dark ? "text-[#737373]" : "text-[#c7c7c7]")}>아래로 스크롤해서 더 보기</span>
           )}
         </div>
       )}
