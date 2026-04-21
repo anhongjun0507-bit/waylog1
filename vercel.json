@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/r/:id", "destination": "/" }
+    { "source": "/(.*)", "destination": "/" }
   ],
   "headers": [
     {

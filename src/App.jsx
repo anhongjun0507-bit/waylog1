@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef, useCallback, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext, Component, lazy, Suspense } from "react";
+import { Routes, Route, Navigate, NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   // App.jsx 에서 직접 JSX 렌더에 사용하는 아이콘만. 상수/컴포넌트용 아이콘은 해당 파일로 이동.
   Heart, Users, User, Bell, Search, ArrowLeft, Plus,
@@ -25,7 +26,7 @@ import {
   CHALLENGE_MISSIONS, EXERCISE_TYPES,
   AI_COACH_TONES, REPORT_REASONS,
 } from "./constants.js";
-import { useDebouncedValue, useStoredState, useNavStack, useExit, useTimeGradient } from "./hooks.js";
+import { useDebouncedValue, useStoredState, useExit, useTimeGradient } from "./hooks.js";
 import { cls, formatRelativeTime } from "./utils/ui.js";
 import { getReviewProductNames } from "./utils/products.js";
 import {
@@ -2999,7 +3000,8 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         {(() => {
           const authorNick = r.profiles?.nickname || r.author;
           const authorAvatar = r.profiles?.avatar_url || r.avatar || "";
-          const authorUserId = r.user_id || null;
+          // mapReviewRow 결과는 authorId, 직접 DB row 는 user_id — 둘 다 수용.
+          const authorUserId = r.authorId || r.user_id || null;
           const canFollowAuthor = !!authorUserId && !!user && !isMine;
           const isFollowingAuthor = canFollowAuthor && following && following.has(authorUserId);
           return (
@@ -4777,9 +4779,98 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
   );
 };
 
+// ---------- 리뷰 상세 라우트 ----------
+// AppInner 가 review list / supabase fetch / DetailScreen 렌더를 Context 로 주입.
+// 모듈 레벨 컴포넌트라 AppInner 리렌더 시에도 identity 가 안정 — DetailScreen 내부 로컬 state 보존.
+const DetailRouteContext = createContext(null);
+
+function DetailScreenRoute() {
+  const { id } = useParams();
+  const loc = useLocation();
+  const navigate = useNavigate();
+  const ctx = useContext(DetailRouteContext);
+  const [review, setReview] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const pre = loc.state?.review;
+    if (pre && String(pre.id) === String(id)) { setReview(pre); return; }
+    const local = ctx?.findLocal?.(id);
+    if (local) { setReview(local); return; }
+    setReview(null); // 로딩 상태로 리셋
+    if (!ctx?.fetchById) {
+      ctx?.setToast?.("글을 찾을 수 없어요");
+      navigate("/", { replace: true });
+      return;
+    }
+    (async () => {
+      const found = await ctx.fetchById(id);
+      if (cancelled) return;
+      if (found) { setReview(found); return; }
+      ctx.setToast?.("글을 찾을 수 없어요");
+      navigate("/", { replace: true });
+    })();
+    return () => { cancelled = true; };
+    // id 변경 시에만 재해결. ctx 는 ref-안정 클로저(렌더함수는 매 렌더 새로 오지만 fetch/find 는 동등 로직)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  if (!review || !ctx) return null;
+  return ctx.render(review, () => navigate(-1));
+}
+
+// 레거시 공유 링크 `/r/:id` → `/review/:id` 로 이동 (기존에 공유된 링크 호환).
+function ReviewLegacyRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/review/${id}`} replace/>;
+}
+
+// ---------- 프로필 라우트 ----------
+// /profile/:userId — 다른 사용자 프로필. 본인이면 /profile/me 로 리다이렉트.
+// location.state.profile 에 preloaded {userId, author, avatar} 가 있으면 즉시 렌더.
+// 직접 URL 접속 시엔 supabase profiles 에서 fetch.
+const ProfileRouteContext = createContext(null);
+
+function UserProfileRoute() {
+  const { userId } = useParams();
+  const loc = useLocation();
+  const navigate = useNavigate();
+  const ctx = useContext(ProfileRouteContext);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (ctx?.currentUserId && ctx.currentUserId === userId) {
+      navigate("/profile/me", { replace: true });
+      return;
+    }
+    const pre = loc.state?.profile;
+    if (pre && String(pre.userId) === String(userId)) { setProfile(pre); return; }
+    setProfile(null);
+    if (!ctx?.fetchProfile) {
+      ctx?.setToast?.("프로필을 찾을 수 없어요");
+      navigate("/", { replace: true });
+      return;
+    }
+    (async () => {
+      const found = await ctx.fetchProfile(userId);
+      if (cancelled) return;
+      if (found) { setProfile(found); return; }
+      ctx.setToast?.("프로필을 찾을 수 없어요");
+      navigate("/", { replace: true });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  if (!profile || !ctx) return null;
+  return ctx.renderOther(profile, () => navigate(-1));
+}
+
 // ---------- APP ----------
 function AppInner() {
-  const [tab, setTab] = useState("home");
+  const navigate = useNavigate();
+  const location = useLocation();
   // 게시 직후 하이라이트할 리뷰 ID — 1.8초 후 자동 해제
   const [highlightId, setHighlightId] = useState(null);
   // toast: null | { msg: string, type: "info"|"success"|"error", action?: { label, onClick } }
@@ -4805,7 +4896,7 @@ function AppInner() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [tab]);
+  }, [location.pathname]);
 
   // 레거시 익명 챌린지 커뮤니티 로컬 캐시 제거 (서버 이관 후 무의미).
   // 1회만 시도 — 실패해도 무시.
@@ -4867,9 +4958,8 @@ function AppInner() {
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onEnd);
     };
-  }, [tab, setToast]);
+  }, [location.pathname, setToast]);
 
-  const nav = useNavStack();
   const [search, setSearch] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [compose, setCompose] = useState(false);
@@ -5399,7 +5489,6 @@ function AppInner() {
   const following = useMemo(() => new Set(followingArr), [followingArr]);
   const [blockedArr, setBlockedArr] = useStoredState("waylog:blocked", []);
   const blocked = useMemo(() => new Set(blockedArr), [blockedArr]);
-  const [profileUser, setProfileUser] = useState(null);
   const tg = useTimeGradient(dark);
 
   // 로그인 시 Supabase 에서 follows 동기화 (single source of truth).
@@ -5462,9 +5551,16 @@ function AppInner() {
     setToast(wasFollowing ? `${label}님 팔로우를 취소했어요` : `${label}님을 팔로우했어요`);
   };
 
-  // 모달 상태 추적 (풀 투 리프레시 비활성화용)
+  // 모달 상태 추적 (풀 투 리프레시 비활성화용).
+  // 리뷰 상세 라우트(/review/*) 도 오버레이 취급해 pull-to-refresh 차단.
   useEffect(() => {
-    modalOpenRef.current = !!(nav.stack.length || search || compose || authOpen || profileOpen || settingsOpen || onboardingOpen || selectedUser || profileUser || challengeStartOpen || challengeMainOpen);
+    modalOpenRef.current = !!(
+      location.pathname.startsWith("/review/") ||
+      location.pathname.startsWith("/profile/") ||
+      search || compose || communityComposeOpen || authOpen || profileOpen || settingsOpen ||
+      adminOpen || onboardingOpen || selectedUser || selectedCatalogProduct ||
+      challengeStartOpen || challengeMainOpen || notifOpen
+    );
   });
 
   const requireAuth = (fn) => {
@@ -5694,7 +5790,9 @@ function AppInner() {
   };
 
   const openDetail = (r) => {
-    nav.push({ type: "detail", payload: r });
+    if (!r?.id) return;
+    // 라우터로 이동 — state 로 review 객체 전달해 DetailScreenRoute 에서 재조회 없이 즉시 렌더.
+    navigate(`/review/${r.id}`, { state: { review: r } });
     analyticsEvents.reviewOpened(r.id, r.category);
     // 서버 댓글 fetch → 로컬(미동기화)과 병합.
     // comment_likes 는 조인 배열이므로 user_id 배열로 변환해 likedBy 로 사용.
@@ -5736,47 +5834,24 @@ function AppInner() {
       });
     }
   };
-  const back = () => nav.pop();
-
-  // 공유 링크(/r/:id) 진입 시 해당 리뷰를 자동으로 오픈.
-  // reviews 배열(최근 30개)에 없으면 직접 Supabase 에서 fetch.
-  const deepLinkHandledRef = useRef(false);
-  useEffect(() => {
-    if (deepLinkHandledRef.current) return;
-    if (typeof window === "undefined") return;
-    const match = window.location.pathname.match(/^\/r\/([^/?#]+)$/);
-    if (!match) { deepLinkHandledRef.current = true; return; }
-    if (reviewsLoading) return;
-    const id = decodeURIComponent(match[1]);
-    deepLinkHandledRef.current = true;
-    const resetUrl = () => { try { window.history.replaceState(null, "", "/"); } catch {} };
-
-    const found = reviews.find((r) => String(r.id) === id);
-    if (found) { openDetail(found); resetUrl(); return; }
-
-    (async () => {
-      if (!supabase) { setToast("글을 찾을 수 없어요"); resetUrl(); return; }
-      try {
-        const { data, error } = await supabase.from("reviews")
-          .select("id, user_id, title, content, category, tags, product_name, media, likes_count, views_count, created_at")
-          .eq("id", id).maybeSingle();
-        if (error || !data) { setToast("글을 찾을 수 없어요"); return; }
-        let profile = null;
-        if (data.user_id) {
-          const { data: p } = await supabase.from("profiles")
-            .select("id, nickname, avatar_url").eq("id", data.user_id).maybeSingle();
-          profile = p || null;
-        }
-        openDetail(mapReviewRow({ ...data, profiles: profile }));
-      } catch {
-        setToast("글을 찾을 수 없어요");
-      } finally {
-        resetUrl();
+  // 리뷰 상세 라우트가 id 로 리뷰를 해결할 때 사용하는 fetcher.
+  // 로컬 reviews 배열에 없을 때만 supabase 직접 조회 → mapReviewRow 매핑.
+  const fetchReviewById = async (id) => {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.from("reviews")
+        .select("id, user_id, title, content, category, tags, product_name, media, likes_count, views_count, created_at")
+        .eq("id", id).maybeSingle();
+      if (error || !data) return null;
+      let profile = null;
+      if (data.user_id) {
+        const { data: p } = await supabase.from("profiles")
+          .select("id, nickname, avatar_url").eq("id", data.user_id).maybeSingle();
+        profile = p || null;
       }
-    })();
-    // openDetail / mapReviewRow / setToast 는 stable 하지 않지만 ref 로 1회 실행 보장
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewsLoading, reviews]);
+      return mapReviewRow({ ...data, profiles: profile });
+    } catch { return null; }
+  };
 
   const addRecent = (term) => {
     setRecents((prev) => [term, ...prev.filter((t) => t !== term)].slice(0, 6));
@@ -5951,7 +6026,7 @@ function AppInner() {
     setUserReviews((prev) => [localR, ...prev]);
 
     setTimeout(() => {
-      setTab("feed");
+      navigate("/feed");
       setToast("웨이로그가 등록됐어요");
       setHighlightId(localR.id);
       setTimeout(() => {
@@ -6362,38 +6437,25 @@ function AppInner() {
     }
   };
 
-  const screens = {
-    home: <HomeScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} taste={taste} moods={moods} user={user} tg={tg} onPrimary={() => requireAuth(() => setCompose(true))}
+  // 각 라우트 엔트리 — Routes 블록에서 element 로 사용.
+  // explore/reels/profile 등은 (d) 단계에서 라우트 등록, 현재는 미노출.
+  const homeEl = (
+    <HomeScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} taste={taste} moods={moods} user={user} tg={tg} onPrimary={() => requireAuth(() => setCompose(true))}
       challenge={challenge} dailyLogs={challengeDailyLogs}
       onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
       onChallengeOpen={() => setChallengeMainOpen(true)}
       onChallengeResult={() => setChallengeMainOpen(true)}
       onProductClick={setSelectedCatalogProduct}
-      loading={reviewsLoading}/>,
-    // Explore — IG 검색/탐색: 리뷰+제품 통합 마소너리 그리드 + 검색
-    explore: <ExploreScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark}
-      onProductClick={setSelectedCatalogProduct}
-      onSearchOpen={() => setSearch(true)}/>,
-    // Reels = 바디키 챌린지 — 전체 화면 세로 스크롤 느낌
-    reels: <ReelsScreen reviews={reviews} onOpen={openDetail} dark={dark} user={user}
-      challenge={challenge} dailyLogs={challengeDailyLogs}
-      onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
-      onChallengeOpen={() => setChallengeMainOpen(true)}/>,
-    // 내 프로필 — posts grid + saved + tagged 탭
-    profile: <ProfileSelfScreen user={user} reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
-      onOpen={openDetail} onProductClick={setSelectedCatalogProduct}
-      challenge={challenge} dailyLogs={challengeDailyLogs}
-      onChallengeOpen={() => setChallengeMainOpen(true)}
-      onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
-      onEditProfile={() => setProfileOpen(true)}
-      onOpenSettings={() => setSettingsOpen(true)}
-      onAuthOpen={() => setAuthOpen(true)}
-      following={following} followingArr={followingArr}
-      community={community}/>,
-    // 기존 feed/fav/comm 는 접근 경로만 남김 (deep link / back-compat)
-    feed: <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} highlightId={highlightId} />,
-    fav: <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => setTab("home")} onProductClick={setSelectedCatalogProduct} loading={reviewsLoading}/>,
-    comm: <CommunityScreen dark={dark}
+      loading={reviewsLoading}/>
+  );
+  const feedEl = (
+    <FeedScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onCompose={() => setCompose(true)} following={following} user={user} loading={reviewsLoading} onLoadMore={loadMoreReviews} hasMore={reviewsHasMore} loadingMore={reviewsLoadingMore} highlightId={highlightId} />
+  );
+  const favEl = (
+    <FavScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} moods={moods} setMoods={setMoodsWithBonus} onBrowse={() => navigate("/")} onProductClick={setSelectedCatalogProduct} loading={reviewsLoading}/>
+  );
+  const commEl = (
+    <CommunityScreen dark={dark}
       posts={community.map((p) => ({
         ...p,
         comments: (communityComments[p.id] || []).length,
@@ -6408,25 +6470,49 @@ function AppInner() {
       onDeleteComment={deleteCommunityComment}
       onToggleCommentLike={toggleCommunityCommentLike}
       onShare={async (p) => {
-      const text = `${p.author}: ${p.content}\n\n— 웨이로그에서 공유`;
-      try {
-        if (navigator.share) {
-          await navigator.share({ title: "웨이로그", text });
-          setToast("공유했어요");
-        } else if (navigator.clipboard) {
-          await navigator.clipboard.writeText(text);
-          setToast("클립보드에 복사됐어요");
-        }
-      } catch {}
-    }}/>,
-  };
+        const text = `${p.author}: ${p.content}\n\n— 웨이로그에서 공유`;
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: "웨이로그", text });
+            setToast("공유했어요");
+          } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+            setToast("클립보드에 복사됐어요");
+          }
+        } catch {}
+      }}/>
+  );
+  const profileSelfEl = (
+    <ProfileSelfScreen user={user} reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
+      onOpen={openDetail} onProductClick={setSelectedCatalogProduct}
+      challenge={challenge} dailyLogs={challengeDailyLogs}
+      onChallengeOpen={() => setChallengeMainOpen(true)}
+      onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
+      onEditProfile={() => setProfileOpen(true)}
+      onOpenSettings={() => setSettingsOpen(true)}
+      onAuthOpen={() => setAuthOpen(true)}
+      following={following} followingArr={followingArr}
+      community={community}/>
+  );
+  // dead routes — 하단네비 미노출, 직접 URL 입력으로만 접근.
+  const exploreEl = (
+    <ExploreScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark}
+      onProductClick={setSelectedCatalogProduct}
+      onSearchOpen={() => setSearch(true)}/>
+  );
+  const reelsEl = (
+    <ReelsScreen reviews={reviews} onOpen={openDetail} dark={dark} user={user}
+      challenge={challenge} dailyLogs={challengeDailyLogs}
+      onChallengeStart={() => requireAuth(() => setChallengeStartOpen(true))}
+      onChallengeOpen={() => setChallengeMainOpen(true)}/>
+  );
 
   // 앱 전역 Context — 화면들이 useAppContext 로 구독.
   // setter 들은 안정적이므로 deps 에서 제외 (user/dark 가 실제 변동 요인).
   // requireAuth 는 user 변경 시 재계산 필요.
   const appCtx = useMemo(() => ({
     user, dark, supabase,
-    setToast, setAuthOpen, setTab,
+    setToast, setAuthOpen,
     requireAuth: (fn) => {
       if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
       fn();
@@ -6434,8 +6520,112 @@ function AppInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [user, dark]);
 
+  // ---------- Android 뒤로가기 ----------
+  // 모달 우선순위 cascade: compose → communityCompose → auth/settings/...
+  // → 미니시트·상세모달 → navigate(-1) → root 에서 한 번 더 누르면 App.exitApp.
+  const backHandlerRef = useRef(null);
+  const exitArmedRef = useRef(false);
+  backHandlerRef.current = ({ canGoBack: sysCanGoBack } = {}) => {
+    // 1. 작성 중 모달 (데이터 손실 위험 최우선)
+    if (compose) { setCompose(false); setEditingReview(null); setComposeProduct(null); return; }
+    if (communityComposeOpen) { setCommunityComposeOpen(false); return; }
+    // 2. 일반 전체화면 모달
+    if (authOpen) { setAuthOpen(false); return; }
+    if (settingsOpen) { setSettingsOpen(false); return; }
+    if (profileOpen) { setProfileOpen(false); return; }
+    if (adminOpen) { setAdminOpen(false); return; }
+    if (onboardingOpen) { setOnboardingOpen(false); return; }
+    if (challengeStartOpen) { setChallengeStartOpen(false); return; }
+    if (challengeMainOpen) { setChallengeMainOpen(false); return; }
+    if (search) { setSearch(false); return; }
+    // 3. 시트·미니모달
+    if (notifOpen) { setNotifOpen(false); return; }
+    if (selectedUser) { setSelectedUser(null); return; }
+    if (selectedCatalogProduct) { setSelectedCatalogProduct(null); return; }
+    // 4. 히스토리 뒤로가기
+    if (sysCanGoBack || location.pathname !== "/") {
+      navigate(-1);
+      return;
+    }
+    // 5. root — 더블 탭으로 종료
+    if (exitArmedRef.current) {
+      exitArmedRef.current = false;
+      import("./utils/platform.js").then(({ exitApp }) => exitApp());
+      return;
+    }
+    exitArmedRef.current = true;
+    setToast("한 번 더 누르면 종료돼요");
+    setTimeout(() => { exitArmedRef.current = false; }, 2000);
+  };
+
+  useEffect(() => {
+    let sub;
+    import("./utils/platform.js").then(({ initBackButtonHandler }) => {
+      initBackButtonHandler((event) => backHandlerRef.current?.(event)).then((s) => { sub = s; });
+    });
+    return () => { sub?.remove?.(); };
+  }, []);
+
+  // DetailScreenRoute 용 context — 리뷰 해결/렌더 로직을 Provider 로 주입.
+  // Memoize 불가(거의 모든 AppInner state 에 의존) — 대신 모듈 레벨 DetailScreenRoute 가 id 변경시에만 재해결하도록 설계.
+  const detailCtx = {
+    findLocal: (id) => reviews.find((rv) => String(rv.id) === String(id)) || null,
+    fetchById: fetchReviewById,
+    setToast,
+    render: (r, onBack) => (
+      <DetailScreen r={r} onBack={onBack} onOpen={openDetail}
+        reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
+        comments={(commentsMap[r.id] || []).filter((c) => !blocked.has(c.author))}
+        addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike}
+        user={user}
+        deleting={deletingReviewId === r.id}
+        onEdit={(rev) => { setEditingReview(rev); onBack(); setTimeout(() => setCompose(true), 280); }}
+        onDelete={async (rev) => { const ok = await deleteReview(rev.id); if (ok) onBack(); }}
+        onReport={(targetType = "review", targetId = r.id, reason = "inappropriate") => {
+          if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
+          supabaseReports.create({ reporterId: user.id, targetType, targetId, reason })
+            .then(({ error }) => setToast(error ? "신고 접수 실패. 잠시 후 다시 시도해주세요" : "신고가 접수됐어요. 검토 후 조치할게요"))
+            .catch(() => setToast("신고 접수 실패"));
+        }}
+        onHashtagClick={(tag) => { onBack(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
+        onProductClick={setSelectedCatalogProduct}
+        onUserClick={openUser}
+        following={following}
+        onToggleFollow={toggleFollow}/>
+    ),
+  };
+
+  // UserProfileRoute 용 context — 프로필 해결/렌더 로직을 Provider 로 주입.
+  const profileCtx = {
+    currentUserId: user?.id || null,
+    fetchProfile: async (uid) => {
+      if (!supabase || !uid) return null;
+      try {
+        const { data, error } = await supabase.from("profiles")
+          .select("id, nickname, avatar_url").eq("id", uid).maybeSingle();
+        if (error || !data) return null;
+        return {
+          userId: data.id,
+          author: sanitizeInline(data.nickname, { maxLength: 60 }) || "익명",
+          avatar: sanitizeImageUrl(data.avatar_url) || "",
+        };
+      } catch { return null; }
+    },
+    setToast,
+    renderOther: (prof, onBack) => (
+      <UserProfileScreen author={prof.author} avatar={prof.avatar} userId={prof.userId}
+        reviews={reviews} currentUser={user}
+        isFollowing={!!prof.userId && following.has(prof.userId)}
+        following={following}
+        onToggleFollow={(id, name) => toggleFollow(id || prof.userId, name || prof.author)}
+        onClose={onBack} onOpen={openDetail} onUserClick={openUser} dark={dark}/>
+    ),
+  };
+
   return (
     <AppProvider value={appCtx}>
+    <DetailRouteContext.Provider value={detailCtx}>
+    <ProfileRouteContext.Provider value={profileCtx}>
     <div className={cls("min-h-screen max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto pb-20 font-sans relative", dark ? "bg-gray-900" : "bg-gray-50")}
       style={{
         fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif",
@@ -6458,7 +6648,7 @@ function AppInner() {
         style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}>
         <div className="px-4 h-[50px] flex items-center justify-between">
           {/* 로고 — 모든 탭에서 Waylog 로고 일관 노출 */}
-          <button onClick={() => { setTab("home"); nav.reset(); }} className="active:opacity-60">
+          <button onClick={() => navigate("/")} className="active:opacity-60">
             <h1 className="text-[22px] font-black leading-none tracking-tight text-black dark:text-white">
               Waylog<span className="text-brand-500">·</span>
             </h1>
@@ -6539,8 +6729,8 @@ function AppInner() {
                 </div>
               )}
             </div>
-            {/* 프로필 — 설정/내 웨이로그 진입 */}
-            <button onClick={() => user ? setProfileOpen(true) : setAuthOpen(true)}
+            {/* 프로필 — 내 프로필 페이지(/profile/me) 진입, 비로그인 시 AuthScreen */}
+            <button onClick={() => user ? navigate("/profile/me") : setAuthOpen(true)}
               aria-label="프로필"
               className="p-0.5 active:scale-90 transition">
               <div className={cls("w-7 h-7 rounded-full overflow-hidden", !user && (dark ? "bg-[#262626]" : "bg-[#f2f2f2]"))}>
@@ -6566,23 +6756,42 @@ function AppInner() {
         </div>
       </header>
 
-      {/* 탭 전환 시 살짝 fade-in — tab key 로 remount 트리거하지 않도록 wrapper 만 애니 */}
-      <div key={tab} className="animate-fade-in">{screens[tab]}</div>
+      {/* 라우트 전환 시 살짝 fade-in — pathname 변경 시 wrapper 재마운트 */}
+      <div key={location.pathname} className="animate-fade-in">
+        <Routes>
+          <Route path="/" element={homeEl}/>
+          <Route path="/feed" element={feedEl}/>
+          <Route path="/fav" element={favEl}/>
+          <Route path="/community" element={commEl}/>
+          <Route path="/review/:id" element={<DetailScreenRoute/>}/>
+          <Route path="/r/:id" element={<ReviewLegacyRedirect/>}/>
+          <Route path="/profile/me" element={profileSelfEl}/>
+          <Route path="/profile/:userId" element={<UserProfileRoute/>}/>
+          <Route path="/explore" element={exploreEl}/>
+          <Route path="/reels" element={reelsEl}/>
+          <Route path="*" element={<Navigate to="/" replace/>}/>
+        </Routes>
+      </div>
 
       {/* FAB — 새 웨이로그 / 커뮤니티 글쓰기 */}
-      <div className="fixed inset-x-0 bottom-0 pointer-events-none z-20 flex justify-center">
-        <div className="w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl relative h-0">
-          <button onClick={() => {
-            if (tab === "comm") requireAuth(() => setCommunityComposeOpen(true));
-            else requireAuth(() => setCompose(true));
-          }}
-            aria-label={tab === "comm" ? "커뮤니티 글쓰기" : "새 웨이로그 작성"}
-            className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-14 h-14 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition",
-              tab === "comm" ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-brand-500")}>
-            <Plus size={26} className="text-white" strokeWidth={2.5}/>
-          </button>
-        </div>
-      </div>
+      {(() => {
+        const isComm = location.pathname === "/community";
+        return (
+          <div className="fixed inset-x-0 bottom-0 pointer-events-none z-20 flex justify-center">
+            <div className="w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl relative h-0">
+              <button onClick={() => {
+                if (isComm) requireAuth(() => setCommunityComposeOpen(true));
+                else requireAuth(() => setCompose(true));
+              }}
+                aria-label={isComm ? "커뮤니티 글쓰기" : "새 웨이로그 작성"}
+                className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-14 h-14 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition",
+                  isComm ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-brand-500")}>
+                <Plus size={26} className="text-white" strokeWidth={2.5}/>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Offline banner */}
       {!isOnline && (
@@ -6617,26 +6826,6 @@ function AppInner() {
         </div>
       )}
 
-      {/* Detail stack */}
-      {nav.stack.map((s, i) => s.type === "detail" && (
-        <DetailScreen key={`${s.payload.id}-${i}`} r={s.payload} onBack={back} onOpen={openDetail}
-          reviews={reviews} favs={favs} toggleFav={toggleFav} dark={dark}
-          comments={(commentsMap[s.payload.id] || []).filter((c) => !blocked.has(c.author))} addComment={addComment} deleteComment={deleteComment} toggleCommentLike={toggleCommentLike} user={user}
-          deleting={deletingReviewId === s.payload.id}
-          onEdit={(r) => { setEditingReview(r); back(); setTimeout(() => setCompose(true), 280); }}
-          onDelete={async (r) => { const ok = await deleteReview(r.id); if (ok) back(); }}
-          onReport={(targetType = "review", targetId = s.payload.id, reason = "inappropriate") => {
-            if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
-            supabaseReports.create({ reporterId: user.id, targetType, targetId, reason })
-              .then(({ error }) => setToast(error ? "신고 접수 실패. 잠시 후 다시 시도해주세요" : "신고가 접수됐어요. 검토 후 조치할게요"))
-              .catch(() => setToast("신고 접수 실패"));
-          }}
-          onHashtagClick={(tag) => { back(); setTimeout(() => { setSearchQ(tag); setSearch(true); }, 280); }}
-          onProductClick={setSelectedCatalogProduct}
-          onUserClick={openUser}
-          following={following}
-          onToggleFollow={toggleFollow}/>
-      ))}
       {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
       {communityComposeOpen && user && <CommunityComposeModal onClose={() => setCommunityComposeOpen(false)} onPost={(text, prod, img, meta) => { addCommunityPost(text, prod, img, meta); setCommunityComposeOpen(false); }} dark={dark} user={user} challenge={challenge}/>}
@@ -6691,20 +6880,17 @@ function AppInner() {
       {selectedUser && <UserMiniSheet author={selectedUser.author} avatar={selectedUser.avatar}
         userId={selectedUser.userId}
         onClose={() => setSelectedUser(null)} onOpen={openDetail}
-        onOpenProfile={(u) => setProfileUser(u)}
+        onOpenProfile={(u) => {
+          setSelectedUser(null);
+          if (!u?.userId) { setToast("프로필을 볼 수 없어요"); return; }
+          navigate(`/profile/${u.userId}`, { state: { profile: { userId: u.userId, author: u.author, avatar: u.avatar } } });
+        }}
         isFollowing={!!selectedUser.userId && following.has(selectedUser.userId)}
         onToggleFollow={() => toggleFollow(selectedUser.userId, selectedUser.author)}
         isBlocked={blocked.has(selectedUser.author)}
         onToggleBlock={toggleBlock}
         currentUser={user}
         dark={dark}/>}
-      {profileUser && <UserProfileScreen author={profileUser.author} avatar={profileUser.avatar}
-        userId={profileUser.userId}
-        reviews={reviews} currentUser={user}
-        isFollowing={!!profileUser.userId && following.has(profileUser.userId)}
-        following={following}
-        onToggleFollow={(id, name) => toggleFollow(id || profileUser.userId, name || profileUser.author)}
-        onClose={() => setProfileUser(null)} onOpen={openDetail} onUserClick={openUser} dark={dark}/>}
 
       <Suspense fallback={null}>{challengeStartOpen && <ChallengeStartScreen
         onClose={() => setChallengeStartOpen(false)}
@@ -6751,28 +6937,31 @@ function AppInner() {
         dark ? "bg-ink-900/95 border-ink-800" : "bg-white/95 border-ink-200")}
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)", paddingTop: "0.5rem" }}>
         {[
-          { k: "home", icon: Sparkles, label: "추천" },
-          { k: "feed", icon: Grid3x3, label: "오늘뭐썼지" },
-          { k: "fav", icon: Heart, label: "마이웨이템" },
-          { k: "comm", icon: Users, label: "커뮤니티" },
-        ].map(({ k, icon: Icon, label }) => {
-          const active = tab === k;
-          return (
-            <button key={k} onClick={() => { setTab(k); nav.reset(); }}
-              aria-label={label} aria-current={active ? "page" : undefined}
-              className="min-h-tap flex flex-col items-center justify-center gap-1 active:scale-95 transition relative">
-              <Icon size={22} strokeWidth={active ? 2.2 : 1.6}
-                className={cls("transition-colors duration-200",
-                  active ? "text-brand-700 dark:text-brand-200" : dark ? "text-ink-400" : "text-ink-500")}/>
-              <span className={cls("text-[11px] tracking-tight transition-colors duration-200",
-                active ? "font-semibold text-brand-700 dark:text-brand-200" : dark ? "font-medium text-ink-400" : "font-medium text-ink-500")}>
-                {label}
-              </span>
-            </button>
-          );
-        })}
+          { to: "/", icon: Sparkles, label: "추천", end: true },
+          { to: "/feed", icon: Grid3x3, label: "오늘뭐썼지" },
+          { to: "/fav", icon: Heart, label: "마이웨이템" },
+          { to: "/community", icon: Users, label: "커뮤니티" },
+        ].map(({ to, icon: Icon, label, end }) => (
+          <NavLink key={to} to={to} end={end}
+            aria-label={label}
+            className="min-h-tap flex flex-col items-center justify-center gap-1 active:scale-95 transition relative">
+            {({ isActive }) => (
+              <>
+                <Icon size={22} strokeWidth={isActive ? 2.2 : 1.6}
+                  className={cls("transition-colors duration-200",
+                    isActive ? "text-brand-700 dark:text-brand-200" : dark ? "text-ink-400" : "text-ink-500")}/>
+                <span className={cls("text-[11px] tracking-tight transition-colors duration-200",
+                  isActive ? "font-semibold text-brand-700 dark:text-brand-200" : dark ? "font-medium text-ink-400" : "font-medium text-ink-500")}>
+                  {label}
+                </span>
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
     </div>
+    </ProfileRouteContext.Provider>
+    </DetailRouteContext.Provider>
     </AppProvider>
   );
 }
@@ -6788,7 +6977,7 @@ function SharecardPreview() {
 
   const ctx = useMemo(() => ({
     user: null, dark, supabase: null,
-    setToast, setAuthOpen: () => {}, setTab: () => {},
+    setToast, setAuthOpen: () => {},
     requireAuth: (fn) => fn(),
   }), [dark]);
 

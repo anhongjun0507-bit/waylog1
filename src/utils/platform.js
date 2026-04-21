@@ -124,21 +124,30 @@ export const initDeepLinkHandler = async () => {
 };
 
 // ---------- Back Button (Android 물리 뒤로가기) ----------
-// 기본 동작은 앱 종료인데, 모달 열려있으면 모달 먼저 닫는 게 UX.
-// 호출측에서 canGoBack() 과 close() 를 제공.
+// Capacitor 의 backButton 이벤트를 호출측 handler 로 위임.
+// handler 는 { canGoBack: boolean } 을 받고, 앱 상태에 맞춰 모달/라우트/종료를 결정.
+// 반환: 해제용 subscription 객체 (remove 메서드), 또는 null.
 
-export const initBackButtonHandler = async ({ canGoBack, goBack } = {}) => {
-  if (!isNative() || getPlatform() !== "android") return;
+export const initBackButtonHandler = async (handler) => {
+  if (!isNative() || getPlatform() !== "android") return null;
+  if (typeof handler !== "function") return null;
   try {
     const { App } = await import("@capacitor/app");
-    App.addListener("backButton", ({ canGoBack: sysCanGoBack }) => {
-      if (canGoBack && canGoBack()) {
-        goBack && goBack();
-      } else if (!sysCanGoBack) {
-        App.exitApp();
-      } else {
-        window.history.back();
-      }
+    return await App.addListener("backButton", (event) => {
+      try { handler(event || {}); }
+      catch (e) { console.warn("backButton handler 오류:", e); }
     });
+  } catch (e) {
+    console.warn("backButton 등록 실패:", e);
+    return null;
+  }
+};
+
+// Capacitor App.exitApp — 명시적으로 앱 종료 (호출측에서 조건 판단 후 사용).
+export const exitApp = async () => {
+  if (!isNative()) return;
+  try {
+    const { App } = await import("@capacitor/app");
+    await App.exitApp();
   } catch {}
 };

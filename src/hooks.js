@@ -46,15 +46,6 @@ export const useStoredState = (key, initial) => {
   return [val, update, loaded];
 };
 
-// 모달/상세 네비게이션 스택
-export const useNavStack = () => {
-  const [stack, setStack] = useState([]);
-  const push = (s) => setStack((prev) => [...prev, s]);
-  const pop = () => setStack((prev) => prev.slice(0, -1));
-  const reset = () => setStack([]);
-  return { stack, push, pop, reset, top: stack[stack.length - 1] };
-};
-
 // slide-down 종료 애니메이션 완료 후 실제 unmount
 export const useExit = (onDone) => {
   const [exiting, setExiting] = useState(false);
