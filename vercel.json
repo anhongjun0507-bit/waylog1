@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/r/:id", "destination": "/" }
+  ],
   "headers": [
     {
       "source": "/sw.js",

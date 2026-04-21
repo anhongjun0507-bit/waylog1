@@ -5722,6 +5722,46 @@ function AppInner() {
   };
   const back = () => nav.pop();
 
+  // 공유 링크(/r/:id) 진입 시 해당 리뷰를 자동으로 오픈.
+  // reviews 배열(최근 30개)에 없으면 직접 Supabase 에서 fetch.
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return;
+    if (typeof window === "undefined") return;
+    const match = window.location.pathname.match(/^\/r\/([^/?#]+)$/);
+    if (!match) { deepLinkHandledRef.current = true; return; }
+    if (reviewsLoading) return;
+    const id = decodeURIComponent(match[1]);
+    deepLinkHandledRef.current = true;
+    const resetUrl = () => { try { window.history.replaceState(null, "", "/"); } catch {} };
+
+    const found = reviews.find((r) => String(r.id) === id);
+    if (found) { openDetail(found); resetUrl(); return; }
+
+    (async () => {
+      if (!supabase) { setToast("글을 찾을 수 없어요"); resetUrl(); return; }
+      try {
+        const { data, error } = await supabase.from("reviews")
+          .select("id, user_id, title, content, category, tags, product_name, media, likes_count, views_count, created_at")
+          .eq("id", id).maybeSingle();
+        if (error || !data) { setToast("글을 찾을 수 없어요"); return; }
+        let profile = null;
+        if (data.user_id) {
+          const { data: p } = await supabase.from("profiles")
+            .select("id, nickname, avatar_url").eq("id", data.user_id).maybeSingle();
+          profile = p || null;
+        }
+        openDetail(mapReviewRow({ ...data, profiles: profile }));
+      } catch {
+        setToast("글을 찾을 수 없어요");
+      } finally {
+        resetUrl();
+      }
+    })();
+    // openDetail / mapReviewRow / setToast 는 stable 하지 않지만 ref 로 1회 실행 보장
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewsLoading, reviews]);
+
   const addRecent = (term) => {
     setRecents((prev) => [term, ...prev.filter((t) => t !== term)].slice(0, 6));
   };

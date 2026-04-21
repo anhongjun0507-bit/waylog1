@@ -18,7 +18,9 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
 
   const cat = CATEGORIES[review.category] || CATEGORIES.food;
   const accent = CAT_SOLID[review.category] || "#3A4A5C";
-  const shareUrl = `waylog.kr/r/${review.id}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const shareHref = `${origin}/r/${review.id}`;
+  const shareLabel = (typeof window !== "undefined" ? window.location.host : "waylog") + `/r/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
   const rating = review.rating || (review.likes > 50 ? 5 : review.likes > 20 ? 4 : 3);
@@ -53,16 +55,13 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
     let dataUrl = null;
     try {
       const { toPng } = await import("html-to-image");
-      dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 3, cacheBust: true, skipFonts: true });
-    } catch {
-      try {
-        const { toPng } = await import("html-to-image");
-        dataUrl = await toPng(cardRef.current, {
-          quality: 0.95, pixelRatio: 3, cacheBust: true, skipFonts: true,
-          filter: (node) => node?.tagName !== "IMG",
-        });
-      } catch {}
-    }
+      dataUrl = await toPng(cardRef.current, {
+        quality: 0.95,
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+      });
+    } catch {}
 
     originals.forEach(({ el, src, crossOrigin }) => {
       el.src = src;
@@ -116,7 +115,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(`https://${shareUrl}`);
+      await navigator.clipboard.writeText(shareHref);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -132,7 +131,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center gap-5">
         {/* ── 카드 미리보기 ── */}
-        <div ref={cardRef} className="w-full overflow-hidden" style={{ borderRadius: 24, aspectRatio: "4/5" }}>
+        <div ref={cardRef} className="w-full overflow-hidden" style={{ borderRadius: 24, aspectRatio: "4/5", fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif" }}>
           <div className="relative w-full h-full flex flex-col" style={{ background: "#fff" }}>
             {/* 히어로 이미지 */}
             <div className="relative flex-1 overflow-hidden" style={{ minHeight: 0 }}>
@@ -185,7 +184,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
                   </div>
                   <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
                 </div>
-                <span className="text-xs font-bold text-gray-400">{shareUrl}</span>
+                <span className="text-xs font-bold text-gray-400">{shareLabel}</span>
               </div>
             </div>
           </div>
