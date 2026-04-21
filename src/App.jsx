@@ -2704,7 +2704,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
         {hasQuery && (
           <div>
             {/* 필터/정렬 pill — 민트 액센트 */}
-            <div className={cls("sticky top-0 z-10 backdrop-blur border-b", dark ? "bg-black/90 border-[#262626]" : "bg-white/90 border-[#dbdbdb]")}>
+            <div className={cls("sticky top-0 z-10 border-b", dark ? "bg-black/95 border-[#262626]" : "bg-white/95 border-[#dbdbdb]")}>
               <div className="flex gap-2 overflow-x-auto px-4 py-2.5 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
                 <button onClick={() => setFilterCat("all")}
                   className={cls("shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-bold transition",
@@ -2966,24 +2966,24 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none"/>
         {/* 상단 floating 버튼은 노치/상태바를 피해 safe-area-inset-top 만큼 내려야 함 */}
         <button onClick={close} aria-label="뒤로"
-          className="absolute left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          className="absolute left-4 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center"
           style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <ArrowLeft size={18} className="text-white"/>
         </button>
         <button onClick={() => toggleFav(r.id)} aria-label="좋아요"
-          className="absolute right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          className="absolute right-4 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center"
           style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <Heart size={18} className={favs.has(r.id) ? "text-accent-500 fill-accent-500" : "text-white"}/>
         </button>
         <button onClick={() => setShareOpen(true)} aria-label="공유"
-          className="absolute right-16 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+          className="absolute right-16 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center"
           style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
           <Share2 size={18} className="text-white"/>
         </button>
         {isMine && (
           <>
             <button onClick={() => setMenuOpen(!menuOpen)} aria-label="옵션 메뉴"
-              className="absolute top-4 right-28 w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+              className="absolute top-4 right-28 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
               <span className="text-white text-lg font-black leading-none -mt-1">⋯</span>
             </button>
             {menuOpen && (
