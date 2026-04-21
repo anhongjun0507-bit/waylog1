@@ -1819,8 +1819,8 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
 const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, onBrowse, onProductClick, loading = false }) => {
   const CATALOG = useCatalog();
   const catalogLoading = useCatalogLoading();
-  // 기본 탭을 "저장됨"으로 — 탭 이름 "마이웨이템"과 일치. 내 것이 먼저.
-  const [mainTab, setMainTab] = useState("favs"); // "catalog" | "favs"
+  // 기본 탭은 "제품 카탈로그" — 암웨이 전 제품 브라우징이 핵심. 즐겨찾기는 두 번째 탭.
+  const [mainTab, setMainTab] = useState("catalog"); // "catalog" | "favs"
   const [view, setView] = useState("grid");
   const [moodPickerFor, setMoodPickerFor] = useState(null);
   const [catalogQ, setCatalogQ] = useState("");
