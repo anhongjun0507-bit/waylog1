@@ -5808,8 +5808,10 @@ function AppInner() {
     // 낙관적 업데이트
     setFavsArr((prev) => has ? prev.filter((x) => x !== id) : [...prev, id]);
 
-    // Supabase 동기화
-    if (user) {
+    // Supabase 동기화 — 숫자 id 는 아직 서버 sync 전 local pending 리뷰.
+    // favorites.review_id 는 uuid 컬럼이라 insert 시도 시 type 거부 → 토스트 발생.
+    // 로컬 낙관 상태만 유지하고 서버 호출 skip. 서버 sync 완료 후엔 UUID 라 정상 동작.
+    if (user && typeof id === "string") {
       const { error } = has
         ? await supabaseFavorites.remove(user.id, id)
         : await supabaseFavorites.add(user.id, id);
