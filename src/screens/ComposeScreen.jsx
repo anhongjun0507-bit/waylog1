@@ -290,7 +290,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 id: editing?.id,
                 title: title.trim(),
                 body: body.trim(),
-                product: selectedProducts.map((p) => p.name).join(", "),
+                product: selectedProducts.map((p) => p.name).join(" | "),
                 products: selectedProducts,
                 tags: tags.split(/[,#\s]+/).filter(Boolean),
                 category,

@@ -1,6 +1,8 @@
 import { memo, useState } from "react";
 import { Heart, MessageCircle, Bookmark, MoreHorizontal, Film, Images, ShoppingBag } from "lucide-react";
 import { cls, formatRelativeTime } from "../utils/ui.js";
+import { getReviewProductNames } from "../utils/products.js";
+import { useCatalog } from "../catalog.js";
 import { SmartImg } from "./SmartImg.jsx";
 import { Avatar } from "./Avatar.jsx";
 import { CATEGORIES } from "../constants.js";
@@ -14,6 +16,7 @@ import { CATEGORIES } from "../constants.js";
 //   Action bar: 좋아요 + 댓글 + 저장 (공유/DM 제거)
 const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const catalog = useCatalog();
 
   const timestamp = formatRelativeTime(r.createdAt || (r.date ? new Date(r.date).getTime() : null), "방금");
   const hasImg = !!r.img;
@@ -74,9 +77,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
 
       {/* 카테고리 + 제품 메타 — 제품은 웨이로그 핵심 정보라 민트 칩으로 강조 */}
       {(cat || r.product) && (() => {
-        const productNames = Array.isArray(r.products) && r.products.length > 0
-          ? r.products.map((p) => p?.name).filter(Boolean)
-          : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean);
+        const productNames = getReviewProductNames(r, catalog);
         return (
           <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
             {cat && (

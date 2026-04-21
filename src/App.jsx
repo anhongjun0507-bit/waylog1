@@ -27,6 +27,7 @@ import {
 } from "./constants.js";
 import { useDebouncedValue, useStoredState, useNavStack, useExit, useTimeGradient } from "./hooks.js";
 import { cls, formatRelativeTime } from "./utils/ui.js";
+import { getReviewProductNames } from "./utils/products.js";
 import {
   pendingReviewsKey, pendingEditsKey,
   savePendingEdit, removePendingEdit,
@@ -1191,6 +1192,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
   const [sort, setSort] = useState("latest");
   const [feedMode, setFeedMode] = useState("all");
   const loadMoreRef = useRef(null);
+  const CATALOG = useCatalog();
 
   // IntersectionObserver 로 리스트 하단 sentinel 관찰 → 도달 시 다음 페이지 로드
   useEffect(() => {
@@ -1359,10 +1361,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   <>
                     <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
                     <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
-                      {(Array.isArray(r.products) && r.products.length > 0
-                        ? r.products.map((p) => p?.name).filter(Boolean)
-                        : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
-                      ).join(" · ")}
+                      {getReviewProductNames(r, CATALOG).join(" · ")}
                     </span>
                   </>
                 ) : (
@@ -2075,10 +2074,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                     <>
                       <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
                       <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
-                        {(Array.isArray(r.products) && r.products.length > 0
-                          ? r.products.map((p) => p?.name).filter(Boolean)
-                          : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
-                        ).join(" · ")}
+                        {getReviewProductNames(r, CATALOG).join(" · ")}
                       </span>
                     </>
                   ) : (
@@ -2129,10 +2125,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                         <p className={cls("text-xs font-normal opacity-70", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{formatRelativeTime(r.createdAt || r.date)}</p>
                         <p className={cls("text-sm font-bold line-clamp-1", dark ? "text-white" : "text-black")}>{r.title}</p>
                         <p className={cls("text-xs line-clamp-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                          {(Array.isArray(r.products) && r.products.length > 0
-                            ? r.products.map((p) => p?.name).filter(Boolean)
-                            : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean)
-                          ).join(" · ")}
+                          {getReviewProductNames(r, CATALOG).join(" · ")}
                         </p>
                       </div>
                     </button>
@@ -2852,9 +2845,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   // 리뷰의 product 이름을 카탈로그와 매칭 — 이미지/공식 링크 노출 및 클릭 연결
   const CATALOG = useCatalog();
   const matchedProducts = useMemo(() => {
-    const names = Array.isArray(r.products) && r.products.length > 0
-      ? r.products.map((p) => p?.name).filter(Boolean)
-      : (r.product || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const names = getReviewProductNames(r, CATALOG);
     if (names.length === 0) return [];
     const catalog = Array.isArray(CATALOG) ? CATALOG : [];
     return names.map((name) => {
