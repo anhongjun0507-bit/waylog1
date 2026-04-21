@@ -6637,19 +6637,22 @@ function AppInner() {
       onClose={onBack} onOpen={openDetail} onUserClick={openUser} dark={dark}/>
   ), [reviews, user, dark, following, toggleFollow, openDetail, openUser]);
 
-  const detailCtx = {
+  // DetailScreenRoute 가 useContext 로 구독. 내부 필드(findLocalReview/fetchReviewById/setToast/renderDetail)
+  // 가 모두 useCallback 기반이라 deps 가 바뀔 때만 새 객체 → DetailScreen 의 불필요 리렌더 제거.
+  const detailCtx = useMemo(() => ({
     findLocal: findLocalReview,
     fetchById: fetchReviewById,
     setToast,
     render: renderDetail,
-  };
+  }), [findLocalReview, fetchReviewById, setToast, renderDetail]);
 
-  const profileCtx = {
+  // UserProfileRoute 가 구독. 동일 전략.
+  const profileCtx = useMemo(() => ({
     currentUserId: user?.id || null,
     fetchProfile: fetchProfileById,
     setToast,
     renderOther: renderOtherProfile,
-  };
+  }), [user?.id, fetchProfileById, setToast, renderOtherProfile]);
 
   return (
     <AppProvider value={appCtx}>
