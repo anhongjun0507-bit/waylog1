@@ -16,7 +16,8 @@ const FallbackImgBase = ({ r, className }) => {
 export const FallbackImg = memo(FallbackImgBase);
 
 // 리뷰 r.img 를 안전하게 렌더 - 상대 경로는 BASE 접두, URL 프로토콜 검증,
-// 로딩 중 shimmer, 에러 시 FallbackImg 대체
+// 로딩 중 shimmer, 에러 시 FallbackImg 대체.
+// 첫 미디어가 영상이면 <video preload="metadata"> 로 첫 프레임만 로드해 poster 대체.
 const SmartImgBase = ({ r, className }) => {
   const [errored, setErrored] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -24,12 +25,19 @@ const SmartImgBase = ({ r, className }) => {
   const raw = r.img.startsWith("data:") || r.img.startsWith("http") ? r.img : `${BASE}${r.img}`;
   const src = sanitizeImageUrl(raw);
   if (!src) return <FallbackImg r={r} className={className}/>;
+  const isVideo = Array.isArray(r.media) && r.media[0]?.type === "video";
   return (
     <div className={cls("relative overflow-hidden", className)}>
       {!loaded && <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 bg-[length:200%_100%] animate-shimmer"/>}
-      <img src={src} alt="" loading="lazy" decoding="async"
-        className={cls("w-full h-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
-        onLoad={() => setLoaded(true)} onError={() => setErrored(true)}/>
+      {isVideo ? (
+        <video src={src} preload="metadata" muted playsInline
+          className={cls("w-full h-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
+          onLoadedMetadata={() => setLoaded(true)} onError={() => setErrored(true)}/>
+      ) : (
+        <img src={src} alt="" loading="lazy" decoding="async"
+          className={cls("w-full h-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
+          onLoad={() => setLoaded(true)} onError={() => setErrored(true)}/>
+      )}
     </div>
   );
 };
