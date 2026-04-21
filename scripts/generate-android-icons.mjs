@@ -105,8 +105,8 @@ async function genPlayStoreIcon() {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#0891b2"/>
+      <stop offset="0%" stop-color="#338FD6"/>
+      <stop offset="100%" stop-color="#0071CE"/>
     </linearGradient>
   </defs>
   <rect width="1024" height="500" fill="url(#bg)"/>

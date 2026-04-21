@@ -34,11 +34,11 @@
   }
   /* 포커스 표시 — 키보드 탐색 (Tab) 시에만 노출, 마우스/터치 탭 시엔 숨김 */
   input:focus-visible, textarea:focus-visible, select:focus-visible {
-    outline: 2px solid #3A4A5C;
+    outline: 2px solid #0071CE;
     outline-offset: 1px;
   }
   button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-    outline: 2px solid #3A4A5C;
+    outline: 2px solid #0071CE;
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -89,7 +89,7 @@
 .tg-trans { transition: background-image 1.2s ease-in-out, background-color 1.2s ease-in-out; }
 
 button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
-  outline: 2px solid #3A4A5C;
+  outline: 2px solid #0071CE;
   outline-offset: 2px;
   border-radius: 4px;
 }

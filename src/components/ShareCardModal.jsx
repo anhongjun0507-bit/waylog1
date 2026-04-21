@@ -17,7 +17,7 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const cardRef = useRef(null);
 
   const cat = CATEGORIES[review.category] || CATEGORIES.food;
-  const accent = CAT_SOLID[review.category] || "#3A4A5C";
+  const accent = CAT_SOLID[review.category] || "#0071CE";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareHref = `${origin}/review/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");

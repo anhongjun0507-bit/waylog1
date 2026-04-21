@@ -2,9 +2,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="50%" stop-color="#14b8a6"/>
-      <stop offset="100%" stop-color="#0891b2"/>
+      <stop offset="0%" stop-color="#66ACDF"/>
+      <stop offset="50%" stop-color="#338FD6"/>
+      <stop offset="100%" stop-color="#0071CE"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="20" stdDeviation="30" flood-opacity="0.2"/>
@@ -24,6 +24,6 @@
     <circle cx="744" cy="380" r="58" fill="white"/>
     <!-- 최상단 별 (시그니처 느낌) -->
     <path d="M 744 340 L 756 364 L 782 368 L 763 386 L 767 412 L 744 400 L 721 412 L 725 386 L 706 368 L 732 364 Z"
-          fill="#10b981"/>
+          fill="#0071CE"/>
   </g>
 </svg>

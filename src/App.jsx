@@ -3966,7 +3966,7 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
                 }));
                 const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
                 const area = `${line} L${pts[pts.length-1].x},130 L${pts[0].x},130 Z`;
-                const color = activeTab === "bodyFat" ? "#f43f5e" : activeTab === "muscle" ? "#8b5cf6" : activeTab === "calories" ? "#f59e0b" : "#3A4A5C";
+                const color = activeTab === "bodyFat" ? "#f43f5e" : activeTab === "muscle" ? "#8b5cf6" : activeTab === "calories" ? "#f59e0b" : "#0071CE";
                 return (
                   <>
                     <defs>
@@ -4328,7 +4328,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                     transform="rotate(-90 70 70)"/>
                   <defs>
                     <linearGradient id="challengeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#3A4A5C"/>
+                      <stop offset="0%" stopColor="#0071CE"/>
                       <stop offset="100%" stopColor="#f59e0b"/>
                     </linearGradient>
                   </defs>
@@ -4661,7 +4661,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
   // 진행 중 + hero: 홈 상단의 메인 카드로 크게 노출 (Hero 카드를 대체)
   if (hero) {
     return (
-      <div className="mx-4 mt-4 rounded-3xl p-6 bg-gradient-to-br from-brand-500 to-cyan-600 text-white relative overflow-hidden shadow-xl">
+      <div className="mx-4 mt-4 rounded-3xl p-6 bg-gradient-to-br from-brand-500 to-brand-300 text-white relative overflow-hidden shadow-xl">
         <Dumbbell className="absolute right-4 top-4 opacity-25" size={64}/>
         <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-white/10"/>
         <p className="text-xs opacity-80 font-bold tracking-wider uppercase relative">8주 챌린지 · Week {weekNum}</p>

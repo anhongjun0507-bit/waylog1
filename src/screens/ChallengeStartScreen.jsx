@@ -211,7 +211,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
               {[
                 { key: "lose", Icon: Flame, color: "from-rose-400 to-orange-500", label: "체중 감량", desc: "체지방 줄이기에 집중" },
                 { key: "muscle", Icon: Dumbbell, color: "from-sky-400 to-blue-500", label: "근력 강화", desc: "근육량 늘리기에 집중" },
-                { key: "health", Icon: Leaf, color: "from-brand-300 to-teal-500", label: "건강 유지", desc: "균형 잡힌 생활 습관" },
+                { key: "health", Icon: Leaf, color: "from-brand-300 to-brand-500", label: "건강 유지", desc: "균형 잡힌 생활 습관" },
               ].map((g) => (
                 <button key={g.key} onClick={() => { setGoal(g.key); setWarning(""); }}
                   className={cls("w-full p-3.5 rounded-2xl flex items-center gap-3 text-left transition active:scale-[0.98] border-2",

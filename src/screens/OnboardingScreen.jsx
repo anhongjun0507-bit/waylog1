@@ -8,7 +8,7 @@ export const OnboardingScreen = ({ onClose, dark }) => {
   const slides = [
     {
       Icon: Sparkles,
-      gradient: "from-brand-300 via-teal-500 to-cyan-500",
+      gradient: "from-brand-300 via-brand-400 to-brand-500",
       title: "웨이로그에 오신 걸 환영해요",
       desc: "나만의 라이프스타일을 한 곳에 기록하고\n매주 자라나는 취향을 발견해보세요",
     },

@@ -75,7 +75,7 @@ export const initNativeChrome = async (dark = false) => {
       import("@capacitor/splash-screen"),
     ]);
     await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
-    await StatusBar.setBackgroundColor({ color: dark ? "#111827" : "#3A4A5C" });
+    await StatusBar.setBackgroundColor({ color: dark ? "#111827" : "#0071CE" });
     // 앱 준비 완료 후 스플래시 해제
     await SplashScreen.hide();
   } catch (e) {
@@ -89,7 +89,7 @@ export const setNativeStatusBar = async (dark) => {
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
-    await StatusBar.setBackgroundColor({ color: dark ? "#111827" : "#3A4A5C" });
+    await StatusBar.setBackgroundColor({ color: dark ? "#111827" : "#0071CE" });
   } catch {}
 };
 
