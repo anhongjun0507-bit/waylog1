@@ -20,7 +20,6 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   const accent = CAT_SOLID[review.category] || "#3A4A5C";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareHref = `${origin}/r/${review.id}`;
-  const shareLabel = (typeof window !== "undefined" ? window.location.host : "waylog") + `/r/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
   const rating = review.rating || (review.likes > 50 ? 5 : review.likes > 20 ? 4 : 3);
@@ -177,14 +176,11 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
                 </div>
               </div>
               {/* 브랜딩 */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
-                    <Sparkles size={10} className="text-white"/>
-                  </div>
-                  <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
+              <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
+                  <Sparkles size={10} className="text-white"/>
                 </div>
-                <span className="text-xs font-bold text-gray-400">{shareLabel}</span>
+                <span className="text-xs font-black text-gray-800 tracking-tight">Waylog</span>
               </div>
             </div>
           </div>
