@@ -6682,7 +6682,7 @@ function AppInner() {
     if (onboardingOpen) { setOnboardingOpen(false); return; }
     if (challengeStartOpen) { setChallengeStartOpen(false); return; }
     if (challengeMainOpen) { setChallengeMainOpen(false); return; }
-    if (search) { setSearch(false); return; }
+    if (search) { closeSearch(); return; }
     // 3. 시트·미니모달
     if (notifOpen) { setNotifOpen(false); return; }
     if (selectedUser) { setSelectedUser(null); return; }
@@ -6709,6 +6709,24 @@ function AppInner() {
       initBackButtonHandler((event) => backHandlerRef.current?.(event)).then((s) => { sub = s; });
     });
     return () => { sub?.remove?.(); };
+  }, []);
+
+  // SearchScreen 은 라우트가 아닌 state 기반 오버레이라 브라우저 back 이 반응하지 않음.
+  // history sentinel 로 우회: 열 때 push → 브라우저 back → popstate → setSearch(false).
+  // Capacitor Android 는 기존 backHandler 가 closeSearch 를 호출해 동일 경로로 닫는다.
+  useEffect(() => {
+    if (!search) return;
+    window.history.pushState({ waylogSearch: true }, "");
+    const onPop = () => setSearch(false);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [search]);
+
+  // 검색 닫기 — sentinel 이 있으면 history.back() 으로 pop (popstate 가 setSearch(false) 호출).
+  // 없으면 직접 상태만 바꿈. 호출측(backHandler / X 버튼) 에서 공통으로 사용.
+  const closeSearch = useCallback(() => {
+    if (window.history.state?.waylogSearch) window.history.back();
+    else setSearch(false);
   }, []);
 
   // DetailScreenRoute 용 context 를 위한 stable 헬퍼들.
@@ -6992,7 +7010,7 @@ function AppInner() {
         </div>
       )}
 
-      {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={() => setSearch(false)} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
+      {search && <SearchScreen reviews={reviews} onOpen={openDetail} favs={favs} toggleFav={toggleFav} dark={dark} onClose={closeSearch} recents={recents} addRecent={addRecent} removeRecent={removeRecent} clearRecents={clearRecents} q={searchQ} setQ={setSearchQ} onProductClick={setSelectedCatalogProduct}/>}
       <Suspense fallback={null}>{compose && <ComposeScreen onClose={() => { setCompose(false); setEditingReview(null); setComposeProduct(null); }} onSubmit={submitReview} dark={dark} editing={editingReview} prefillProduct={composeProduct}/>}</Suspense>
       {(communityComposeOpen || editingCommunityPost) && user && (
         <CommunityComposeModal
