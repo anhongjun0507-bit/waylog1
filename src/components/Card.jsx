@@ -51,7 +51,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false }) => {
           <div className={cls("relative w-full aspect-[4/3] overflow-hidden rounded-card", dark ? "bg-ink-900" : "bg-ink-50")}>
             <SmartImg r={r} className="w-full h-full object-cover"/>
             {(hasVideo || mediaCount > 1) && (
-              <div className="absolute top-3 right-3 bg-black/50 backdrop-blur rounded-full w-8 h-8 flex items-center justify-center">
+              <div className="absolute top-3 right-3 bg-black/60 rounded-full w-8 h-8 flex items-center justify-center">
                 {hasVideo
                   ? <Film size={16} className="text-white" strokeWidth={2}/>
                   : <Images size={16} className="text-white" strokeWidth={2}/>}

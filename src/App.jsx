@@ -546,7 +546,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                       {idx + 1}
                     </span>
                     {rCat && (
-                      <span className="absolute top-2 right-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-white">
+                      <span className="absolute top-2 right-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-black/60 text-white">
                         {rCat.label}
                       </span>
                     )}
@@ -994,13 +994,13 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
             : <div className="w-full h-full flex items-center justify-center"><Camera size={24} strokeWidth={1.5} className={dark ? "text-[#404040]" : "text-[#c7c7c7]"}/></div>}
           {rCat && (
             <div className="absolute top-2 left-2">
-              <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur", dark ? "bg-black/60 text-white" : "bg-white/90 text-black")}>
+              <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                 {rCat.label}
               </span>
             </div>
           )}
           {hasVideo && (
-            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur rounded-full w-6 h-6 flex items-center justify-center">
+            <div className="absolute top-2 right-2 bg-black/60 rounded-full w-6 h-6 flex items-center justify-center">
               <Film size={12} className="text-white"/>
             </div>
           )}
@@ -1150,7 +1150,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={28}/>
                       {pCat && (
                         <div className="absolute top-2 left-2">
-                          <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur", dark ? "bg-black/60 text-white" : "bg-white/90 text-black")}>
+                          <span className={cls("text-[10px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                             {pCat.label}
                           </span>
                         </div>
@@ -1335,13 +1335,13 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   )}
                 {/* 카테고리 — 시각 무게 down (사이즈·대비·폰트 weight 낮춤). 제품 칩이 주인공 */}
                 {rCat && (
-                  <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-md",
-                    dark ? "bg-black/35 text-white/90" : "bg-white/70 text-black/75")}>
+                  <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                    dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                     {rCat.label}
                   </span>
                 )}
                 {(hasVideo || mediaCount > 1) && (
-                  <div className="absolute top-2 right-2 bg-black/40 backdrop-blur rounded-full w-6 h-6 flex items-center justify-center">
+                  <div className="absolute top-2 right-2 bg-black/55 rounded-full w-6 h-6 flex items-center justify-center">
                     {hasVideo
                       ? <Film size={12} className="text-white"/>
                       : <Images size={12} className="text-white"/>}
@@ -1349,7 +1349,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                 )}
                 <button onClick={(e) => { e.stopPropagation(); toggleFav(r.id); }}
                   aria-label={isFav ? "좋아요 취소" : "좋아요"}
-                  className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/40 backdrop-blur flex items-center justify-center active:scale-90 transition">
+                  className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/55 flex items-center justify-center active:scale-90 transition">
                   <Heart size={16} strokeWidth={2}
                     className={isFav ? "fill-accent-500 text-accent-500" : "text-white"}/>
                 </button>
@@ -2055,15 +2055,15 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       </div>
                     )}
                   {rCat && (
-                    <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-md",
-                      dark ? "bg-black/35 text-white/90" : "bg-white/70 text-black/75")}>
+                    <span className={cls("absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                      dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                       {rCat.label}
                     </span>
                   )}
                   {/* 무드 오버레이 — 설정된 무드가 그리드 뷰에도 보이도록 */}
                   {mood && mood.Icon && (
-                    <span className={cls("absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full backdrop-blur-md",
-                      dark ? "bg-black/50" : "bg-white/80")}>
+                    <span className={cls("absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full",
+                      dark ? "bg-black/65" : "bg-white/90")}>
                       <mood.Icon size={12} strokeWidth={2} className={mood.color}/>
                     </span>
                   )}
@@ -2946,7 +2946,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             </div>
             {r.media.length > 1 && (
               <>
-                <div className="absolute top-4 right-16 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur text-white text-xs font-bold tabular-nums">
+                <div className="absolute top-4 right-16 px-2.5 py-1 rounded-full bg-black/70 text-white text-xs font-bold tabular-nums">
                   {galleryIdx + 1} / {r.media.length}
                 </div>
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
@@ -3343,12 +3343,12 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             <div className="fixed inset-0 z-[60] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto bg-black animate-fade-in flex flex-col">
               {/* 닫기 */}
               <button onClick={() => setZoomedImg(null)} aria-label="닫기"
-                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/70 backdrop-blur flex items-center justify-center">
+                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/80 flex items-center justify-center">
                 <X size={18} className="text-white"/>
               </button>
               {/* 카운터 */}
               {urls.length > 1 && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/60 backdrop-blur text-white text-xs font-bold tabular-nums">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/70 text-white text-xs font-bold tabular-nums">
                   {cur + 1} / {urls.length}
                 </div>
               )}
@@ -3504,7 +3504,7 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
 
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b backdrop-blur", dark ? "bg-gray-900/80 border-gray-800" : "bg-white/80 border-gray-100")}>
+      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-900/95 border-gray-800" : "bg-white/95 border-gray-100")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
         <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{author}</p>
         <div className="w-6"/>
