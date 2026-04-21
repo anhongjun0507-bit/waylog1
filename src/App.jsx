@@ -942,6 +942,15 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
   onEditProfile, onOpenSettings, onAuthOpen, following, followingArr: _followingArr, community: _community }) => {
   const CATALOG = useCatalog();
   const [profileTab, setProfileTab] = useState("posts"); // posts | saved | tagged
+  // 팔로워·팔로잉 수 — UserProfileScreen 과 동일 패턴.
+  // 훅은 early-return 이전에 호출되어야 하므로 ProfileSelfScreen 상단에 둔다.
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  useEffect(() => {
+    if (!user?.id) return;
+    supabaseFollows.counts(user.id).then((c) => {
+      if (c && typeof c === "object") setFollowCounts({ followers: c.followers || 0, following: c.following || 0 });
+    }).catch(() => {});
+  }, [user?.id]);
 
   // 로그인 안 한 경우
   if (!user) {
@@ -967,8 +976,9 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
   const savedReviews = reviews.filter((r) => favs.has(r.id));
   const savedProducts = (CATALOG || []).slice(0, 12); // 저장된 제품 — 지금은 샘플
 
-  const followerCount = 0; // TODO: 실제 팔로워 데이터 연결
-  const followingCount = following ? following.size : 0;
+  // 서버 count 우선. 로컬 following Set 은 초기 렌더/optimistic 반영용 (서버 fetch 완료 전).
+  const followerCount = followCounts.followers;
+  const followingCount = followCounts.following || (following ? following.size : 0);
   const challengeActive = challenge && challenge.status !== "completed";
   const dayNum = challengeActive ? getChallengeDay(challenge.startDate) : 0;
 
@@ -5835,7 +5845,8 @@ function AppInner() {
   };
   // 리뷰 상세 라우트가 id 로 리뷰를 해결할 때 사용하는 fetcher.
   // 로컬 reviews 배열에 없을 때만 supabase 직접 조회 → mapReviewRow 매핑.
-  const fetchReviewById = async (id) => {
+  // state 미참조 → useCallback([]) 으로 identity 고정 (context memoization 에 기여).
+  const fetchReviewById = useCallback(async (id) => {
     if (!supabase) return null;
     try {
       const { data, error } = await supabase.from("reviews")
@@ -5850,7 +5861,8 @@ function AppInner() {
       }
       return mapReviewRow({ ...data, profiles: profile });
     } catch { return null; }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addRecent = (term) => {
     setRecents((prev) => [term, ...prev.filter((t) => t !== term)].slice(0, 6));
@@ -6566,7 +6578,9 @@ function AppInner() {
   }, []);
 
   // DetailScreenRoute 용 context — 리뷰 해결/렌더 로직을 Provider 로 주입.
-  // Memoize 불가(거의 모든 AppInner state 에 의존) — 대신 모듈 레벨 DetailScreenRoute 가 id 변경시에만 재해결하도록 설계.
+  // useMemo 적용 시도했으나 AppInner 내부 함수(openUser/toggleFollow/addComment 등) 가
+  // useCallback 없이 매 렌더 새 identity → useMemo deps 충족 불가 (경고 양산).
+  // 전면 useCallback 리팩토링 필요. 별도 작업. 현재는 inline 유지.
   const detailCtx = {
     findLocal: (id) => reviews.find((rv) => String(rv.id) === String(id)) || null,
     fetchById: fetchReviewById,
@@ -6594,7 +6608,7 @@ function AppInner() {
     ),
   };
 
-  // UserProfileRoute 용 context — 프로필 해결/렌더 로직을 Provider 로 주입.
+  // UserProfileRoute 용 context — 프로필 해결/렌더 로직을 Provider 로 주입. (동일 이유로 inline 유지)
   const profileCtx = {
     currentUserId: user?.id || null,
     fetchProfile: async (uid) => {
