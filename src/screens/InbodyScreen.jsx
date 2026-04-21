@@ -41,7 +41,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
   const graphData = [...(records || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).filter((r) => r.weight > 0);
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
       <header className={cls("flex items-center justify-between px-4 h-12 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
         <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/></button>
         <p className={cls("text-[16px] font-bold", dark ? "text-white" : "text-black")}>인바디 기록</p>
