@@ -2,7 +2,6 @@
 export { Avatar } from "./Avatar.jsx";
 export { MissionIcon } from "./MissionIcon.jsx";
 export { CategoryIcon, CategoryChip } from "./CategoryIcon.jsx";
-export { HeartBtn } from "./HeartBtn.jsx";
 export { ProductImage } from "./ProductImage.jsx";
 export { SmartImg, FallbackImg } from "./SmartImg.jsx";
 export { Card } from "./Card.jsx";
