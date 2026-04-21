@@ -5526,15 +5526,15 @@ function AppInner() {
 
   // 호출자가 author/avatar/userId 또는 author/avatar/authorId(과거 prop)
   // 어느 쪽으로 넘기든 selectedUser 객체에 userId 필드로 통일된다.
-  const openUser = (u) => setSelectedUser(u && {
+  const openUser = useCallback((u) => setSelectedUser(u && {
     author: u.author,
     avatar: u.avatar || "",
     userId: u.userId || u.authorId || null,
-  });
+  }), []);
 
   // (targetUserId: uuid, targetNickname: string) — UUID 기반.
   // 시드 author 처럼 user_id 가 없으면 진입점에서 호출 자체를 차단해야 한다.
-  const toggleFollow = async (targetUserId, targetNickname = "") => {
+  const toggleFollow = useCallback(async (targetUserId, targetNickname = "") => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
     if (!targetUserId) { setToast("이 사용자는 팔로우할 수 없어요"); return; }
     if (targetUserId === user.id) { setToast("자기 자신은 팔로우할 수 없어요"); return; }
@@ -5558,7 +5558,7 @@ function AppInner() {
     }
     const label = targetNickname || "사용자";
     setToast(wasFollowing ? `${label}님 팔로우를 취소했어요` : `${label}님을 팔로우했어요`);
-  };
+  }, [user, following, setToast, setFollowingArr]);
 
   // 모달 상태 추적 (풀 투 리프레시 비활성화용).
   // 리뷰 상세 라우트(/review/*) 도 오버레이 취급해 pull-to-refresh 차단.
@@ -5728,7 +5728,7 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenge, user?.id]);
 
-  const learnFrom = (rev, weight = 1) => {
+  const learnFrom = useCallback((rev, weight = 1) => {
     if (!rev) return;
     setTaste((prev) => {
       const cats = { ...prev.cats, [rev.category]: Math.max(0, (prev.cats[rev.category] || 0) + weight) };
@@ -5736,9 +5736,9 @@ function AppInner() {
       rev.tags.forEach((t) => { tags[t] = Math.max(0, (tags[t] || 0) + weight); });
       return { cats, tags };
     });
-  };
+  }, [setTaste]);
 
-  const toggleFav = async (id) => {
+  const toggleFav = useCallback(async (id) => {
     const has = favsArr.includes(id);
     const rev = [...userReviews, ...SEED_REVIEWS].find((x) => x.id === id);
     const prevMood = moods[id];
@@ -5773,7 +5773,7 @@ function AppInner() {
         setToast("좋아요 반영에 실패했어요. 네트워크를 확인해주세요");
       }
     }
-  };
+  }, [favsArr, userReviews, moods, user, learnFrom, setToast, setMoods]);
 
   // 무드 변경 시 취향 점수 보너스 + 서버 동기화
   const setMoodsWithBonus = (updater) => {
@@ -5798,7 +5798,7 @@ function AppInner() {
     });
   };
 
-  const openDetail = (r) => {
+  const openDetail = useCallback((r) => {
     if (!r?.id) return;
     // 라우터로 이동 — state 로 review 객체 전달해 DetailScreenRoute 에서 재조회 없이 즉시 렌더.
     navigate(`/review/${r.id}`, { state: { review: r } });
@@ -5842,7 +5842,7 @@ function AppInner() {
         });
       });
     }
-  };
+  }, [navigate]);
   // 리뷰 상세 라우트가 id 로 리뷰를 해결할 때 사용하는 fetcher.
   // 로컬 reviews 배열에 없을 때만 supabase 직접 조회 → mapReviewRow 매핑.
   // state 미참조 → useCallback([]) 으로 identity 고정 (context memoization 에 기여).
@@ -6092,7 +6092,7 @@ function AppInner() {
   };
 
   const [deletingReviewId, setDeletingReviewId] = useState(null);
-  const deleteReview = async (id) => {
+  const deleteReview = useCallback(async (id) => {
     if (deletingReviewId === id) return false; // 중복 호출 방지
     setDeletingReviewId(id);
     try {
@@ -6113,9 +6113,9 @@ function AppInner() {
     } finally {
       setDeletingReviewId(null);
     }
-  };
+  }, [deletingReviewId, user, setToast, setUserReviews, setMoods]);
 
-  const addComment = async (rid, text, parentId = null, mentionTo = null) => {
+  const addComment = useCallback(async (rid, text, parentId = null, mentionTo = null) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return false; }
     const cleanText = sanitizeText(text, { maxLength: 2000 });
     if (!cleanText.trim()) { setToast("댓글 내용을 입력해주세요"); return false; }
@@ -6166,9 +6166,9 @@ function AppInner() {
         .catch(() => {});
     }
     return true;
-  };
+  }, [user, commentsMap, setToast]);
 
-  const toggleCommentLike = async (rid, cid) => {
+  const toggleCommentLike = useCallback(async (rid, cid) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
     // 현재 상태 조회 후 낙관적 업데이트
     const current = (commentsMap[rid] || []).find((c) => c.id === cid);
@@ -6207,16 +6207,16 @@ function AppInner() {
         setToast("좋아요 반영에 실패했어요");
       }
     }
-  };
+  }, [user, commentsMap, setToast]);
 
-  const deleteComment = (rid, cid) => {
+  const deleteComment = useCallback((rid, cid) => {
     setCommentsMap((prev) => ({
       ...prev,
       [rid]: (prev[rid] || []).filter((c) => c.id !== cid),
     }));
     if (supabase && typeof cid === "string") supabaseComments.delete(cid).catch(() => {});
     setToast("댓글이 삭제됐어요");
-  };
+  }, [setToast]);
 
   const clearAllData = async () => {
     setFavsArr([]); setMoods({}); setUserReviews([]); setCommentsMap({});
