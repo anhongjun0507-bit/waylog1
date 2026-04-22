@@ -4663,7 +4663,9 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
 
       {/* Mission toast */}
       {missionToast && (
-        <div className="fixed inset-x-0 bottom-28 z-50 flex justify-center pointer-events-none px-4">
+        <div
+          style={{ bottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 z-50 flex justify-center pointer-events-none px-4">
           <div className="bg-brand-500 text-white text-sm font-black px-5 py-3 rounded-full shadow-xl animate-toast">
             {missionToast}
           </div>
@@ -6977,7 +6979,8 @@ function AppInner() {
                 else requireAuth(() => setCompose(true));
               }}
                 aria-label={isComm ? "커뮤니티 글쓰기" : "새 웨이로그 작성"}
-                className={cls("pointer-events-auto absolute right-4 bottom-[4.5rem] w-14 h-14 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition",
+                style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom))" }}
+                className={cls("pointer-events-auto absolute right-4 w-14 h-14 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition",
                   isComm ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-brand-500")}>
                 <Plus size={26} className="text-white" strokeWidth={2.5}/>
               </button>
@@ -6997,7 +7000,9 @@ function AppInner() {
 
       {/* Toast — type 별 색 분기 (info: 검정, success: emerald, error: rose). action 있으면 버튼 렌더 */}
       {toast && (
-        <div className="fixed inset-x-0 bottom-44 z-40 flex justify-center px-4 pointer-events-none">
+        <div
+          style={{ bottom: "calc(11rem + env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
           <div className={cls("text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl animate-toast inline-flex items-center gap-1.5 max-w-full",
             toast.action ? "pointer-events-auto" : "",
             toast.type === "error" ? "bg-rose-600/95" :
