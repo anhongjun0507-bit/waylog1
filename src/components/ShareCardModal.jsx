@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import { cls } from "../utils/ui.js";
 import { sanitizeImageUrl } from "../utils/sanitize.js";
 import { useExit } from "../hooks.js";
@@ -92,10 +93,37 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
       return;
     }
 
+    // 네이티브 경로 — @capacitor/filesystem 으로 Cache 에 PNG 저장 →
+    // @capacitor/share 로 OS 공유 시트를 열어 사용자가 "이미지 저장" 또는
+    // 메신저 선택. Cache 디렉터리라 별도 저장소 권한 불필요.
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const fileName = `waylog-${review.id}-${Date.now()}.png`;
+        const base64 = dataUrl.split(",")[1];
+        const written = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: "웨이로그 카드",
+          url: written.uri,
+          dialogTitle: "어디에 저장할까요?",
+        });
+        onShowToast && onShowToast("공유 창에서 저장을 선택해주세요");
+      } catch (e) {
+        if (e?.name !== "AbortError" && !(typeof e?.message === "string" && e.message.toLowerCase().includes("cancel"))) {
+          onShowToast && onShowToast("저장에 실패했어요");
+        }
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // 웹 경로 — 기존 동작 유지 (Web Share Files → download 링크 fallback)
     const blob = dataUrlToBlob(dataUrl);
     const file = new File([blob], `waylog-${review.id}.png`, { type: "image/png" });
-
-    // 1) navigator.share (files) — 안드로이드 갤러리 저장 가능
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
@@ -106,8 +134,6 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
         if (e.name === "AbortError") { setSaving(false); return; }
       }
     }
-
-    // 2) 폴백: 다운로드
     const link = document.createElement("a");
     link.download = file.name;
     link.href = dataUrl;
