@@ -2221,30 +2221,56 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
     return (CATALOG || []).filter((p) => (p.name + p.brand + (p.tags || []).join("")).toLowerCase().includes(q)).slice(0, 20);
   }, [CATALOG, dq]);
 
-  const submit = () => {
-    // [1.0.1 디버그] 네이티브 앱에서 '게시' 무반응 이슈 추적용 — 1.0.2 에서 제거 예정
-    if (typeof console !== "undefined") console.log("[community-compose] submit called", { hasContent: !!content.trim(), isEdit });
-    if (!content.trim()) return;
+  // [1.0.2 디버그] 네이티브 앱 게시 버튼 무반응 이슈 추적 — 해결 확정 후 1.0.3 에서 제거
+  const submit = useCallback(() => {
+    const trimmed = (content || "").trim();
+    console.log("[community-compose] submit CALLED", { contentLen: trimmed.length, isEdit, isAnonymous });
+    if (!trimmed) {
+      console.log("[community-compose] BLOCKED: empty");
+      return;
+    }
     const meta = {
       isAnonymous,
       challengeId: isAnonymous && hasActiveChallenge ? challenge.id || null : null,
       dayNum: isAnonymous && hasActiveChallenge ? dayNum : null,
     };
-    onPost(content.trim(), product, image, meta);
+    try {
+      onPost(trimmed, product, image, meta);
+      console.log("[community-compose] onPost invoked");
+    } catch (err) {
+      console.error("[community-compose] onPost ERROR:", err);
+    }
     close();
-  };
+  }, [content, isAnonymous, hasActiveChallenge, challenge, dayNum, product, image, onPost, close, isEdit]);
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
+    // z-[100] 로 상승 + pt-safe 를 inline paddingTop 으로 대체 (제조사별 safe-area 값
+    // 0 또는 비정상이어도 최소 20px 보장). touchAction: manipulation 으로 탭 지연 제거.
+    <div role="dialog" aria-modal="true"
+      className={cls("fixed inset-0 z-[100] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}
+      style={{ paddingTop: "max(env(safe-area-inset-top), 20px)", touchAction: "manipulation" }}>
+      <header
+        className={cls("relative z-10 flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}
+        style={{ pointerEvents: "auto" }}>
         <button onClick={close}
           className={cls("text-sm font-bold min-w-[44px] min-h-[44px] -m-2 px-2 py-2 touch-manipulation", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>{isEdit ? "커뮤니티 수정" : "커뮤니티 글쓰기"}</p>
         <button
           type="button"
           onClick={submit}
+          onPointerDown={() => console.log("[community-compose] pointerdown")}
+          onTouchStart={() => console.log("[community-compose] touchstart")}
           disabled={!content.trim()}
-          className={cls("text-sm font-black transition min-w-[60px] min-h-[44px] -m-2 px-3 py-2 rounded-lg touch-manipulation active:scale-95", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>{isEdit ? "수정" : "게시"}</button>
+          className={cls("relative z-20 min-w-[60px] min-h-[44px] px-4 rounded-lg text-sm font-semibold touch-manipulation active:scale-95 transition",
+            content.trim()
+              ? "bg-brand-500 text-white active:bg-brand-600"
+              : dark ? "bg-gray-700 text-gray-400" : "bg-gray-200 text-gray-400")}
+          style={{
+            WebkitTapHighlightColor: "rgba(0,113,206,0.3)",
+            userSelect: "none",
+            pointerEvents: "auto",
+            touchAction: "manipulation",
+          }}>{isEdit ? "수정" : "게시"}</button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 작성자 */}
@@ -6408,10 +6434,33 @@ function AppInner() {
       ...(product ? { product: { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl } } : {}),
       ...(image ? { image_url: image } : {}),
     };
-    const { data: created, error } = await supabaseCommunity.create(payload);
+    let created = null, error = null;
+    try {
+      const res = await supabaseCommunity.create(payload);
+      created = res?.data;
+      error = res?.error;
+      if (error) {
+        // [1.0.2 디버그] 실기기에서 "게시 실패" 원인 파악 — logcat 에서 grep 가능
+        console.error("[addCommunityPost] FAILED", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+      } else {
+        console.log("[addCommunityPost] success", created?.id);
+      }
+    } catch (thrown) {
+      console.error("[addCommunityPost] THREW", {
+        message: thrown?.message,
+        name: thrown?.name,
+        stack: thrown?.stack,
+      });
+      error = thrown;
+    }
     if (error || !created?.id) {
       setCommunity((prev) => prev.filter((p) => p.id !== tempId));
-      setToast("게시 실패 — 잠시 후 다시 시도");
+      setToast(`게시 실패: ${error?.message || "알 수 없음"}`);
       return;
     }
     setCommunity((prev) => prev.map((p) => p.id === tempId
