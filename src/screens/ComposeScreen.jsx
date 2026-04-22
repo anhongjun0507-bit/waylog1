@@ -463,8 +463,14 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
           <textarea value={body}
             onChange={(e) => {
               setBody(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = Math.min(e.target.scrollHeight, 500) + "px";
+              // auto-grow 는 rAF 로 offload — 키스트로크마다 scrollHeight 를
+              // 동기로 읽으면 강제 레이아웃 계산이 매번 발생해 네이티브 WebView
+              // 에서 입력 지연 원인. rAF 로 다음 프레임에 묶어 처리.
+              const el = e.target;
+              requestAnimationFrame(() => {
+                el.style.height = "auto";
+                el.style.height = Math.min(el.scrollHeight, 500) + "px";
+              });
             }}
             placeholder="사진이나 제품에 대한 경험을 자유롭게 적어주세요" rows={6}
             className={cls("w-full text-[15px] bg-transparent outline-none border rounded-btn px-4 py-3 resize-none overflow-hidden leading-[1.6] focus:ring-2 focus:ring-brand-500/20",

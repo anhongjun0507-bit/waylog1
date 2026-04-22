@@ -13,11 +13,30 @@ export const useDebouncedValue = (value, delay = 200) => {
 // window.storage 기반 영속 state. 로드 완료 여부(loaded)를 3번째 반환값으로 제공.
 // unmount 후 setState 경고를 피하기 위해 mounted ref 로 async 경로를 가드.
 // JSON.parse 실패 시에도 앱이 안전하게 기본값으로 fallback.
+// IDB 쓰기는 300ms debounce — Android WebView 에서 키스트로크마다
+// storage.set 이 메인 스레드를 블로킹해 입력이 끊기는 현상 방지. 메모리 상태는
+// 즉시 반영되므로 UI 에는 지연이 없고, unmount 시 대기 중인 값은 flush 한다.
 export const useStoredState = (key, initial) => {
   const [val, setVal] = useState(initial);
   const [loaded, setLoaded] = useState(false);
   const ref = useRef(initial);
   const mountedRef = useRef(true);
+  const writeTimerRef = useRef(null);
+  const pendingRef = useRef(null);
+  const flush = () => {
+    if (writeTimerRef.current) { clearTimeout(writeTimerRef.current); writeTimerRef.current = null; }
+    if (pendingRef.current == null) return;
+    const payload = pendingRef.current;
+    pendingRef.current = null;
+    try {
+      const res = window.storage?.set(key, payload);
+      if (res && typeof res.catch === "function") {
+        res.catch((e) => { if (e?.name === "QuotaExceededError" || e?.code === 22) console.warn(`[useStoredState] QuotaExceededError for key "${key}"`, e); });
+      }
+    } catch (e) {
+      if (e?.name === "QuotaExceededError" || e?.code === 22) console.warn(`[useStoredState] QuotaExceededError for key "${key}"`, e);
+    }
+  };
   useEffect(() => {
     mountedRef.current = true;
     (async () => {
@@ -34,14 +53,20 @@ export const useStoredState = (key, initial) => {
       } catch { /* storage 접근 실패 — 기본값 유지 */ }
       if (mountedRef.current) setLoaded(true);
     })();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      flush();
+    };
+    // key 는 보통 상수. flush 는 클로저로 최신 ref 읽으므로 deps 에 불필요.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  const update = async (next) => {
+  const update = (next) => {
     const v = typeof next === "function" ? next(ref.current) : next;
     ref.current = v;
     if (mountedRef.current) setVal(v);
-    try { await window.storage?.set(key, JSON.stringify(v)); }
-    catch (e) { if (e?.name === "QuotaExceededError" || e?.code === 22) console.warn(`[useStoredState] QuotaExceededError for key "${key}"`, e); }
+    pendingRef.current = JSON.stringify(v);
+    if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
+    writeTimerRef.current = setTimeout(flush, 300);
   };
   return [val, update, loaded];
 };
