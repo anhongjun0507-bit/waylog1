@@ -42,6 +42,8 @@ import {
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
+import { Capacitor } from "@capacitor/core";
+import { Share as CapShare } from "@capacitor/share";
 // Lazy-loaded screens — only fetched when their flag flips true. Cuts initial bundle.
 const AdminModerationScreen = lazy(() => import("./screens/AdminModerationScreen.jsx").then(m => ({ default: m.AdminModerationScreen })));
 const OnboardingScreen = lazy(() => import("./screens/OnboardingScreen.jsx").then(m => ({ default: m.OnboardingScreen })));
@@ -6635,14 +6637,25 @@ function AppInner() {
       onShare={async (p) => {
         const text = `${p.author}: ${p.content}\n\n— 웨이로그에서 공유`;
         try {
-          if (navigator.share) {
+          if (Capacitor.isNativePlatform()) {
+            await CapShare.share({
+              title: "웨이로그",
+              text,
+              dialogTitle: "어디에 공유할까요?",
+            });
+            // Android 시스템이 피드백 주므로 별도 토스트는 생략.
+          } else if (navigator.share) {
             await navigator.share({ title: "웨이로그", text });
             setToast("공유했어요");
           } else if (navigator.clipboard) {
             await navigator.clipboard.writeText(text);
             setToast("클립보드에 복사됐어요");
           }
-        } catch {}
+        } catch (err) {
+          // 사용자가 공유 시트에서 취소한 경우는 에러로 간주하지 않음.
+          if (err?.name === "AbortError") return;
+          if (typeof err?.message === "string" && err.message.toLowerCase().includes("cancel")) return;
+        }
       }}/>
   );
   const profileSelfEl = (

@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import {
   Check, ExternalLink, Heart, RefreshCw, Share2, Sparkles, X
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import { cls } from "../utils/ui.js";
 import { sanitizeImageUrl } from "../utils/sanitize.js";
 import { useExit } from "../hooks.js";
@@ -115,6 +117,22 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
   };
 
   const handleCopyLink = async () => {
+    // 네이티브: OS 공유 시트로 열어 사용자가 카톡/메시지/링크복사 선택 가능.
+    // 웹: 기존대로 클립보드 복사 + "복사됨!" 피드백.
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Share.share({
+          title: review.title || "웨이로그",
+          text: review.title || "웨이로그에서 공유",
+          url: shareHref,
+          dialogTitle: "어디에 공유할까요?",
+        });
+      } catch (e) {
+        if (e?.message?.includes("canceled") || e?.name === "AbortError") return;
+        onShowToast && onShowToast("공유에 실패했어요");
+      }
+      return;
+    }
     try {
       await navigator.clipboard.writeText(shareHref);
       setCopied(true);
@@ -199,7 +217,11 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
               copied
                 ? dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700"
                 : dark ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-700")}>
-            {copied ? <><Check size={16}/> 복사됨!</> : <><ExternalLink size={16}/> 링크 복사</>}
+            {copied
+              ? <><Check size={16}/> 복사됨!</>
+              : Capacitor.isNativePlatform()
+                ? <><Share2 size={16}/> 링크 공유</>
+                : <><ExternalLink size={16}/> 링크 복사</>}
           </button>
         </div>
       </div>
