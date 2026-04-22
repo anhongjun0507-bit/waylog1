@@ -18,8 +18,11 @@ const ShareCardModal = ({ review, onClose, dark, user: _user }) => {
 
   const cat = CATEGORIES[review.category] || CATEGORIES.food;
   const accent = CAT_SOLID[review.category] || "#0071CE";
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareHref = `${origin}/review/${review.id}`;
+  // Capacitor WebView 에서는 window.location.origin 이 https://localhost 로 잡혀
+  // 공유 링크가 무효해지므로 프로덕션 도메인을 고정값으로 사용.
+  const SHARE_ORIGIN = import.meta.env.VITE_SHARE_ORIGIN
+    || (typeof window !== "undefined" ? window.location.origin : "");
+  const shareHref = `${SHARE_ORIGIN}/review/${review.id}`;
   const bodyPreview = (review.body || "").slice(0, 60) + ((review.body || "").length > 60 ? "…" : "");
   const safeImg = sanitizeImageUrl(review.img || "");
 
