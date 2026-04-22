@@ -2220,6 +2220,8 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   }, [CATALOG, dq]);
 
   const submit = () => {
+    // [1.0.1 디버그] 네이티브 앱에서 '게시' 무반응 이슈 추적용 — 1.0.2 에서 제거 예정
+    if (typeof console !== "undefined") console.log("[community-compose] submit called", { hasContent: !!content.trim(), isEdit });
     if (!content.trim()) return;
     const meta = {
       isAnonymous,
@@ -2233,10 +2235,14 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
-        <button onClick={close} className={cls("text-sm font-bold", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
+        <button onClick={close}
+          className={cls("text-sm font-bold min-w-[44px] min-h-[44px] -m-2 px-2 py-2 touch-manipulation", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>{isEdit ? "커뮤니티 수정" : "커뮤니티 글쓰기"}</p>
-        <button onClick={submit} disabled={!content.trim()}
-          className={cls("text-sm font-black transition", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>{isEdit ? "수정" : "게시"}</button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!content.trim()}
+          className={cls("text-sm font-black transition min-w-[60px] min-h-[44px] -m-2 px-3 py-2 rounded-lg touch-manipulation active:scale-95", content.trim() ? "text-brand-500" : dark ? "text-gray-600" : "text-gray-300")}>{isEdit ? "수정" : "게시"}</button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 작성자 */}
