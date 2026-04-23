@@ -2221,14 +2221,9 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
     return (CATALOG || []).filter((p) => (p.name + p.brand + (p.tags || []).join("")).toLowerCase().includes(q)).slice(0, 20);
   }, [CATALOG, dq]);
 
-  // [1.0.2 디버그] 네이티브 앱 게시 버튼 무반응 이슈 추적 — 해결 확정 후 1.0.3 에서 제거
   const submit = useCallback(() => {
     const trimmed = (content || "").trim();
-    console.log("[community-compose] submit CALLED", { contentLen: trimmed.length, isEdit, isAnonymous });
-    if (!trimmed) {
-      console.log("[community-compose] BLOCKED: empty");
-      return;
-    }
+    if (!trimmed) return;
     const meta = {
       isAnonymous,
       challengeId: isAnonymous && hasActiveChallenge ? challenge.id || null : null,
@@ -2236,12 +2231,46 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
     };
     try {
       onPost(trimmed, product, image, meta);
-      console.log("[community-compose] onPost invoked");
     } catch (err) {
       console.error("[community-compose] onPost ERROR:", err);
     }
     close();
-  }, [content, isAnonymous, hasActiveChallenge, challenge, dayNum, product, image, onPost, close, isEdit]);
+  }, [content, isAnonymous, hasActiveChallenge, challenge, dayNum, product, image, onPost, close]);
+
+  // Android WebView ghost-tap 방어.
+  // autoFocus 된 textarea 상태에서 게시 버튼을 탭하면 click 합성 전에 blur →
+  // 키보드 닫힘 애니메이션 → 컨텐츠 영역 리사이즈 → 버튼 좌표 이동으로
+  // 합성 click 이 원래 touchstart 좌표의 (이동된) 다른 요소에 도달해 실종될 수 있음.
+  // 해결: pointerup 을 1차 트리거로 네이티브 등록 (키보드 dismiss 이전에 발동),
+  // click 을 2차 백업으로 등록. submittingRef 로 중복 실행 차단.
+  // React 이벤트 위임을 거치지 않고 addEventListener 로 직접 바인딩 — WebView 에서
+  // 합성 click 이 지연·유실되는 경우에도 최소 pointerup 은 확보.
+  const publishButtonRef = useRef(null);
+  const submittingRef = useRef(false);
+  const safeSubmitRef = useRef(null);
+  safeSubmitRef.current = (source) => {
+    if (submittingRef.current) return;
+    const trimmed = (content || "").trim();
+    if (!trimmed) return;
+    submittingRef.current = true;
+    console.log(`[community-compose] SUBMIT via: ${source}`);
+    // close() 애니메이션(~260ms) + Supabase 응답까지 덮는 여유값. 재시도가 필요하면
+    // 모달이 닫혔으므로 재오픈 시 새 인스턴스가 만들어져 플래그는 자동 초기화.
+    setTimeout(() => { submittingRef.current = false; }, 500);
+    submit();
+  };
+  useEffect(() => {
+    const btn = publishButtonRef.current;
+    if (!btn) return;
+    const onPointerUp = () => safeSubmitRef.current?.("pointerup");
+    const onClick = () => safeSubmitRef.current?.("click");
+    btn.addEventListener("pointerup", onPointerUp);
+    btn.addEventListener("click", onClick);
+    return () => {
+      btn.removeEventListener("pointerup", onPointerUp);
+      btn.removeEventListener("click", onClick);
+    };
+  }, []);
 
   return (
     // z-[100] 로 상승 + pt-safe 를 inline paddingTop 으로 대체 (제조사별 safe-area 값
@@ -2256,10 +2285,8 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
           className={cls("text-sm font-bold min-w-[44px] min-h-[44px] -m-2 px-2 py-2 touch-manipulation", dark ? "text-gray-400" : "text-gray-500")}>취소</button>
         <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>{isEdit ? "커뮤니티 수정" : "커뮤니티 글쓰기"}</p>
         <button
+          ref={publishButtonRef}
           type="button"
-          onClick={submit}
-          onPointerDown={() => console.log("[community-compose] pointerdown")}
-          onTouchStart={() => console.log("[community-compose] touchstart")}
           disabled={!content.trim()}
           className={cls("relative z-20 min-w-[60px] min-h-[44px] px-4 rounded-lg text-sm font-semibold touch-manipulation active:scale-95 transition",
             content.trim()
