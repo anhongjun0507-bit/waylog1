@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext, Component, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext, Component, lazy, Suspense, memo } from "react";
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   // App.jsx 에서 직접 JSX 렌더에 사용하는 아이콘만. 상수/컴포넌트용 아이콘은 해당 파일로 이동.
@@ -2965,11 +2965,141 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   );
 };
 
+// 답글이 없는 댓글에 대해 매번 새 `[]` 를 넘기지 않도록 공유하는 빈 배열.
+// memo 얕은 비교에서 reference 안정성 확보.
+const EMPTY_ARRAY = Object.freeze([]);
+
+// 최상위 댓글 1개 + 그 답글들을 렌더. memo 로 감싸 DetailScreen 의 다른 state
+// (특히 댓글 input 의 comment draft) 변경 시 기존 댓글들이 불필요하게 재렌더되는
+// 것을 방지. 전달되는 콜백은 모두 상위에서 useCallback 으로 안정화된 것을 사용.
+const CommentItem = memo(function CommentItem({
+  comment: c, replies, isExpanded, hiddenCount, user, dark,
+  onUserClick, onSetReplyTo, onLike, onReport, onDelete, onToggleExpanded,
+  setCommentRef,
+}) {
+  const isMyComment = user && c.author === user.nickname;
+  const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
+  const mentionClick = useCallback((name) => onUserClick && onUserClick({ author: name, avatar: "" }), [onUserClick]);
+  const refCb = useCallback((el) => { if (setCommentRef) setCommentRef(c.id, el); }, [setCommentRef, c.id]);
+  return (
+    <div ref={refCb}>
+      <div className="flex gap-2.5 group">
+        <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className="active:scale-90 transition shrink-0">
+          <Avatar id={c.avatar} size={14} className="w-8 h-8"/>
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
+            {isMyComment && (
+              <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
+            )}
+            <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
+          </div>
+          <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
+            <MentionText text={c.text} dark={dark} onMentionClick={mentionClick}/>
+          </p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <button onClick={() => onSetReplyTo({ id: c.id, author: c.author, isReply: false })}
+              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
+              답글 달기 <span className="text-xs">&#8629;</span>
+              {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-brand-900/40" : "bg-brand-50")}>{replies.length}</span>}
+            </button>
+            <button onClick={() => onLike(c.id)}
+              className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+              <Heart size={11} className={(c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
+              {(c.likedBy || []).length > 0 && <span>{(c.likedBy || []).length}</span>}
+            </button>
+            {user && c.author !== user.nickname && (
+              <button onClick={() => onReport(c.id)}
+                className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
+                신고
+              </button>
+            )}
+          </div>
+        </div>
+        {isMyComment && (
+          <button onClick={() => onDelete(c.id)} aria-label="댓글 삭제"
+            className={cls("w-8 h-8 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90 transition", dark ? "bg-gray-800 text-gray-500 hover:text-rose-400" : "bg-gray-100 text-gray-400 hover:text-rose-500")}>
+            <X size={14}/>
+          </button>
+        )}
+      </div>
+      {visibleReplies.length > 0 && (
+        <div className={cls("mt-2 ml-5 pl-5 space-y-2 border-l-2", dark ? "border-gray-700" : "border-gray-200")}>
+          {visibleReplies.map((reply) => {
+            const isMyReply = user && reply.author === user.nickname;
+            return (
+            <div key={reply.id} className="flex gap-2 group">
+              <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className="active:scale-90 transition shrink-0">
+                <Avatar id={reply.avatar} size={12} className="w-6 h-6"/>
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
+                  {isMyReply && (
+                    <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
+                  )}
+                  <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
+                </div>
+                <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
+                  {reply.mentionTo && (
+                    <button onClick={() => onUserClick && onUserClick({ author: reply.mentionTo, avatar: "" })}
+                      className={cls("font-bold mr-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
+                      @{reply.mentionTo}
+                    </button>
+                  )}
+                  <MentionText text={reply.text} dark={dark} onMentionClick={mentionClick}/>
+                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <button onClick={() => onSetReplyTo({ id: c.id, author: reply.author, isReply: true })}
+                    className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
+                    답글 달기 <span className="text-xs">&#8629;</span>
+                  </button>
+                  <button onClick={() => onLike(reply.id)}
+                    className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
+                    <Heart size={10} className={(reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
+                    {(reply.likedBy || []).length > 0 && <span>{(reply.likedBy || []).length}</span>}
+                  </button>
+                  {user && reply.author !== user.nickname && (
+                    <button onClick={() => onReport(reply.id)}
+                      className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
+                      신고
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isMyReply && (
+                <button onClick={() => onDelete(reply.id)} aria-label="답글 삭제"
+                  className={cls("w-7 h-7 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90", dark ? "bg-gray-800 text-gray-500" : "bg-gray-100 text-gray-400")}>
+                  <X size={12}/>
+                </button>
+              )}
+            </div>
+            );
+          })}
+          {!isExpanded && hiddenCount > 0 && (
+            <button onClick={() => onToggleExpanded(c.id, true)}
+              className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
+              <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
+            </button>
+          )}
+          {isExpanded && hiddenCount > 0 && (
+            <button onClick={() => onToggleExpanded(c.id, false)}
+              className={cls("text-xs font-bold pl-1 active:opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
+              접기
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+
 const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav, dark, comments, addComment, deleteComment, toggleCommentLike, user, onEdit, onDelete, onReport, onUserClick, onHashtagClick, onProductClick, deleting = false, following, onToggleFollow }) => {
   const [exiting, close] = useExit(onBack);
-  // 신고 액션 시트 — 사용자가 사유를 선택한 뒤 onReport(target, reason) 호출
+  // 신고 액션 시트 — 사용자가 사유를 선택한 뒤 onReport(target, reason) 호출.
+  // 댓글 신고는 CommentItem → handleReport 경로로 setReportSheet 을 직접 호출.
   const [reportSheet, setReportSheet] = useState(null); // { type: "review"|"comment", id }
-  const openReportSheet = (type, id) => setReportSheet({ type, id });
   const submitReport = (reason) => {
     if (!reportSheet || !onReport) return setReportSheet(null);
     onReport(reportSheet.type, reportSheet.id, reason);
@@ -3008,6 +3138,27 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
   const [replyTo, setReplyTo] = useState(null);
   const [expandedReplies, setExpandedReplies] = useState({});
   const commentRefs = useRef({});
+
+  // 댓글을 최상위/답글로 1회만 분리 → CommentItem 에 전달되는 배열 identity 안정.
+  // comment input 타이핑으로 DetailScreen 이 리렌더돼도 comments prop 자체가
+  // 바뀌지 않는 한 이 계산은 캐시에서 바로 반환되고 CommentItem 은 memo 로 스킵.
+  const topLevelComments = useMemo(() => comments.filter((c) => !c.parentId), [comments]);
+  const repliesMap = useMemo(() => {
+    const m = new Map();
+    comments.forEach((c) => {
+      if (!c.parentId) return;
+      const arr = m.get(c.parentId);
+      if (arr) arr.push(c); else m.set(c.parentId, [c]);
+    });
+    return m;
+  }, [comments]);
+
+  // CommentItem 에 넘기는 핸들러들 — shallow-compare memo 가 실제로 스킵되도록 안정화.
+  const handleLike = useCallback((id) => toggleCommentLike && toggleCommentLike(r.id, id), [toggleCommentLike, r.id]);
+  const handleReport = useCallback((id) => setReportSheet({ type: "comment", id }), []);
+  const handleDelete = useCallback((id) => deleteComment && deleteComment(r.id, id), [deleteComment, r.id]);
+  const handleToggleExpanded = useCallback((id, next) => setExpandedReplies((prev) => ({ ...prev, [id]: next })), []);
+  const setCommentRef = useCallback((id, el) => { commentRefs.current[id] = el; }, []);
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -3261,123 +3412,22 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             </div>
           )}
           <div className="space-y-3">
-            {comments.filter((c) => !c.parentId).map((c) => {
-              const replies = comments.filter((x) => x.parentId === c.id);
-              const isExpanded = expandedReplies[c.id];
-              const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
+            {topLevelComments.map((c) => {
+              const replies = repliesMap.get(c.id) || EMPTY_ARRAY;
+              const isExpanded = !!expandedReplies[c.id];
               const hiddenCount = replies.length - 1;
-              const isMyComment = user && c.author === user.nickname;
               return (
-                <div key={c.id} ref={(el) => { commentRefs.current[c.id] = el; }}>
-                  <div className="flex gap-2.5 group">
-                    <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className="active:scale-90 transition shrink-0">
-                      <Avatar id={c.avatar} size={14} className="w-8 h-8"/>
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <button onClick={() => onUserClick({ author: c.author, avatar: c.avatar, authorId: c.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{c.author}</button>
-                        {isMyComment && (
-                          <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
-                        )}
-                        <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(c.createdAt, c.time)}</p>
-                      </div>
-                      <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
-                        <MentionText text={c.text} dark={dark} onMentionClick={(name) => onUserClick && onUserClick({ author: name, avatar: "" })}/>
-                      </p>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <button onClick={() => setReplyTo({ id: c.id, author: c.author, isReply: false })}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
-                          답글 달기 <span className="text-xs">&#8629;</span>
-                          {replies.length > 0 && <span className={cls("ml-0.5 px-1.5 py-0.5 rounded-full text-xs", dark ? "bg-brand-900/40" : "bg-brand-50")}>{replies.length}</span>}
-                        </button>
-                        <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, c.id)}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                          <Heart size={11} className={(c.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
-                          {(c.likedBy || []).length > 0 && <span>{(c.likedBy || []).length}</span>}
-                        </button>
-                        {user && c.author !== user.nickname && (
-                          <button onClick={() => openReportSheet("comment", c.id)}
-                            className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
-                            신고
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {isMyComment && (
-                      <button onClick={() => deleteComment && deleteComment(r.id, c.id)} aria-label="댓글 삭제"
-                        className={cls("w-8 h-8 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90 transition", dark ? "bg-gray-800 text-gray-500 hover:text-rose-400" : "bg-gray-100 text-gray-400 hover:text-rose-500")}>
-                        <X size={14}/>
-                      </button>
-                    )}
-                  </div>
-                  {visibleReplies.length > 0 && (
-                    <div className={cls("mt-2 ml-5 pl-5 space-y-2 border-l-2", dark ? "border-gray-700" : "border-gray-200")}>
-                      {visibleReplies.map((reply) => {
-                        const isMyReply = user && reply.author === user.nickname;
-                        return (
-                        <div key={reply.id} className="flex gap-2 group">
-                          <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className="active:scale-90 transition shrink-0">
-                            <Avatar id={reply.avatar} size={12} className="w-6 h-6"/>
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-2">
-                              <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className={cls("text-xs font-bold active:opacity-60", dark ? "text-white" : "text-gray-900")}>{reply.author}</button>
-                              {isMyReply && (
-                                <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full", dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-600")}>내 댓글</span>
-                              )}
-                              <p className={cls("text-xs font-normal opacity-70", dark ? "text-gray-400" : "text-gray-600")}>{formatRelativeTime(reply.createdAt, reply.time)}</p>
-                            </div>
-                            <p className={cls("text-xs mt-0.5", dark ? "text-gray-300" : "text-gray-700")}>
-                              {reply.mentionTo && (
-                                <button onClick={() => onUserClick && onUserClick({ author: reply.mentionTo, avatar: "" })}
-                                  className={cls("font-bold mr-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
-                                  @{reply.mentionTo}
-                                </button>
-                              )}
-                              <MentionText text={reply.text} dark={dark} onMentionClick={(name) => onUserClick && onUserClick({ author: name, avatar: "" })}/>
-                            </p>
-                            <div className="flex items-center gap-3 mt-1">
-                              <button onClick={() => setReplyTo({ id: c.id, author: reply.author, isReply: true })}
-                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
-                                답글 달기 <span className="text-xs">&#8629;</span>
-                              </button>
-                              <button onClick={() => toggleCommentLike && toggleCommentLike(r.id, reply.id)}
-                                className={cls("text-xs font-bold inline-flex items-center gap-1 active:opacity-60", (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "text-brand-500" : dark ? "text-gray-400" : "text-gray-500")}>
-                                <Heart size={10} className={(reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname) ? "fill-accent-500" : ""}/>
-                                {(reply.likedBy || []).length > 0 && <span>{(reply.likedBy || []).length}</span>}
-                              </button>
-                              {user && reply.author !== user.nickname && (
-                                <button onClick={() => openReportSheet("comment", reply.id)}
-                                  className={cls("text-xs font-bold active:opacity-60", dark ? "text-gray-600" : "text-gray-400")}>
-                                  신고
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          {isMyReply && (
-                            <button onClick={() => deleteComment && deleteComment(r.id, reply.id)} aria-label="답글 삭제"
-                              className={cls("w-7 h-7 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 active:scale-90", dark ? "bg-gray-800 text-gray-500" : "bg-gray-100 text-gray-400")}>
-                              <X size={12}/>
-                            </button>
-                          )}
-                        </div>
-                        );
-                      })}
-                      {!isExpanded && hiddenCount > 0 && (
-                        <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: true }))}
-                          className={cls("text-xs font-bold inline-flex items-center gap-1 pl-1 active:opacity-60", dark ? "text-brand-300" : "text-brand-600")}>
-                          <span className="text-xs">&#8629;</span> 답글 {hiddenCount}개 더보기
-                        </button>
-                      )}
-                      {isExpanded && hiddenCount > 0 && (
-                        <button onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: false }))}
-                          className={cls("text-xs font-bold pl-1 active:opacity-60", dark ? "text-gray-400" : "text-gray-500")}>
-                          접기
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <CommentItem key={c.id}
+                  comment={c} replies={replies}
+                  isExpanded={isExpanded} hiddenCount={hiddenCount}
+                  user={user} dark={dark}
+                  onUserClick={onUserClick}
+                  onSetReplyTo={setReplyTo}
+                  onLike={handleLike}
+                  onReport={handleReport}
+                  onDelete={handleDelete}
+                  onToggleExpanded={handleToggleExpanded}
+                  setCommentRef={setCommentRef}/>
               );
             })}
           </div>
