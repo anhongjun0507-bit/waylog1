@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowLeft, BookOpen, Camera, Check, Eye, Info, MessageCircle, PenLine,
+  ArrowLeft, BookOpen, Camera, Check, Eye, MessageCircle, PenLine,
   RefreshCw, RotateCcw, Sparkles, Target, X
 } from "lucide-react";
 import { supabase, auth as supabaseAuth } from "../supabase.js";
@@ -8,19 +8,6 @@ import { friendlyError } from "../utils/errors.js";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { Avatar } from "../components/index.js";
-
-// 업데이트 안내 배너 — 마이그레이션 v4 로 재로그인 요구되는 기간 동안만 노출.
-// 기한 경과(2026-05-10) 또는 사용자가 × 눌러 닫으면 숨김.
-const BANNER_DISMISSED_KEY = "waylog:update-banner-v1-dismissed";
-const BANNER_EXPIRES_AT = new Date("2026-05-10T00:00:00+09:00").getTime();
-const shouldShowUpdateBanner = () => {
-  try {
-    if (typeof localStorage === "undefined") return false;
-    if (localStorage.getItem(BANNER_DISMISSED_KEY) === "1") return false;
-    if (Date.now() > BANNER_EXPIRES_AT) return false;
-    return true;
-  } catch { return false; }
-};
 
 // 패스워드 정책 (가입용) — 8자 이상, 영문+숫자 필수.
 export const isValidPassword = (pw) =>
@@ -53,11 +40,6 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
   const [avatar, setAvatar] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [showBanner, setShowBanner] = useState(shouldShowUpdateBanner);
-  const dismissBanner = () => {
-    try { localStorage.setItem(BANNER_DISMISSED_KEY, "1"); } catch {}
-    setShowBanner(false);
-  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -215,33 +197,6 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
             {mode === "forgot-password" && "재설정 링크를 받을 이메일을 입력하세요."}
           </p>
         </div>
-
-        {showBanner && (
-          <div role="status"
-            className={cls("relative mb-6 p-4 pr-10 rounded-card border",
-              dark ? "bg-brand-900/30 border-brand-700 text-brand-100"
-                   : "bg-brand-50 border-brand-200 text-brand-800")}>
-            <button onClick={dismissBanner} aria-label="안내 닫기"
-              className={cls("absolute top-2.5 right-2.5 p-1.5 rounded-full active:opacity-60 transition",
-                dark ? "text-brand-200 hover:bg-brand-800/50" : "text-brand-700 hover:bg-brand-100")}>
-              <X size={14}/>
-            </button>
-            <div className="flex items-start gap-2.5">
-              <Info size={18} strokeWidth={2} className="shrink-0 mt-[2px]"/>
-              <div className="text-[14px] leading-[1.7]">
-                <p className="font-semibold mb-1.5">📢 업데이트 안내</p>
-                <p>앱이 새 버전으로 업데이트되었어요.</p>
-                <p>처음 한 번만 <span className="font-semibold">다시 로그인</span>해주세요.</p>
-                <p>다음부터는 자동으로 로그인돼요.</p>
-                <p className="mt-2 text-[13px] leading-[1.6] opacity-90">
-                  로그인이 잘 안 되면 아래{" "}
-                  <span className="font-medium">[로그인 문제가 있나요? 초기화하기]</span>{" "}
-                  버튼을 눌러주세요.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {mode === "signup" && (
           <div className="mb-4 flex flex-col items-center">
