@@ -2680,9 +2680,9 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
         <input value={text} onChange={(e) => setText(e.target.value)}
           placeholder={replyTo ? `@${replyTo.author}에게 답글` : "댓글을 남겨보세요"}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-          className={cls("flex-1 bg-transparent outline-none text-xs px-2", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
+          className={cls("flex-1 min-w-0 bg-transparent outline-none text-xs px-2", dark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400")}/>
         <button onClick={submit} disabled={!text.trim()}
-          className={cls("px-3 py-1.5 text-xs font-bold rounded-full transition", text.trim() ? "bg-brand-500 text-white active:scale-95" : dark ? "bg-gray-800 text-gray-500" : "bg-gray-200 text-gray-400")}>
+          className={cls("shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-full transition", text.trim() ? "bg-brand-500 text-white active:scale-95" : dark ? "bg-gray-800 text-gray-500" : "bg-gray-200 text-gray-400")}>
           등록
         </button>
       </div>
@@ -3442,7 +3442,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             <input value={comment} onChange={(e) => setComment(e.target.value)}
               onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ block: "center", behavior: "smooth" }), 300)}
               placeholder={replyTo ? `${replyTo.author}에게 답글 달기...` : "댓글 달기..."}
-              className={cls("flex-1 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
+              className={cls("flex-1 min-w-0 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
             <button onClick={() => {
               if (comment.trim()) {
                 const parentId = replyTo?.id || null;
@@ -3457,7 +3457,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
               }
             }}
               disabled={!comment.trim()}
-              className={cls("text-[14px] font-semibold transition", comment.trim() ? "text-brand-700 active:opacity-60" : "text-brand-700/40")}>
+              className={cls("shrink-0 whitespace-nowrap text-[14px] font-semibold transition", comment.trim() ? "text-brand-700 active:opacity-60" : "text-brand-700/40")}>
               게시
             </button>
           </div>
