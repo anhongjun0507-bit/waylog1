@@ -6,6 +6,9 @@ import {
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { useAppContext } from "../contexts/AppContext.js";
+import pkg from "../../package.json";
+
+const APP_VERSION = pkg.version;
 
 const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onEnablePush, onOpenAdmin }) => {
   // setToast 는 Context 에서 구독 — prop drilling 제거
@@ -77,7 +80,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       { icon: Inbox, label: "모든 데이터 삭제", type: "action", danger: true, onClick: () => setConfirmClear(true) },
     ]},
     { group: "정보", rows: [
-      { icon: Sparkles, label: "버전", sub: "5.5.0", type: "info" },
+      { icon: Sparkles, label: "버전", sub: APP_VERSION, type: "info" },
       { icon: BookOpen, label: "앱 안내 (비공식 앱)", sub: "상표·저작권 안내", type: "action", onClick: () => setDocOpen("about") },
       { icon: BookOpen, label: "온보딩 다시 보기", type: "action", onClick: () => onReplayOnboarding && onReplayOnboarding() },
       { icon: BookOpen, label: "이용약관", type: "action", onClick: () => setDocOpen("terms") },
@@ -133,7 +136,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
             로그아웃
           </button>
         </div>
-        <p className={cls("text-[12px] text-center py-6", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>웨이로그 v5.5.0</p>
+        <p className={cls("text-[12px] text-center py-6", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>웨이로그 v{APP_VERSION}</p>
       </div>
 
       {confirmClear && (
