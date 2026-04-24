@@ -3442,7 +3442,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
             <input value={comment} onChange={(e) => setComment(e.target.value)}
               onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ block: "center", behavior: "smooth" }), 300)}
               placeholder={replyTo ? `${replyTo.author}에게 답글 달기...` : "댓글 달기..."}
-              className={cls("flex-1 min-w-0 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
+              className={cls("flex-1 min-w-0 bg-transparent outline-none text-[14px] min-h-[44px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
             <button onClick={() => {
               if (comment.trim()) {
                 const parentId = replyTo?.id || null;
@@ -7136,7 +7136,7 @@ function AppInner() {
 
       {/* Offline banner */}
       {!isOnline && (
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl z-[70] px-4 pt-2">
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl z-[70] px-4 pt-safe pb-2">
           <div className="bg-gray-900/95 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center justify-center gap-2 animate-slide-up">
             <Wind size={14}/> 오프라인 상태에요. 연결을 확인해주세요
           </div>
