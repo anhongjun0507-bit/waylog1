@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  ArrowLeft, Bell, BookOpen, Calendar, ChevronRight,
+  ArrowLeft, Bell, BookOpen, Calendar, ChevronRight, ExternalLink,
   Inbox, Moon, Sparkles, Sun, User, X
 } from "lucide-react";
 import { cls } from "../utils/ui.js";
@@ -196,51 +196,21 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
                 </div>
               ) : docOpen === "terms" ? (
                 <div className="space-y-4">
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제1조 (목적)</p>
-                    <p>이 약관은 웨이로그(이하 "서비스")가 제공하는 라이프스타일 리뷰 공유 서비스의 이용과 관련하여 회사와 회원의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제2조 (회원가입)</p>
-                    <p>회원가입은 이용자가 약관에 동의하고 회사가 정한 가입 양식에 따라 회원정보를 기입한 후 가입신청을 하는 것으로 성립합니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제3조 (서비스 이용)</p>
-                    <p>회원은 서비스가 제공하는 모든 기능을 자유롭게 이용할 수 있으며, 다른 회원의 권리를 침해하거나 서비스 운영을 방해해서는 안 됩니다. 위반 시 서비스 이용이 제한될 수 있습니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제4조 (콘텐츠 저작권)</p>
-                    <p>회원이 서비스 내에서 작성한 게시물의 저작권은 회원 본인에게 귀속됩니다. 단, 서비스는 게시물을 서비스 운영, 홍보, 개선 목적으로 활용할 수 있습니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>제5조 (책임 제한)</p>
-                    <p>천재지변, 시스템 장애 등 회사의 귀책사유 없이 발생한 손해에 대해 회사는 책임을 지지 않습니다.</p>
-                  </div>
-                  <p className={cls("text-center pt-4 opacity-60", dark ? "text-gray-400" : "text-gray-500")}>본 약관은 데모 버전입니다.</p>
+                  <p>웨이로그 이용약관 전문은 아래 링크에서 확인하실 수 있습니다.</p>
+                  <a href="/terms.html" target="_blank" rel="noopener noreferrer"
+                    className={cls("inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition active:scale-95",
+                      dark ? "bg-brand-900/40 text-brand-200 hover:bg-brand-900/60" : "bg-brand-50 text-brand-700 hover:bg-brand-100")}>
+                    <ExternalLink size={14}/> 이용약관 전문 보기
+                  </a>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>1. 수집하는 개인정보 항목</p>
-                    <p>회원가입 시 닉네임, 이메일 주소, 비밀번호를 수집합니다. 서비스 이용 과정에서 작성한 글, 댓글, 좋아요, 무드 등의 활동 정보가 자동 수집됩니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>2. 개인정보 이용 목적</p>
-                    <p>회원 식별, 서비스 제공, 추천 알고리즘 학습, 통계 분석 및 서비스 개선 목적으로 활용됩니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>3. 보관 기간</p>
-                    <p>회원 탈퇴 시 모든 개인정보가 즉시 파기됩니다. 단, 관계 법령에 따라 일정 기간 보관해야 하는 정보는 그 기간 동안 보관됩니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>4. 제3자 제공</p>
-                    <p>회원의 동의 없이 개인정보를 외부에 제공하지 않습니다. 단, 법적 요청이 있는 경우 예외로 합니다.</p>
-                  </div>
-                  <div>
-                    <p className={cls("font-black text-sm mb-1", dark ? "text-white" : "text-gray-900")}>5. 회원의 권리</p>
-                    <p>회원은 언제든지 자신의 개인정보를 열람, 수정, 삭제할 수 있습니다. 설정 메뉴의 *모든 데이터 삭제* 기능을 통해 즉시 처리됩니다.</p>
-                  </div>
-                  <p className={cls("text-center pt-4 opacity-60", dark ? "text-gray-400" : "text-gray-500")}>본 처리방침은 데모 버전입니다.</p>
+                  <p>웨이로그 개인정보 처리방침 전문은 아래 링크에서 확인하실 수 있습니다.</p>
+                  <a href="/privacy.html" target="_blank" rel="noopener noreferrer"
+                    className={cls("inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition active:scale-95",
+                      dark ? "bg-brand-900/40 text-brand-200 hover:bg-brand-900/60" : "bg-brand-50 text-brand-700 hover:bg-brand-100")}>
+                    <ExternalLink size={14}/> 개인정보 처리방침 전문 보기
+                  </a>
                 </div>
               )}
             </div>
