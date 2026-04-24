@@ -47,7 +47,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, 
         </div>
         {isMine && (
           <div className="relative shrink-0">
-            <button onClick={() => setMenuOpen((v) => !v)} aria-label="옵션 메뉴" className="p-1 active:opacity-60">
+            <button onClick={() => setMenuOpen((v) => !v)} aria-label="옵션 메뉴" className="min-w-tap min-h-tap flex items-center justify-center active:opacity-60 -m-2.5">
               <MoreHorizontal size={18} className={dark ? "text-white" : "text-black"}/>
             </button>
             {menuOpen && (
@@ -178,7 +178,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, 
             </span>
           )}
         </button>
-        <button onClick={() => onOpen(r)} aria-label="댓글" className="p-1.5 active:scale-90 transition inline-flex items-center gap-1.5">
+        <button onClick={() => onOpen(r)} aria-label="댓글" className="min-w-tap min-h-tap active:scale-90 transition inline-flex items-center justify-center gap-1.5">
           <MessageCircle size={24} strokeWidth={1.8} className={dark ? "text-white" : "text-black"}/>
           {r.comments > 0 && (
             <span className={cls("text-[13px] font-semibold tabular-nums", dark ? "text-white" : "text-black")}>

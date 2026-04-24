@@ -2333,7 +2333,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
               <p className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-gray-900")}>{product.name}</p>
               <p className={cls("text-xs", dark ? "text-gray-400" : "text-gray-500")}>{product.brand}</p>
             </div>
-            <button onClick={() => setProduct(null)} className={cls("p-1 rounded-full", dark ? "text-gray-400" : "text-gray-500")}><X size={14}/></button>
+            <button onClick={() => setProduct(null)} aria-label="선택한 제품 제거" className={cls("min-w-tap min-h-tap flex items-center justify-center rounded-full -m-2", dark ? "text-gray-400" : "text-gray-500")}><X size={14}/></button>
           </div>
         ) : (
           <button onClick={() => setPickerOpen(!pickerOpen)}
@@ -2735,7 +2735,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
       {/* 검색 헤더 */}
       <div className={cls("flex items-center gap-2 px-3 h-14 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <button onClick={close} aria-label="뒤로" className="p-1.5 active:opacity-60">
+        <button onClick={close} aria-label="뒤로" className="min-w-tap min-h-tap flex items-center justify-center active:opacity-60 -ml-1.5">
           <ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/>
         </button>
         <div className={cls("flex-1 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
