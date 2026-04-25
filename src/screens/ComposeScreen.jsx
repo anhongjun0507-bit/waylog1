@@ -70,6 +70,8 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   const [error, setError] = useState("");
   const [confirmClearDraft, setConfirmClearDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 미디어 첨부 처리 (resize, FileReader) 진행 인디케이터 — 동영상은 50MB 까지라 수 초 걸릴 수 있음
+  const [mediaProcessing, setMediaProcessing] = useState(false);
   // 카테고리 변경 시 기존 제품이 맞지 않으면 확인 받고 제거 (조용히 날리면 사용자가 놀람)
   const [pendingCategoryChange, setPendingCategoryChange] = useState(null);
   // 드래프트 복구 안내 — 수정 모드가 아니고, 저장된 drafts 가 있으면 한 번 노출.
@@ -183,8 +185,10 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
       e.target.value = "";
       return;
     }
+    setMediaProcessing(true);
     const newItems = [];
     let skippedUnsupported = 0;
+    try {
     for (const file of files) {
       const isVideo = file.type.startsWith("video/");
       const isImage = file.type.startsWith("image/");
@@ -242,6 +246,9 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     }
     if (newItems.length > 0) setMediaItems((prev) => [...prev, ...newItems]);
     e.target.value = "";
+    } finally {
+      setMediaProcessing(false);
+    }
   };
 
   const removeMedia = (id) => setMediaItems((prev) => prev.filter((m) => m.id !== id));
@@ -377,6 +384,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
             <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>사진 · 동영상</p>
             <span className={cls("text-[12px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{mediaItems.length}/10</span>
           </div>
+          {mediaProcessing && (
+            <div className={cls("mb-2 px-3 py-2 rounded-xl text-[12px] font-semibold flex items-center gap-2",
+              dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
+              <RefreshCw size={12} className="animate-spin shrink-0"/> 사진 · 동영상 준비 중...
+            </div>
+          )}
           <div className="grid grid-cols-4 lg:grid-cols-6 gap-2">
             {mediaItems.map((m) => (
               <div key={m.id} className={cls("relative aspect-square rounded-lg overflow-hidden group", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
@@ -399,7 +412,13 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 </button>
               </div>
             ))}
-            {mediaItems.length < 10 && (
+            {mediaProcessing && (
+              <div className={cls("aspect-square rounded-lg flex items-center justify-center",
+                dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
+                <RefreshCw size={20} className={cls("animate-spin", dark ? "text-brand-300" : "text-brand-500")}/>
+              </div>
+            )}
+            {mediaItems.length < 10 && !mediaProcessing && (
               <label className={cls("aspect-square rounded-lg border border-dashed flex flex-col items-center justify-center cursor-pointer transition active:opacity-70",
                 dark ? "border-[#262626] bg-[#121212]" : "border-[#dbdbdb] bg-[#fafafa]")}>
                 <Camera size={20} className={dark ? "text-white" : "text-black"} strokeWidth={1.8}/>
