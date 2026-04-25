@@ -17,6 +17,10 @@ describe("sanitizeUrl", () => {
     expect(sanitizeImageUrl("data:image/png;base64,aaa")).toBe("data:image/png;base64,aaa");
     expect(sanitizeUrl("data:image/png;base64,aaa")).toBe("");
   });
+  it("allows data:video for media thumbnails (compose 업로드 직후 작성자 본인 미리보기)", () => {
+    expect(sanitizeImageUrl("data:video/mp4;base64,aaa")).toBe("data:video/mp4;base64,aaa");
+    expect(sanitizeUrl("data:video/mp4;base64,aaa")).toBe("");
+  });
   it("allows relative paths", () => {
     expect(sanitizeUrl("/local/img.png")).toBe("/local/img.png");
     expect(sanitizeUrl("#section")).toBe("#section");

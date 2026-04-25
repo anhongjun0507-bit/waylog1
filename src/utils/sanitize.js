@@ -22,8 +22,9 @@ export function sanitizeUrl(url, opts = {}) {
     return trimmed;
   }
 
-  // data:image/... 는 옵션으로만 허용 (아바타 프리뷰 등)
-  if (trimmed.toLowerCase().startsWith("data:image/") && opts.allowDataImage) {
+  // data:image/... · data:video/... 는 옵션으로만 허용 (아바타 프리뷰, 작성자 로컬 미디어 썸네일 등)
+  const lower = trimmed.toLowerCase();
+  if ((lower.startsWith("data:image/") || lower.startsWith("data:video/")) && opts.allowDataImage) {
     return trimmed;
   }
 

@@ -6142,7 +6142,8 @@ function AppInner() {
 
     // 미디어는 일단 로컬 URL 그대로 사용 (업로드는 백그라운드)
     const localMedia = (data.media || []).map((m) => ({ id: m.id, type: m.type, url: m.url || "", duration: m.duration }));
-    const firstImg = localMedia.find((m) => m.type === "image");
+    // 작성자 본인이 즉시 보는 썸네일도 mapReviewRow 와 동일하게 첫 미디어(이미지/동영상 무관) URL 사용
+    const firstMedia = localMedia[0];
 
     if (data.id) {
       // 수정 모드 — 즉시 로컬 반영
@@ -6153,7 +6154,7 @@ function AppInner() {
         media: localMedia,
         tags: data.tags.length ? data.tags : ["내웨이로그"],
         category: data.category,
-        img: firstImg?.url || data.img || "",
+        img: firstMedia?.url || data.img || "",
       } : r));
       setToast("웨이로그가 수정됐어요");
       // 서버 동기화 — 편집 내용을 IndexedDB에 미리 저장하고 3회 재시도. 실패 시 다음 앱 실행에서 자동 재시도.
@@ -6200,7 +6201,7 @@ function AppInner() {
     // 새 리뷰 — 즉시 로컬에 추가하고 모달 닫기
     const localR = {
       id: Date.now(),
-      img: firstImg?.url || data.img || "",
+      img: firstMedia?.url || data.img || "",
       title: data.title, body: data.body, product: data.product,
       products: data.products || [],
       media: localMedia,
@@ -6229,9 +6230,10 @@ function AppInner() {
       try { uploaded = await uploadMedia(data.media || []); } catch {}
       // 업로드 도중 사용자 바뀌었으면 중단 (로그아웃/계정 교체)
       if (userIdRef.current !== uid) return;
-      const serverImg = uploaded.find((m) => m.type === "image")?.url || "";
+      // mapReviewRow 와 동일하게 첫 미디어 URL 사용 (이미지 우선이지만 동영상-only 게시도 썸네일 영상으로 표시)
+      const serverThumb = uploaded[0]?.url || "";
       // 업로드 결과를 로컬 pending 에도 반영 (다음 앱 실행 시 재시도할 때 동일한 media URL 사용)
-      setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, img: serverImg || r.img, media: uploaded } : r));
+      setUserReviews((prev) => prev.map((r) => r.id === localR.id ? { ...r, img: serverThumb || r.img, media: uploaded } : r));
       const payload = {
         user_id: uid,
         title: data.title, content: data.body, category: data.category,
