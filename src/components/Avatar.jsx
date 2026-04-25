@@ -3,10 +3,10 @@ import { User } from "lucide-react";
 import { AVATAR_OPTIONS } from "../constants.js";
 import { cls } from "../utils/ui.js";
 
-// 아바타 - id 가 data: URL 이면 이미지, AVATAR_OPTIONS 키면 아이콘 원, 그 외는 placeholder
+// 아바타 - id 가 data:/http(s) URL 이면 이미지, AVATAR_OPTIONS 키면 아이콘 원, 그 외는 placeholder
 // memo: 부모 리렌더 시 props 동일하면 skip (큰 리스트에서 불필요한 재렌더 방지)
 const AvatarBase = ({ id, size = 24, className = "", rounded = "rounded-full" }) => {
-  if (id && typeof id === "string" && id.startsWith("data:")) {
+  if (id && typeof id === "string" && (id.startsWith("data:") || /^https?:\/\//i.test(id))) {
     return (
       <div className={cls("overflow-hidden bg-gray-200", rounded, className)}>
         <img src={id} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover"/>
