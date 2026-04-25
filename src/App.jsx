@@ -2463,13 +2463,13 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)}/>
                   <div className={cls("absolute right-0 top-8 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
                     <button onClick={() => { setMenuOpenId(null); onEditPost && onEditPost(p); }}
-                      className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
-                      <PenLine size={14}/> 수정하기
+                      className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 whitespace-nowrap transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
+                      <PenLine size={14} className="shrink-0"/> 수정하기
                     </button>
                     <div className={cls("h-px", dark ? "bg-gray-700" : "bg-gray-100")}/>
                     <button onClick={() => { setMenuOpenId(null); setConfirmDeleteId(p.id); }}
-                      className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
-                      <X size={14}/> 삭제하기
+                      className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 whitespace-nowrap text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
+                      <X size={14} className="shrink-0"/> 삭제하기
                     </button>
                   </div>
                 </>
@@ -3262,13 +3262,13 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)}/>
                 <div className={cls("absolute top-16 right-28 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
                   <button onClick={() => { setMenuOpen(false); onEdit && onEdit(r); }}
-                    className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
-                    <PenLine size={14}/> 수정하기
+                    className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 whitespace-nowrap transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
+                    <PenLine size={14} className="shrink-0"/> 수정하기
                   </button>
                   <div className={cls("h-px", dark ? "bg-gray-700" : "bg-gray-100")}/>
                   <button onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
-                    className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
-                    <X size={14}/> 삭제하기
+                    className="w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 whitespace-nowrap text-rose-500 transition active:bg-rose-50 dark:active:bg-rose-900/20">
+                    <X size={14} className="shrink-0"/> 삭제하기
                   </button>
                 </div>
               </>
@@ -3878,8 +3878,8 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
               </div>
             )}
             <div className={cls("p-4 rounded-2xl", dark ? "bg-gray-800" : "bg-gray-50")}>
-              <div className="flex items-center justify-between mb-3">
-                <div>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0 flex-1">
                   <p className={cls("text-sm font-black", dark ? "text-white" : "text-gray-900")}>
                     {editMode ? "직접 수정" : "AI 분석 결과"}
                   </p>
@@ -3891,7 +3891,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                   )}
                 </div>
                 <button onClick={() => setEditMode(!editMode)}
-                  className={cls("text-xs font-bold px-2 py-1 rounded-full", dark ? "bg-gray-700 text-gray-300" : "bg-white text-gray-600")}>
+                  className={cls("text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0", dark ? "bg-gray-700 text-gray-300" : "bg-white text-gray-600")}>
                   {editMode ? "자동 결과 보기" : "수정하기"}
                 </button>
               </div>
