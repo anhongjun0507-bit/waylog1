@@ -2697,11 +2697,15 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
   const [sortBy, setSortBy] = useState("relevance");
   // 타이핑 중 재필터 비용 절감 (518 제품 + 리뷰 전체 스캔)
   const dq = useDebouncedValue(q, 180);
+  const hasText = !!((dq || "").trim());
+  const hasCat = filterCat !== "all";
   const results = useMemo(() => {
-    if (!(dq || "").trim()) return [];
+    if (!hasText && !hasCat) return [];
     const s = (dq || "").toLowerCase();
     let list = (reviews || []).filter((r) => {
       if (!r) return false;
+      if (hasCat && r.category !== filterCat) return false;
+      if (!hasText) return true;
       const title = (r.title || "").toLowerCase();
       const body = (r.body || "").toLowerCase();
       const product = (r.product || "").toLowerCase();
@@ -2709,41 +2713,44 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
       const tags = (r.tags || []);
       return title.includes(s) || body.includes(s) || product.includes(s) || author.includes(s) || tags.some((t) => (t || "").toLowerCase().includes(s));
     });
-    if (filterCat !== "all") list = list.filter((r) => r.category === filterCat);
     if (sortBy === "popular") list = [...list].sort((a, b) => b.likes - a.likes);
     else if (sortBy === "recent") list = [...list].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     return list;
-  }, [dq, reviews, filterCat, sortBy]);
+  }, [dq, reviews, filterCat, sortBy, hasText, hasCat]);
 
   const productResults = useMemo(() => {
-    if (!(dq || "").trim()) return [];
+    if (!hasText && !hasCat) return [];
     const s = (dq || "").toLowerCase();
-    return (CATALOG || []).filter((p) => {
+    let list = (CATALOG || []).filter((p) => {
       if (!p) return false;
+      if (hasCat && p.category !== filterCat) return false;
+      if (!hasText) return true;
       const name = (p.name || "").toLowerCase();
       const brand = (p.brand || "").toLowerCase();
       const tags = (p.tags || []);
       return name.includes(s) || brand.includes(s) || tags.some((t) => (t || "").toLowerCase().includes(s));
-    }).slice(0, 10);
-  }, [dq, CATALOG]);
+    });
+    return list.slice(0, 10);
+  }, [dq, CATALOG, filterCat, hasText, hasCat]);
 
   const submit = (term) => { setQ(term); addRecent(term); };
 
-  const hasQuery = !!(q || "").trim();
+  // 카테고리 또는 텍스트 중 하나라도 활성이면 결과 화면 — 카테고리 단독 필터도 지원
+  const hasQuery = hasText || hasCat;
 
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-30 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe pb-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
       {/* 검색 헤더 */}
-      <div className={cls("flex items-center gap-2 px-3 h-14 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
-        <button onClick={close} aria-label="뒤로" className="min-w-tap min-h-tap flex items-center justify-center active:opacity-60 -ml-1.5">
+      <div className={cls("flex items-center gap-2 px-4 h-14 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+        <button onClick={close} aria-label="뒤로" className="min-w-tap min-h-tap flex items-center justify-center active:opacity-60 -ml-1.5 shrink-0">
           <ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/>
         </button>
-        <div className={cls("flex-1 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-          <Search size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>
+        <div className={cls("flex-1 min-w-0 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
+          <Search size={16} className={cls("shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}/>
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q && addRecent(q)}
             placeholder="제품, 리뷰, 태그로 찾기"
-            className={cls("flex-1 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
-          {q && <button onClick={() => setQ("")} aria-label="지우기"><X size={14} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/></button>}
+            className={cls("flex-1 min-w-0 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
+          {q && <button onClick={() => setQ("")} aria-label="지우기" className="shrink-0"><X size={14} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/></button>}
         </div>
       </div>
 
@@ -2786,7 +2793,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                 {Object.entries(CATEGORIES).map(([k, c]) => {
                   const Icon = CAT_ICON[k] || Tag;
                   return (
-                    <button key={k} onClick={() => { setQ(c.label); }}
+                    <button key={k} onClick={() => { setFilterCat(k); setQ(""); }}
                       className={cls("flex items-center gap-3 px-4 py-3 rounded-2xl text-left active:scale-[0.98] transition",
                         dark ? c.dchip : c.chip)}>
                       <Icon size={20} strokeWidth={2}/>
@@ -2951,10 +2958,10 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                   <Search size={22} strokeWidth={1.8} className="text-brand-500"/>
                 </div>
                 <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>
-                  "{q}" 검색 결과가 없어요
+                  {hasText ? `"${q}" ` : (hasCat ? `${CATEGORIES[filterCat]?.label || ""} ` : "")}검색 결과가 없어요
                 </p>
                 <p className={cls("text-[13px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
-                  다른 검색어를 입력해보세요
+                  {hasText ? "다른 검색어를 입력해보세요" : "다른 카테고리를 선택해보세요"}
                 </p>
               </div>
             )}
