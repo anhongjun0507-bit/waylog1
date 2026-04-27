@@ -10,3 +10,4 @@ export { SkeletonCard } from "./SkeletonCard.jsx";
 export { MentionText } from "./MentionText.jsx";
 export { EmptyState } from "./EmptyState.jsx";
 export { BottomSheet } from "./BottomSheet.jsx";
+export { InbodyAnalysisResult } from "./InbodyAnalysisResult.jsx";
