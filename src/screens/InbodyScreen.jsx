@@ -1,17 +1,26 @@
-import { useState } from "react";
-import { ArrowLeft, Plus, Activity } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, Plus, Activity, Sparkles, Loader2 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
+import { compressFileForOCR } from "../utils/imageResize.js";
+import { InbodyAnalysisResult } from "../components/InbodyAnalysisResult.jsx";
 
 // 인바디 측정 기록 추가/조회 + 체중 변화 SVG 선 그래프.
-// 완전 props-only (App 상태 closure 없음).
-export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
+// AI 분석 흐름: onAnalyzeImage / onCheckCap / onToast 가 주입되면 "사진으로 자동 입력" 버튼 노출.
+export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeImage, onCheckCap, onToast }) => {
   const [exiting, close] = useExit(onClose);
   const [adding, setAdding] = useState(false);
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [muscle, setMuscle] = useState("");
   const [bmi, setBmi] = useState("");
+
+  const fileRef = useRef(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [detail, setDetail] = useState(null); // 저장된 기록 상세 (readOnly 다시 보기)
+
+  const aiEnabled = !!(onAnalyzeImage && user?.id);
 
   const handleAdd = () => {
     if (!weight) return;
@@ -25,6 +34,73 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
     });
     setWeight(""); setBodyFat(""); setMuscle(""); setBmi("");
     setAdding(false);
+  };
+
+  const handlePickAIPhoto = () => {
+    if (!aiEnabled || analyzing) return;
+    fileRef.current?.click();
+  };
+
+  const handleAIPhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 재선택 가능하게
+    if (!file) return;
+    if (!file.type?.startsWith("image/")) {
+      onToast?.("이미지 파일만 업로드할 수 있어요");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      onToast?.("사진이 너무 커요. 더 작은 사진으로 다시 시도해주세요");
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      // 일일 cap 체크 — 5회 도달 시 차단
+      if (onCheckCap) {
+        const cap = await onCheckCap();
+        if (cap && cap.count >= 5) {
+          onToast?.("오늘 AI 분석 한도(5회)에 도달했어요. 내일 다시 시도해주세요");
+          return;
+        }
+      }
+      // 압축 후 분석. dataURL 은 분석 직후 폐기 (Storage 저장 안 함).
+      let dataUrl = await compressFileForOCR(file);
+      const result = await onAnalyzeImage(dataUrl);
+      dataUrl = null;
+      setAnalysisResult(result);
+    } catch (err) {
+      const code = err?.message || "";
+      if (code === "ai_unavailable") {
+        onToast?.("AI 분석을 잠시 사용할 수 없어요. 수동으로 입력해주세요");
+      } else if (code === "ai_parse_failed") {
+        onToast?.("사진을 인식하지 못했어요. 다른 각도로 다시 찍어주세요");
+      } else {
+        onToast?.("분석에 실패했어요. 잠시 후 다시 시도해주세요");
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleSaveAIResult = async ({ data, interpretation, weekly_lifestyle }) => {
+    onAdd({
+      id: Date.now(),
+      date: new Date().toISOString(),
+      weight: data.weight ?? 0,
+      bodyFat: data.body_fat_percentage ?? 0,
+      muscle: data.skeletal_muscle ?? 0,
+      bmi: data.bmi ?? 0,
+      // 신규 필드 — data jsonb 안에 그대로 저장됨
+      body_fat_mass: data.body_fat_mass,
+      body_fat_percentage: data.body_fat_percentage,
+      skeletal_muscle: data.skeletal_muscle,
+      analyzed_by_ai: true,
+      ai_interpretation: interpretation,
+      weekly_lifestyle,
+      analyzed_at: new Date().toISOString(),
+    });
+    setAnalysisResult(null);
+    onToast?.("인바디 기록에 저장됐어요");
   };
 
   const sorted = [...(records || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -50,6 +126,21 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
         </button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {aiEnabled && (
+          <>
+            <button onClick={handlePickAIPhoto} disabled={analyzing}
+              className={cls("w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30 transition active:scale-[0.98]",
+                analyzing ? "bg-brand-500/60 text-white cursor-wait" : "bg-brand-500 text-white")}>
+              {analyzing ? (
+                <><Loader2 size={18} className="animate-spin"/> AI가 분석하고 있어요...</>
+              ) : (
+                <><Sparkles size={18}/> 사진으로 자동 입력 (AI)</>
+              )}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAIPhotoChange}/>
+          </>
+        )}
+
         {adding && (
           <div className={cls("p-4 rounded-xl space-y-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
             <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>새 기록 추가</p>
@@ -147,21 +238,64 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark }) => {
               <p className="text-[13px]">아직 기록이 없어요</p>
             </div>
           )}
-          {sorted.map((r) => (
-            <div key={r.id} className={cls("p-3 rounded-xl flex items-center gap-3 border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-              <div className={cls("w-10 h-10 rounded-full flex items-center justify-center", dark ? "bg-[#262626] text-white" : "bg-white text-black")}>
-                <Activity size={16} strokeWidth={1.8}/>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
-                <p className={cls("text-[13px] font-semibold tabular-nums", dark ? "text-white" : "text-black")}>
-                  {r.weight}kg · {r.bodyFat}% · {r.muscle}kg
-                </p>
-              </div>
-            </div>
-          ))}
+          {sorted.map((r) => {
+            const aiAnalyzed = !!r.analyzed_by_ai && !!r.ai_interpretation;
+            const RowTag = aiAnalyzed ? "button" : "div";
+            return (
+              <RowTag key={r.id}
+                {...(aiAnalyzed ? { onClick: () => setDetail(r), type: "button" } : {})}
+                className={cls("w-full p-3 rounded-xl flex items-center gap-3 border text-left transition",
+                  dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]",
+                  aiAnalyzed && "active:opacity-70")}>
+                <div className={cls("w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                  aiAnalyzed ? "bg-brand-500/15 text-brand-500" : (dark ? "bg-[#262626] text-white" : "bg-white text-black"))}>
+                  {aiAnalyzed ? <Sparkles size={16} strokeWidth={1.8}/> : <Activity size={16} strokeWidth={1.8}/>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
+                    {aiAnalyzed && (
+                      <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                        dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
+                        🤖 AI 분석
+                      </span>
+                    )}
+                  </div>
+                  <p className={cls("text-[13px] font-semibold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>
+                    {r.weight}kg · {r.bodyFat}% · {r.muscle}kg
+                  </p>
+                </div>
+              </RowTag>
+            );
+          })}
         </div>
       </div>
+
+      {analysisResult && (
+        <InbodyAnalysisResult
+          result={analysisResult}
+          onSave={handleSaveAIResult}
+          onCancel={() => setAnalysisResult(null)}
+          dark={dark}/>
+      )}
+
+      {detail && (
+        <InbodyAnalysisResult
+          readOnly
+          result={{
+            data: {
+              weight: detail.weight,
+              skeletal_muscle: detail.skeletal_muscle ?? detail.muscle,
+              body_fat_mass: detail.body_fat_mass,
+              bmi: detail.bmi,
+              body_fat_percentage: detail.body_fat_percentage ?? detail.bodyFat,
+            },
+            interpretation: detail.ai_interpretation,
+            weekly_lifestyle: detail.weekly_lifestyle,
+          }}
+          onCancel={() => setDetail(null)}
+          dark={dark}/>
+      )}
     </div>
   );
 };

@@ -4422,7 +4422,7 @@ const MissionEditModal = ({ weekNum, title, missions, hasCustom, onSave, onReset
   );
 };
 
-const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, onClose, dark }) => {
+const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs, inbodyRecords, setInbodyRecords, onClose, dark, user, onAnalyzeInbody, onCheckInbodyCap, onToast }) => {
   // setToast 는 Context 에서 구독 — prop drilling 제거
   const { setToast: onShowToast } = useAppContext();
   const [exiting, close] = useExit(onClose);
@@ -4818,7 +4818,8 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
       {mealModal && <MealUploadModal mealType={mealModal} onClose={() => setMealModal(null)} onSave={addMeal} dark={dark}/>}
       {exerciseModal && <ExerciseModal onClose={() => setExerciseModal(false)} onSave={addExercise} dark={dark}/>}
       {editingExercise && <ExerciseModal onClose={() => setEditingExercise(null)} onSave={updateExercise} dark={dark} editing={editingExercise.data}/>}
-      <Suspense fallback={null}>{inbodyOpen && <InbodyScreen records={inbodyRecords} onAdd={(r) => setInbodyRecords((prev) => [...prev, r])} onClose={() => setInbodyOpen(false)} dark={dark}/>}</Suspense>
+      <Suspense fallback={null}>{inbodyOpen && <InbodyScreen records={inbodyRecords} onAdd={(r) => setInbodyRecords((prev) => [...prev, r])} onClose={() => setInbodyOpen(false)} dark={dark}
+        user={user} onAnalyzeImage={onAnalyzeInbody} onCheckCap={onCheckInbodyCap} onToast={onToast}/>}</Suspense>
       {graphOpen && <ChallengeGraphScreen challenge={challenge} dailyLogs={dailyLogs} inbodyRecords={inbodyRecords} onClose={() => setGraphOpen(false)} dark={dark}/>}
       {abandonOpen && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center px-4">
@@ -7378,7 +7379,11 @@ function AppInner() {
         inbodyRecords={challengeInbody}
         setInbodyRecords={setChallengeInbodySync}
         onClose={() => setChallengeMainOpen(false)}
-        dark={dark}/>}
+        dark={dark}
+        user={user}
+        onAnalyzeInbody={analyzeInbodyImage}
+        onCheckInbodyCap={() => user?.id ? supabaseChallenges.todayInbodyAICount(user.id) : Promise.resolve({ count: 0 })}
+        onToast={setToast}/>}
 
       {/* 하단 네비 — 4탭 라벨 포함, 브랜드(더스티네이비) 액센트. 탭 라벨 개편은 4단계. */}
       <nav className={cls("fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl border-t grid grid-cols-4 z-20 backdrop-blur-xl",
