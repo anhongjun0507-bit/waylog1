@@ -942,18 +942,20 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
 // ============================================================
 const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, onOpen, onProductClick,
   challenge, dailyLogs: _dailyLogs, onChallengeOpen, onChallengeStart: _onChallengeStart,
-  onEditProfile, onOpenSettings, onAuthOpen, following, followingArr: _followingArr, community: _community }) => {
+  onEditProfile, onOpenSettings, onAuthOpen, following, followingArr: _followingArr, community: _community,
+  toggleFollow, onUserClick }) => {
   const CATALOG = useCatalog();
   const [profileTab, setProfileTab] = useState("posts"); // posts | saved | tagged
   // 팔로워·팔로잉 수 — UserProfileScreen 과 동일 패턴.
   // 훅은 early-return 이전에 호출되어야 하므로 ProfileSelfScreen 상단에 둔다.
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [followListOpen, setFollowListOpen] = useState(null); // "followers" | "following" | null
   useEffect(() => {
     if (!user?.id) return;
     supabaseFollows.counts(user.id).then((c) => {
       if (c && typeof c === "object") setFollowCounts({ followers: c.followers || 0, following: c.following || 0 });
     }).catch(() => {});
-  }, [user?.id]);
+  }, [user?.id, followListOpen]);
 
   // 로그인 안 한 경우
   if (!user) {
@@ -1054,12 +1056,14 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
             <p className="text-[18px] font-black tabular-nums">{myReviews.length}</p>
             <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>게시물</p>
           </div>
-          <button className="text-center py-3 border-r active:opacity-60"
+          <button onClick={() => user?.id && setFollowListOpen("followers")}
+            className="text-center py-3 border-r active:opacity-60"
             style={{ borderColor: dark ? "#262626" : "#dbdbdb" }}>
             <p className="text-[18px] font-black tabular-nums">{followerCount}</p>
             <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로워</p>
           </button>
-          <button className="text-center py-3 active:opacity-60">
+          <button onClick={() => user?.id && setFollowListOpen("following")}
+            className="text-center py-3 active:opacity-60">
             <p className="text-[18px] font-black tabular-nums">{followingCount}</p>
             <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로잉</p>
           </button>
@@ -1176,6 +1180,19 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
       {profileTab === "tagged" && (
         <EmptyGridHint dark={dark} icon={Tag} title="태그된 게시물이 없어요"
           desc="다른 사람이 회원님을 태그하면 여기에 나타나요"/>
+      )}
+
+      {followListOpen && user?.id && (
+        <FollowListModal
+          title={followListOpen === "followers" ? "팔로워" : "팔로잉"}
+          userId={user.id}
+          fetchFn={followListOpen === "followers" ? supabaseFollows.listFollowers : supabaseFollows.listFollowing}
+          currentUser={user}
+          following={following}
+          onToggleFollow={toggleFollow}
+          onClose={() => setFollowListOpen(null)}
+          onUserClick={(u) => { setFollowListOpen(null); if (onUserClick) onUserClick(u); }}
+          dark={dark}/>
       )}
     </div>
   );
@@ -6803,7 +6820,8 @@ function AppInner() {
       onOpenSettings={() => setSettingsOpen(true)}
       onAuthOpen={() => setAuthOpen(true)}
       following={following} followingArr={followingArr}
-      community={community}/>
+      community={community}
+      toggleFollow={toggleFollow} onUserClick={openUser}/>
   );
   // dead routes — 하단네비 미노출, 직접 URL 입력으로만 접근.
   const exploreEl = (
