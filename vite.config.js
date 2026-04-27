@@ -24,6 +24,8 @@ export default defineConfig({
           if (id.includes('html-to-image')) return 'html-to-image';
           if (id.includes('react-dom')) return 'react-dom';
           if (id.includes('/react/') || id.endsWith('/react')) return 'react';
+          // firebase 는 1.2.0 푸시 전용 — 사용자가 푸시 켜는 시점에만 로드되도록 분리
+          if (id.includes('firebase') || id.includes('@firebase')) return 'firebase';
           return 'vendor';
         },
       },
