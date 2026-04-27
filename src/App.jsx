@@ -3707,7 +3707,18 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {loading && <p className={cls("text-center text-sm py-8", dark ? "text-gray-500" : "text-gray-400")}>불러오는 중...</p>}
-        {!loading && list.length === 0 && <p className={cls("text-center text-sm py-8", dark ? "text-gray-500" : "text-gray-400")}>아직 없어요</p>}
+        {!loading && list.length === 0 && (
+          <div className={cls("py-12 text-center", dark ? "text-gray-400" : "text-gray-500")}>
+            <p className={cls("text-sm font-bold", dark ? "text-gray-200" : "text-gray-800")}>
+              {title === "팔로워" ? "아직 팔로워가 없어요" : "아직 팔로우한 사용자가 없어요"}
+            </p>
+            <p className="text-xs mt-1.5 opacity-80">
+              {title === "팔로워"
+                ? "활발히 글을 남겨보세요. 좋아요와 팔로워가 늘어날 거예요"
+                : "관심 있는 사용자를 팔로우해 보세요"}
+            </p>
+          </div>
+        )}
         {list.map((u) => {
           const isMe = currentUser?.id === u.id;
           const isFollowed = following.has(u.id);
@@ -5013,7 +5024,8 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
         ) : (
           <div className={cls("mt-5 py-6 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
             <Sparkles size={24} className="mx-auto mb-2 opacity-40"/>
-            <p className="text-xs">아직 공유한 활동이 없어요</p>
+            <p className={cls("text-sm font-bold", dark ? "text-gray-300" : "text-gray-600")}>아직 공유한 활동이 없어요</p>
+            <p className="text-xs mt-1 opacity-80">마음에 드는 글을 친구들에게 공유해 보세요</p>
           </div>
         )}
         <div className="flex gap-2 mt-5">
@@ -7140,7 +7152,8 @@ function AppInner() {
                     {notifications.length === 0 ? (
                       <div className={cls("py-12 text-center", dark ? "text-[#737373]" : "text-[#737373]")}>
                         <Heart size={32} className="mx-auto mb-2 opacity-30" strokeWidth={1.5}/>
-                        <p className="text-[13px]">활동 내역이 없어요</p>
+                        <p className="text-[13px] font-bold">활동 내역이 없어요</p>
+                        <p className="text-[11px] mt-1 opacity-80">글을 작성하거나 좋아요·댓글을 남기면 여기에 표시돼요</p>
                       </div>
                     ) : (
                       notifications.map((n) => (
