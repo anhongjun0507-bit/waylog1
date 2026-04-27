@@ -3771,17 +3771,17 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
           <div className={cls("grid grid-cols-3 items-center mt-5 py-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
             <div className="text-center min-w-0 px-2">
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
-              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Posts</p>
+              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>게시물</p>
             </div>
             <button onClick={() => userId && setFollowListOpen("followers")}
               className={cls("text-center min-w-0 px-2 border-x active:scale-95 transition", dark ? "border-gray-700" : "border-gray-200")}>
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.followers}</p>
-              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Followers</p>
+              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로워</p>
             </button>
             <button onClick={() => userId && setFollowListOpen("following")}
               className="text-center min-w-0 px-2 active:scale-95 transition">
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.following}</p>
-              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Following</p>
+              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로잉</p>
             </button>
           </div>
 
