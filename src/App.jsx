@@ -340,6 +340,70 @@ const summarizeProduct = async (product, reviews) => {
   return null;
 };
 
+// 인바디(InBody) 결과지 사진 → 5개 수치 + 한국어 해석 + 주간 생활습관 권장.
+// callClaudeVision (Sonnet 4) 재활용. 실패 시 throw → 호출측이 토스트 + 수동 입력 폴백.
+const analyzeInbodyImage = async (imageDataUrl) => {
+  if (!imageDataUrl) throw new Error("ai_unavailable");
+  const prompt = `당신은 인바디(InBody) 결과지를 분석하는 전문가입니다.
+이 이미지에서 다음 5개 항목을 정확히 추출하고, 종합 분석을 제공해주세요.
+
+추출 항목:
+1. 체중 (kg, 숫자만)
+2. 골격근량 (kg, 숫자만)
+3. 체지방량 (kg, 숫자만)
+4. BMI (kg/m², 숫자만)
+5. 체지방률 (%, 숫자만)
+
+응답 형식 (JSON만, 마크다운 코드 블록 없이):
+{
+  "data": {
+    "weight": 숫자 또는 null,
+    "skeletal_muscle": 숫자 또는 null,
+    "body_fat_mass": 숫자 또는 null,
+    "bmi": 숫자 또는 null,
+    "body_fat_percentage": 숫자 또는 null
+  },
+  "interpretation": "현재 신체 상태에 대한 친절한 한국어 해석 (3~5문장, 격려와 함께)",
+  "weekly_lifestyle": {
+    "exercise": "이번 주 운동 권장 (구체적 종류·빈도, 1~2문장)",
+    "diet": "이번 주 식습관 권장 (1~2문장)",
+    "sleep": "수면 권장 (시간 포함, 1문장)",
+    "hydration": "물 섭취 권장 (1문장)",
+    "tip": "이번 주 핵심 팁 (1~2문장, 격려)"
+  }
+}
+
+규칙:
+- 설명·서론·마크다운 코드 블록 금지, JSON 객체만
+- 인식 못 하는 항목은 null
+- 의학적 진단은 하지 말 것 (필요 시 병원 권유는 가능)
+- 따뜻하고 격려하는 톤
+- 엄마 세대 + 일반인 대상이라 어려운 용어는 자제`;
+  const text = await callClaudeVision(prompt, imageDataUrl, 1500);
+  if (!text) throw new Error("ai_unavailable");
+  const block = extractJsonBlock(text);
+  if (!block) throw new Error("ai_parse_failed");
+  let parsed;
+  try { parsed = JSON.parse(block); }
+  catch { throw new Error("ai_parse_failed"); }
+  if (!parsed?.data || !parsed?.interpretation || !parsed?.weekly_lifestyle) {
+    throw new Error("ai_parse_failed");
+  }
+  const num = (v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  parsed.data = {
+    weight: num(parsed.data.weight),
+    skeletal_muscle: num(parsed.data.skeletal_muscle),
+    body_fat_mass: num(parsed.data.body_fat_mass),
+    bmi: num(parsed.data.bmi),
+    body_fat_percentage: num(parsed.data.body_fat_percentage),
+  };
+  return parsed;
+};
+
 // calcBMR / calcTargetCalories 는 src/utils/challenge.js 로 이전됨 (ChallengeStartScreen 이 직접 import).
 
 const getChallengeDay = (startDate) => {
