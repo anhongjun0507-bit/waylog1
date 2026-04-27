@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Sparkles, Heart, Star, ChevronRight } from "lucide-react";
 import { cls } from "../utils/ui.js";
 
-// 첫 실행 시 4-step 온보딩. dark 는 props, 나머지 상태는 자체 관리.
+// 첫 실행 시 3-step 온보딩. dark 는 props, 나머지 상태는 자체 관리.
 export const OnboardingScreen = ({ onClose, dark }) => {
   const [step, setStep] = useState(0);
   const slides = [
