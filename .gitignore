@@ -4,6 +4,9 @@ dist-ssr
 .firebase
 *.log
 
+# Supabase CLI 임시 파일 (link/deploy 시 자동 생성)
+supabase/.temp/
+
 # Environment variables
 .env
 .env.local

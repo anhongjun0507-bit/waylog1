@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "888792605095",
+    "project_id": "waylog-5e006",
+    "storage_bucket": "waylog-5e006.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888792605095:android:eba15c0989d8e59d611682",
+        "android_client_info": {
+          "package_name": "com.waylog.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwIS3gfqCi1SzpR99qr3xAB6QfX2hNE8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
