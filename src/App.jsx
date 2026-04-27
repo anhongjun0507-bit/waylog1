@@ -3335,13 +3335,15 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
         {isMine && (
           <>
             <button onClick={() => setMenuOpen(!menuOpen)} aria-label="옵션 메뉴"
-              className="absolute top-4 right-28 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
+              style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+              className="absolute right-28 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
               <span className="text-white text-lg font-black leading-none -mt-1">⋯</span>
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)}/>
-                <div className={cls("absolute top-16 right-28 z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in", dark ? "bg-gray-800" : "bg-white")}>
+                <div className={cls("absolute z-20 rounded-2xl shadow-2xl overflow-hidden min-w-[140px] animate-fade-in right-28", dark ? "bg-gray-800" : "bg-white")}
+                  style={{ top: "calc(env(safe-area-inset-top) + 4rem)" }}>
                   <button onClick={() => { setMenuOpen(false); onEdit && onEdit(r); }}
                     className={cls("w-full px-4 py-3 text-sm font-bold text-left flex items-center gap-2.5 whitespace-nowrap transition", dark ? "text-gray-200 active:bg-gray-700" : "text-gray-700 active:bg-gray-50")}>
                     <PenLine size={14} className="shrink-0"/> 수정하기
