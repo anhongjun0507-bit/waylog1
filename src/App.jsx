@@ -2329,12 +2329,11 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   const publishButtonRef = useRef(null);
   const submittingRef = useRef(false);
   const safeSubmitRef = useRef(null);
-  safeSubmitRef.current = (source) => {
+  safeSubmitRef.current = () => {
     if (submittingRef.current) return;
     const trimmed = (content || "").trim();
     if (!trimmed) return;
     submittingRef.current = true;
-    console.log(`[community-compose] SUBMIT via: ${source}`);
     // close() 애니메이션(~260ms) + Supabase 응답까지 덮는 여유값. 재시도가 필요하면
     // 모달이 닫혔으므로 재오픈 시 새 인스턴스가 만들어져 플래그는 자동 초기화.
     setTimeout(() => { submittingRef.current = false; }, 500);
@@ -2343,8 +2342,8 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   useEffect(() => {
     const btn = publishButtonRef.current;
     if (!btn) return;
-    const onPointerUp = () => safeSubmitRef.current?.("pointerup");
-    const onClick = () => safeSubmitRef.current?.("click");
+    const onPointerUp = () => safeSubmitRef.current?.();
+    const onClick = () => safeSubmitRef.current?.();
     btn.addEventListener("pointerup", onPointerUp);
     btn.addEventListener("click", onClick);
     return () => {
@@ -6629,8 +6628,6 @@ function AppInner() {
           details: error.details,
           hint: error.hint,
         });
-      } else {
-        console.log("[addCommunityPost] success", created?.id);
       }
     } catch (thrown) {
       console.error("[addCommunityPost] THREW", {
