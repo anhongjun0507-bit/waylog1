@@ -20,6 +20,7 @@ import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
 import { identify, events as analyticsEvents } from "./utils/analytics.js";
 import { pushSupported, requestPushPermission, subscribePush } from "./utils/push.js";
+import { sendPushNotification } from "./utils/sendPush.js";
 import {
   BASE, CHALLENGE_WEEKS, CHALLENGE_DAYS, AI_CACHE_MAX, AI_CACHE_TTL_MS,
   PRODUCTS, MOODS, CATEGORIES, CAT_SOLID, CAT_ICON,
@@ -5825,6 +5826,16 @@ function AppInner() {
         return;
       }
     }
+    // 새 팔로우만 알림 (취소는 안 보냄). 자기 자신은 위에서 이미 return 처리.
+    if (!wasFollowing) {
+      sendPushNotification(
+        targetUserId,
+        "follow",
+        `${user.nickname}님이 팔로우했어요`,
+        "프로필을 둘러보고 답팔로우해 보세요",
+        { url: `/profile/${user.id}` },
+      );
+    }
     const label = targetNickname || "사용자";
     setToast(wasFollowing ? `${label}님 팔로우를 취소했어요` : `${label}님을 팔로우했어요`);
   }, [user, following, setToast, setFollowingArr]);
@@ -6042,6 +6053,25 @@ function AppInner() {
           learnFrom(rev, -1);
         }
         setToast("좋아요 반영에 실패했어요. 네트워크를 확인해주세요");
+      } else if (!has && rev) {
+        // 새로 좋아요 — 글 작성자에게 푸시 (자기 자신 제외, 취소는 안 보냄)
+        const authorId = rev.authorId || rev.user_id;
+        if (authorId && authorId !== user.id) {
+          sendPushNotification(
+            authorId,
+            "like",
+            `${user.nickname}님이 좋아해요`,
+            rev.title ? `"${rev.title.slice(0, 60)}"` : "회원님 글에 좋아요가 달렸어요",
+            { url: `/review/${id}` },
+          );
+        }
+        // P1-8: 첫 좋아요만 "마이웨이템 저장" 안내. 두 번째부터는 토스트 X.
+        try {
+          if (!localStorage.getItem("waylog:hint:like-saved")) {
+            setToast("마이웨이템에 저장됐어요. 나중에 다시 볼 수 있어요");
+            localStorage.setItem("waylog:hint:like-saved", "1");
+          }
+        } catch {}
       }
     }
   }, [favsArr, userReviews, moods, user, learnFrom, setToast, setMoods]);
@@ -6420,7 +6450,7 @@ function AppInner() {
 
     const localId = Date.now();
     const localComment = {
-      id: localId, author: user.nickname, avatar: user.avatar,
+      id: localId, author: user.nickname, avatar: user.avatar, authorId: user.id,
       time: "방금", createdAt: localId, text: cleanText,
       parentId, mentionTo: mentionTo ? sanitizeInline(mentionTo) : null, likedBy: [],
     };
@@ -6445,8 +6475,36 @@ function AppInner() {
         })
         .catch(() => {});
     }
+
+    // 푸시 알림 — 자기 자신 제외, 글 작성자 + (답글이면) 부모 댓글 작성자
+    const review = reviews.find((x) => x.id === rid);
+    const reviewAuthorId = review?.authorId || review?.user_id || null;
+    const preview = cleanText.length > 50 ? cleanText.slice(0, 50) + "…" : cleanText;
+    if (reviewAuthorId && reviewAuthorId !== user.id) {
+      sendPushNotification(
+        reviewAuthorId,
+        "comment",
+        `${user.nickname}님이 댓글을 남겼어요`,
+        preview,
+        { url: `/review/${rid}` },
+      );
+    }
+    if (parentId != null) {
+      const parent = existing.find((c) => c.id === parentId);
+      const parentAuthorId = parent?.authorId || parent?.user_id || null;
+      // 글 작성자와 같으면 위에서 이미 보냈으니 중복 제외
+      if (parentAuthorId && parentAuthorId !== user.id && parentAuthorId !== reviewAuthorId) {
+        sendPushNotification(
+          parentAuthorId,
+          "comment",
+          `${user.nickname}님이 답글을 남겼어요`,
+          preview,
+          { url: `/review/${rid}` },
+        );
+      }
+    }
     return true;
-  }, [user, commentsMap, setToast]);
+  }, [user, commentsMap, reviews, setToast]);
 
   const toggleCommentLike = useCallback(async (rid, cid) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
