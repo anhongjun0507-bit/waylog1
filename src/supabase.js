@@ -579,6 +579,23 @@ export const challenges = {
     try { return await supabase.from('inbody_records').insert(row).select().single() }
     catch (e) { return { data: null, error: e } }
   },
+  // 오늘 자정 이후로 이 사용자가 AI 분석한 인바디 기록 수.
+  // jsonb 의 analyzed_by_ai 플래그로 구분. 일일 cap (5회) 검사용.
+  async todayInbodyAICount(userId) {
+    if (!supabase || !userId) return { count: 0 }
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    try {
+      const { count, error } = await supabase
+        .from('inbody_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('measured_at', start.toISOString())
+        .filter('data->>analyzed_by_ai', 'eq', 'true')
+      if (error) return { count: 0, error }
+      return { count: count || 0 }
+    } catch (e) { return { count: 0, error: e } }
+  },
 }
 
 export const moodsApi = {
