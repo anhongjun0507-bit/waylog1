@@ -6,9 +6,113 @@ import {
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { useAppContext } from "../contexts/AppContext.js";
+import { supabase } from "../supabase.js";
 import pkg from "../../package.json";
 
 const APP_VERSION = pkg.version;
+
+// 1.2.0 — 알림 종류별 토글 (profiles.notif_prefs jsonb)
+const NOTIF_TYPES = [
+  { key: "likes", icon: "❤️", label: "좋아요 알림", desc: "회원님 글에 좋아요가 달리면" },
+  { key: "comments", icon: "💬", label: "댓글 알림", desc: "회원님 글에 댓글이 달리면" },
+  { key: "follows", icon: "👥", label: "팔로우 알림", desc: "누군가 회원님을 팔로우하면" },
+  { key: "challenge", icon: "🏃", label: "챌린지 리마인더", desc: "매일 저녁 7시" },
+  { key: "news", icon: "📢", label: "앱 소식", desc: "새 기능·이벤트 안내" },
+];
+const DEFAULT_NOTIF_PREFS = { likes: true, comments: true, follows: true, challenge: true, news: true };
+
+const NotifTypePrefs = ({ user, dark, onShowToast }) => {
+  const [prefs, setPrefs] = useState(DEFAULT_NOTIF_PREFS);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(null); // 저장 중 토글 key
+  const [permState, setPermState] = useState("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermState(Notification.permission);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id || !supabase) {
+      setLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    supabase.from("profiles").select("notif_prefs").eq("id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data?.notif_prefs && typeof data.notif_prefs === "object") {
+          setPrefs({ ...DEFAULT_NOTIF_PREFS, ...data.notif_prefs });
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const updatePref = async (key, nextValue) => {
+    if (!user?.id || !supabase || !loaded) return;
+    const prev = prefs[key];
+    if (prev === nextValue) return;
+    const next = { ...prefs, [key]: nextValue };
+    setPrefs(next); // optimistic
+    setSaving(key);
+    const { error } = await supabase.from("profiles")
+      .update({ notif_prefs: next })
+      .eq("id", user.id);
+    setSaving(null);
+    if (error) {
+      // 롤백
+      setPrefs((p) => ({ ...p, [key]: prev }));
+      onShowToast?.("알림 설정 저장에 실패했어요");
+    }
+  };
+
+  const isPermDenied = permState === "denied";
+
+  return (
+    <div className={cls("border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+      <p className={cls("text-[12px] font-semibold uppercase tracking-wider px-4 pt-4 pb-2", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+        알림 종류
+      </p>
+      {isPermDenied && (
+        <div className={cls("mx-4 mb-2 p-3 rounded-xl text-[12px] leading-relaxed",
+          dark ? "bg-amber-900/30 text-amber-200" : "bg-amber-50 text-amber-800")}>
+          알림 권한이 차단되어 있어요. 브라우저(또는 기기) 설정에서 알림을 허용한 뒤 토글이 적용돼요.
+        </div>
+      )}
+      {NOTIF_TYPES.map(({ key, icon, label, desc }) => {
+        const value = !!prefs[key];
+        const disabled = !loaded || isPermDenied;
+        return (
+          <div key={key} className="w-full flex items-center gap-4 px-4 py-3 text-left">
+            <span className="text-[20px] leading-none w-5 text-center select-none">{icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className={cls("text-[14px]", dark ? "text-white" : "text-black", disabled && "opacity-60")}>{label}</p>
+              <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{desc}</p>
+            </div>
+            <button
+              onClick={() => !disabled && updatePref(key, !value)}
+              disabled={disabled}
+              aria-label={`${label} ${value ? "끄기" : "켜기"}`}
+              aria-pressed={value}
+              className={cls("relative w-[34px] h-[18px] rounded-full transition shrink-0",
+                disabled
+                  ? (dark ? "bg-[#1a1a1a]" : "bg-[#ececec]")
+                  : value
+                    ? "bg-brand-500"
+                    : dark ? "bg-[#262626]" : "bg-[#dbdbdb]",
+                saving === key && "opacity-70")}>
+              <div className={cls("absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all",
+                value ? "left-[18px]" : "left-[2px]")}/>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onEnablePush, onOpenAdmin }) => {
   // setToast 는 Context 에서 구독 — prop drilling 제거
@@ -130,6 +234,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
             })}
           </div>
         ))}
+        {user && <NotifTypePrefs user={user} dark={dark} onShowToast={onShowToast}/>}
         <div className={cls("border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
           <button onClick={() => { onLogout(); close(); }}
             className="w-full py-3 text-left px-4 text-[14px] text-red-500 font-semibold active:opacity-60">
