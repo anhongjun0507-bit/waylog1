@@ -1,0 +1,62 @@
+name: Challenge Reminder
+
+# Waylog 1.2.0 — 챌린지 일일 리마인더.
+# Vercel Hobby 플랜의 cron 제약(일 1회 + UTC 00:00 고정) 을 우회하기 위해 GitHub Actions cron 사용.
+# 매일 UTC 10:00 (= KST 19:00) 에 Supabase Edge Function `send-challenge-reminders` 를 호출.
+# Actions 탭 → "Run workflow" 로 수동 트리거도 가능 (테스트용).
+#
+# 필수 GitHub Secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL    : https://<project-ref>.supabase.co
+#   CRON_SECRET     : Supabase secret 의 CRON_SECRET 과 동일 값
+#
+# 주의: GitHub Actions cron 은 best-effort 라 정확히 19:00 에 안 갈 수 있음 (5~15분 지연).
+# 사용자 체감엔 거의 영향 없으나 정확 시각이 필요하면 외부 cron 서비스 검토.
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # UTC 10:00 = KST 19:00 매일
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Call send-challenge-reminders Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::SUPABASE_URL 또는 CRON_SECRET secret 이 설정되지 않았어요"
+            exit 1
+          fi
+
+          response=$(curl -sS -w "\nHTTP_CODE:%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$SUPABASE_URL/functions/v1/send-challenge-reminders" || true)
+
+          http_code=$(echo "$response" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+          body=$(echo "$response" | sed -E '$ s/HTTP_CODE:[0-9]+$//' | sed '$ d')
+
+          echo "HTTP code: $http_code"
+          echo "Response body:"
+          echo "$body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Edge Function returned HTTP $http_code"
+            exit 1
+          fi
+
+          # body 가 { "ok": true, ... } 인지 확인
+          if ! echo "$body" | grep -q '"ok":true'; then
+            echo "::error::Edge Function did not return ok:true"
+            exit 1
+          fi
+
+          echo "::notice::Challenge reminder sent successfully"
