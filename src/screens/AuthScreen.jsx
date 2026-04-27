@@ -175,11 +175,15 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col pt-safe", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-black" : "bg-white")}>
       <header className={cls("flex items-center justify-between px-4 h-12 border-b", dark ? "bg-black border-[#262626]" : "bg-white border-[#dbdbdb]")}>
         {isRecover ? (
-          <button onClick={() => { setMode("login"); setError(""); setInfo(""); setRecoverInput(""); }}>
+          <button onClick={() => { setMode("login"); setError(""); setInfo(""); setRecoverInput(""); }}
+            aria-label="뒤로" className="min-w-tap min-h-tap flex items-center justify-center -ml-2.5 active:opacity-60">
             <ArrowLeft size={22} className={dark ? "text-white" : "text-black"}/>
           </button>
         ) : (
-          <button onClick={close} aria-label="닫기"><X size={22} className={dark ? "text-white" : "text-black"}/></button>
+          <button onClick={close} aria-label="닫기"
+            className="min-w-tap min-h-tap flex items-center justify-center -ml-2.5 active:opacity-60">
+            <X size={22} className={dark ? "text-white" : "text-black"}/>
+          </button>
         )}
         <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{headerTitle}</p>
         <div className="w-6"/>
