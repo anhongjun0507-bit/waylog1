@@ -1,21 +1,22 @@
-// Web Push 구독 유틸 (VAPID 기반).
-// - 실제 푸시 전송은 서버 측 구현 필요 (Supabase Edge Function 추천).
-// - 여기서는 (1) 브라우저 권한 요청 (2) PushManager 구독 (3) 구독 정보 Supabase 저장 역할.
+// Waylog 푸시 구독 어댑터.
 //
-// 준비물 (사용자):
-//   1) VAPID key 쌍 생성: `npx web-push generate-vapid-keys`
-//   2) 공개 키를 VITE_VAPID_PUBLIC_KEY 환경변수에 넣기
-//   3) push_subscriptions 테이블 생성 (migrations 참조)
+// 웹: Firebase FCM Web Push (firebase-messaging-sw.js + getToken).
+// 네이티브: Capacitor PushNotifications → FCM 토큰.
+// 두 경로 모두 push_subscriptions 테이블에 endpoint/keys 저장.
+//
+// 1.2.0 부터 웹 측은 VAPID PushManager → FCM 토큰 방식으로 통일.
+// send-push Edge Function 이 endpoint 접두어(web:/native:) 로 분기해 FCM HTTP v1 호출.
+//
+// 준비물 (Vercel env):
+//   VITE_FIREBASE_API_KEY / AUTH_DOMAIN / PROJECT_ID / STORAGE_BUCKET
+//   VITE_FIREBASE_MESSAGING_SENDER_ID / APP_ID
+//   VITE_FIREBASE_VAPID_KEY ← FCM Web Push VAPID public key
 
 import { supabase } from "../supabase.js";
-import { isNative, registerNativePush } from "./platform.js";
-
-const PUB = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+import { isNative, registerNativePush, getPlatform } from "./platform.js";
 
 export function pushSupported() {
-  // 네이티브(iOS/Android) 에서는 항상 지원
   if (isNative()) return true;
-  // 웹에서는 Notification + PushManager + SW 모두 필요
   return typeof window !== "undefined"
     && "serviceWorker" in navigator
     && "PushManager" in window
@@ -24,67 +25,113 @@ export function pushSupported() {
 
 export async function requestPushPermission() {
   if (!pushSupported()) return "unsupported";
-  // 네이티브에서는 Capacitor 플러그인이 자체적으로 권한 다이얼로그 처리 (subscribePush 에서)
+  // 네이티브는 Capacitor 가 자체적으로 권한 다이얼로그 처리 (subscribePush 안에서)
   if (isNative()) return "granted";
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
   return Notification.requestPermission();
 }
 
-export async function subscribePush(userId) {
-  // 네이티브는 Capacitor 플러그인으로 FCM/APNs 토큰 획득 + 서버 저장
-  if (isNative()) return registerNativePush(userId);
-  if (!pushSupported() || !PUB || !userId) return null;
-  const reg = await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(PUB),
-    });
-  }
-  if (supabase) {
-    try {
-      // 같은 endpoint 는 conflict 로 업데이트.
-      // 추가로 같은 user 의 오래된(updated_at > 30일) orphan 구독은 정리
-      //  — 기기 분실·브라우저 변경 등으로 더 이상 valid 하지 않을 가능성.
-      await supabase.from("push_subscriptions").upsert({
-        user_id: userId,
-        endpoint: sub.endpoint,
-        keys: sub.toJSON().keys || {},
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "endpoint" });
-
-      const staleCutoff = new Date(Date.now() - 30 * 86400 * 1000).toISOString();
-      await supabase.from("push_subscriptions")
-        .delete()
-        .eq("user_id", userId)
-        .neq("endpoint", sub.endpoint)
-        .lt("updated_at", staleCutoff);
-    } catch (e) {
-      console.warn("push subscription 저장 실패:", e);
+// FCM Web 토큰 등록. 성공 시 { token } 반환, 실패 시 null.
+async function subscribeWebFCM(userId) {
+  try {
+    const { registerFirebaseSW, getFirebaseMessaging, getToken, VAPID_KEY } = await import("../firebase.js");
+    if (!VAPID_KEY) {
+      console.warn("VITE_FIREBASE_VAPID_KEY 미설정 — Web 푸시 비활성화");
+      return null;
     }
+    const swReg = await registerFirebaseSW();
+    if (!swReg) return null;
+    const messaging = await getFirebaseMessaging();
+    if (!messaging) return null;
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
+    if (!token) return null;
+    if (supabase && userId) {
+      try {
+        await supabase.from("push_subscriptions").upsert({
+          user_id: userId,
+          endpoint: `web:${token}`,
+          keys: { fcm_token: token, platform: "web" },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "endpoint" });
+        // 같은 user 의 stale (30일 +) endpoint 정리
+        const staleCutoff = new Date(Date.now() - 30 * 86400 * 1000).toISOString();
+        await supabase.from("push_subscriptions")
+          .delete()
+          .eq("user_id", userId)
+          .neq("endpoint", `web:${token}`)
+          .lt("updated_at", staleCutoff);
+      } catch (e) {
+        console.warn("push subscription 저장 실패:", e);
+      }
+    }
+    return { token, platform: "web" };
+  } catch (e) {
+    console.warn("FCM web subscribe 실패:", e);
+    return null;
   }
-  return sub;
+}
+
+export async function subscribePush(userId) {
+  if (isNative()) return registerNativePush(userId);
+  if (!pushSupported() || !userId) return null;
+  return subscribeWebFCM(userId);
+}
+
+// 사용자가 앱을 열고 있을 때 도착하는 메시지(foreground) 처리.
+// 기본적으로 OS 알림이 뜨지 않으므로 호출측이 인앱 토스트 등으로 표시.
+// 반환: unsubscribe 함수 또는 null.
+export async function subscribeForegroundMessages(handler) {
+  if (typeof window === "undefined" || isNative()) return null;
+  try {
+    const { getFirebaseMessaging, onMessage } = await import("../firebase.js");
+    const messaging = await getFirebaseMessaging();
+    if (!messaging) return null;
+    return onMessage(messaging, (payload) => {
+      try { handler && handler(payload); }
+      catch (e) { console.warn("onMessage handler error:", e); }
+    });
+  } catch (e) {
+    console.warn("onMessage subscribe 실패:", e);
+    return null;
+  }
 }
 
 export async function unsubscribePush(userId) {
   if (!pushSupported()) return;
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
-  if (sub) {
-    await sub.unsubscribe();
+  if (isNative()) {
+    // 네이티브: 토큰 자체는 OS 가 관리. Supabase 행만 삭제.
     if (supabase && userId) {
-      try { await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint); } catch {}
+      try {
+        const platform = getPlatform();
+        await supabase.from("push_subscriptions")
+          .delete()
+          .eq("user_id", userId)
+          .like("endpoint", `native:${platform}:%`);
+      } catch {}
     }
+    return;
   }
-}
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
+  // 웹: FCM 토큰 sub 만 정리
+  try {
+    const { getFirebaseMessaging } = await import("../firebase.js");
+    const messaging = await getFirebaseMessaging();
+    if (messaging) {
+      const { deleteToken } = await import("firebase/messaging");
+      try { await deleteToken(messaging); } catch {}
+    }
+    if (supabase && userId) {
+      try {
+        await supabase.from("push_subscriptions")
+          .delete()
+          .eq("user_id", userId)
+          .like("endpoint", "web:%");
+      } catch {}
+    }
+  } catch (e) {
+    console.warn("unsubscribePush 실패:", e);
+  }
 }
