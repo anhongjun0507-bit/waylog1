@@ -40,6 +40,7 @@ import {
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
   ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
+  PushPermissionBanner,
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
@@ -533,6 +534,9 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
           라이프스타일을 기록하고 발견하는 공간
         </p>
       </div>
+
+      {/* 1.2.0 — 알림 권유 banner. 가입 후 2~14일 + 권한 미요청일 때만 노출. */}
+      <PushPermissionBanner user={user} dark={dark}/>
 
       {/* 카테고리 픽커 — 민트 액센트, 가로 스크롤 */}
       <div className="px-4 pt-5 pb-1 overflow-x-auto scrollbar-hide flex gap-2" style={{ scrollbarWidth: "none" }}>

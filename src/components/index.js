@@ -12,3 +12,4 @@ export { EmptyState } from "./EmptyState.jsx";
 export { BottomSheet } from "./BottomSheet.jsx";
 export { InbodyAnalysisResult } from "./InbodyAnalysisResult.jsx";
 export { InbodyFirstTimeHint } from "./InbodyFirstTimeHint.jsx";
+export { PushPermissionBanner } from "./PushPermissionBanner.jsx";
