@@ -55,7 +55,7 @@ export const AdminModerationScreen = ({ dark, onClose }) => {
       setItems((prev) => prev.filter((r) => r.id !== id));
       setToast(deleteTarget ? "삭제 및 처리 완료" : "처리 완료");
     } catch {
-      setToast("처리 실패");
+      setToast("처리에 실패했어요. 다시 시도해주세요");
     } finally {
       setActingId(null);
     }
