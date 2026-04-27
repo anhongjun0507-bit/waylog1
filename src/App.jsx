@@ -3673,34 +3673,34 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
   }, [userId, isFollowing]);
 
   return (
-    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
-      <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-900/95 border-gray-800" : "bg-white/95 border-gray-100")}>
-        <button onClick={close} aria-label="뒤로"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
-        <p className={cls("text-sm font-bold", dark ? "text-white" : "text-gray-900")}>{author}</p>
-        <div className="w-6"/>
+    <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col overflow-x-hidden", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
+      <header className={cls("flex items-center gap-3 p-4 border-b", dark ? "bg-gray-900/95 border-gray-800" : "bg-white/95 border-gray-100")}>
+        <button onClick={close} aria-label="뒤로" className="shrink-0"><ArrowLeft size={22} className={dark ? "text-white" : "text-gray-700"}/></button>
+        <p className={cls("flex-1 min-w-0 text-sm font-bold text-center truncate", dark ? "text-white" : "text-gray-900")}>{author}</p>
+        <div className="w-6 shrink-0"/>
       </header>
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 text-center">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="px-6 py-6 text-center">
           <Avatar id={finalAvatar} size={48} className="w-24 h-24 mx-auto shadow-lg" rounded="rounded-full"/>
-          <h2 className={cls("text-2xl font-black mt-4 tracking-tight", dark ? "text-white" : "text-gray-900")}>{author}</h2>
-          <p className={cls("text-xs mt-1.5 max-w-xs mx-auto", dark ? "text-gray-400" : "text-gray-500")}>
+          <h2 className={cls("text-2xl font-black mt-4 tracking-tight break-words", dark ? "text-white" : "text-gray-900")}>{author}</h2>
+          <p className={cls("text-xs mt-1.5 max-w-xs mx-auto line-clamp-3 break-words", dark ? "text-gray-400" : "text-gray-500")}>
             {userData?.bio || (allReviews.length > 0 ? `${allReviews.length}개의 웨이로그를 기록 중` : "웨이로그 멤버")}
           </p>
 
-          <div className={cls("flex items-center justify-around mt-5 py-4 rounded-2xl mx-2", dark ? "bg-gray-800" : "bg-white")}>
-            <div className="text-center">
-              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Posts</p>
+          <div className={cls("grid grid-cols-3 items-center mt-5 py-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
+            <div className="text-center min-w-0 px-2">
+              <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
+              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Posts</p>
             </div>
-            <div className={cls("w-px h-10", dark ? "bg-gray-700" : "bg-gray-200")}/>
-            <button onClick={() => userId && setFollowListOpen("followers")} className="text-center active:scale-95 transition">
-              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{counts.followers}</p>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Followers</p>
+            <button onClick={() => userId && setFollowListOpen("followers")}
+              className={cls("text-center min-w-0 px-2 border-x active:scale-95 transition", dark ? "border-gray-700" : "border-gray-200")}>
+              <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.followers}</p>
+              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Followers</p>
             </button>
-            <div className={cls("w-px h-10", dark ? "bg-gray-700" : "bg-gray-200")}/>
-            <button onClick={() => userId && setFollowListOpen("following")} className="text-center active:scale-95 transition">
-              <p className={cls("text-lg font-black", dark ? "text-white" : "text-gray-900")}>{counts.following}</p>
-              <p className={cls("text-xs font-bold uppercase tracking-wider mt-0.5", dark ? "text-gray-500" : "text-gray-500")}>Following</p>
+            <button onClick={() => userId && setFollowListOpen("following")}
+              className="text-center min-w-0 px-2 active:scale-95 transition">
+              <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.following}</p>
+              <p className={cls("text-[11px] font-bold uppercase tracking-wider mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>Following</p>
             </button>
           </div>
 
@@ -3715,15 +3715,15 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
           )}
         </div>
 
-        <div className="px-4 pb-20">
-          <p className={cls("text-xs font-bold uppercase tracking-wider mb-3 px-1", dark ? "text-gray-500" : "text-gray-500")}>웨이로그</p>
+        <div className="pb-20">
+          <p className={cls("text-xs font-bold uppercase tracking-wider mb-3 px-5", dark ? "text-gray-500" : "text-gray-500")}>웨이로그</p>
           {allReviews.length === 0 ? (
-            <div className={cls("py-12 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
+            <div className={cls("mx-4 py-12 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
               <PenLine size={32} strokeWidth={1.5} className="mx-auto mb-2 opacity-50"/>
               <p className="text-xs font-medium">아직 작성한 웨이로그가 없어요</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
               {allReviews.map((r, i) => (
                 <div key={r.id} className="animate-card-enter" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
                   <Card r={r} onOpen={(x) => { close(); setTimeout(() => onOpen(x), 280); }} isFav={false} toggleFav={() => {}} dark={dark}/>
