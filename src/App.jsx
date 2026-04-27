@@ -7238,7 +7238,7 @@ function AppInner() {
       {/* Toast — type 별 색 분기 (info: 검정, success: emerald, error: rose). action 있으면 버튼 렌더 */}
       {toast && (
         <div
-          style={{ bottom: "calc(11rem + env(safe-area-inset-bottom))" }}
+          style={{ bottom: "calc(7rem + env(safe-area-inset-bottom))" }}
           className="fixed inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
           <div className={cls("text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl animate-toast inline-flex items-center gap-1.5 max-w-full",
             toast.action ? "pointer-events-auto" : "",
