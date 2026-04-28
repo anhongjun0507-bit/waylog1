@@ -66,7 +66,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
   const [selectedProducts, setSelectedProducts, prodLoaded] = useStoredState("waylog:draft:compose:products", []);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productQuery, setProductQuery] = useState("");
-  const [pickerCat, setPickerCat] = useState(category || "all");
+  const [pickerCat, setPickerCat] = useState("all");
   const [error, setError] = useState("");
   const [confirmClearDraft, setConfirmClearDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -457,7 +457,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
           {selectedProducts.length < 3 && (
             <button onClick={() => {
               if (!category) { setError("먼저 카테고리를 선택해주세요"); return; }
-              setPickerCat(category || "all"); setProductQuery(""); setProductPickerOpen(true);
+              setPickerCat("all"); setProductQuery(""); setProductPickerOpen(true);
             }}
               className={cls("w-full py-2.5 rounded-lg border border-dashed text-[13px] font-semibold flex items-center justify-center gap-2 transition active:opacity-70",
                 !category
