@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Plus, Activity, Sparkles, Loader2 } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
@@ -6,12 +6,12 @@ import { compressFileForOCR } from "../utils/imageResize.js";
 import { InbodyAnalysisResult } from "../components/InbodyAnalysisResult.jsx";
 import { InbodyFirstTimeHint } from "../components/InbodyFirstTimeHint.jsx";
 
-const DAILY_CAP = 5;
 const FIRST_HINT_KEY = "waylog:hint:inbody-first";
 
 // 인바디 측정 기록 추가/조회 + 체중 변화 SVG 선 그래프.
-// AI 분석 흐름: onAnalyzeImage / onCheckCap / onToast 가 주입되면 "사진으로 자동 입력" 버튼 노출.
-export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeImage, onCheckCap, onToast }) => {
+// AI 분석 흐름: onAnalyzeImage / onToast 가 주입되면 "사진으로 자동 입력" 버튼 노출.
+// 1.3.0 — 일일 cap 제거 (사용자 피드백: 무제한)
+export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeImage, onToast }) => {
   const [exiting, close] = useExit(onClose);
   const [adding, setAdding] = useState(false);
   const [weight, setWeight] = useState("");
@@ -23,22 +23,9 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [detail, setDetail] = useState(null); // 저장된 기록 상세 (readOnly 다시 보기)
-  const [todayCount, setTodayCount] = useState(0);
   const [firstHintOpen, setFirstHintOpen] = useState(false);
 
   const aiEnabled = !!(onAnalyzeImage && user?.id);
-  const capReached = todayCount >= DAILY_CAP;
-  const oneLeft = todayCount === DAILY_CAP - 1;
-
-  // P1-6: mount 시 오늘 분석 횟수 fetch (사전 표시용)
-  useEffect(() => {
-    if (!aiEnabled || !onCheckCap) return;
-    let cancelled = false;
-    onCheckCap()
-      .then((cap) => { if (!cancelled && cap) setTodayCount(cap.count || 0); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [aiEnabled, onCheckCap]);
 
   const handleAdd = () => {
     if (!weight) return;
@@ -61,7 +48,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
 
   // P1-7: 첫 사용 안내 모달 → 통과한 적 있으면 바로 사진 선택
   const handlePickAIPhoto = () => {
-    if (!aiEnabled || analyzing || capReached) return;
+    if (!aiEnabled || analyzing) return;
     let seen = false;
     try { seen = !!localStorage.getItem(FIRST_HINT_KEY); } catch {}
     if (!seen) {
@@ -91,15 +78,6 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
     }
     setAnalyzing(true);
     try {
-      // 일일 cap 체크 — 5회 도달 시 차단 (사전 fetch 외에 한 번 더 안전망)
-      if (onCheckCap) {
-        const cap = await onCheckCap();
-        if (cap && cap.count >= DAILY_CAP) {
-          setTodayCount(cap.count);
-          onToast?.("오늘 AI 분석 한도(5회)에 도달했어요. 내일 다시 시도해주세요");
-          return;
-        }
-      }
       // 압축 후 분석. dataURL 은 분석 직후 폐기 (Storage 저장 안 함).
       let dataUrl = await compressFileForOCR(file);
       const result = await onAnalyzeImage(dataUrl);
@@ -137,7 +115,6 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
       analyzed_at: new Date().toISOString(),
     });
     setAnalysisResult(null);
-    setTodayCount((c) => c + 1); // P1-6: 저장 시점에만 카운트 증가 (분석만 하고 취소하면 미반영)
     onToast?.("인바디 기록에 저장됐어요");
   };
 
@@ -166,25 +143,15 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {aiEnabled && (
           <div className="space-y-1.5">
-            <button onClick={handlePickAIPhoto} disabled={analyzing || capReached}
+            <button onClick={handlePickAIPhoto} disabled={analyzing}
               className={cls("w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30 transition active:scale-[0.98]",
                 analyzing
                   ? "bg-brand-500/60 text-white cursor-wait"
-                  : capReached
-                    ? (dark ? "bg-[#262626] text-[#737373] cursor-not-allowed" : "bg-[#ececec] text-[#a8a8a8] cursor-not-allowed")
-                    : "bg-brand-500 text-white")}>
+                  : "bg-brand-500 text-white")}>
               {analyzing ? (
                 <><Loader2 size={18} className="animate-spin"/> AI가 분석하고 있어요...</>
-              ) : capReached ? (
-                <><Sparkles size={18} className="opacity-50"/> 오늘 한도 도달 (내일 다시)</>
               ) : (
-                <>
-                  <Sparkles size={18}/> 사진으로 자동 입력 (AI)
-                  <span className={cls("ml-1 text-[11px] font-bold px-1.5 py-0.5 rounded-full",
-                    oneLeft ? "bg-amber-300 text-amber-900" : "bg-white/25 text-white")}>
-                    {oneLeft ? `${todayCount}/${DAILY_CAP} · 1회 남음` : `${todayCount}/${DAILY_CAP}`}
-                  </span>
-                </>
+                <><Sparkles size={18}/> 사진으로 자동 입력 (AI)</>
               )}
             </button>
             {analyzing && (
