@@ -99,6 +99,8 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           email: trimmedEmail,
           avatar,
           joinedAt: data?.user?.created_at || new Date().toISOString(),
+          // app_metadata.role 보존 — 누락 시 관리자 계정도 admin 메뉴 못 봄 (audit P0-4).
+          app_metadata: data?.user?.app_metadata || {},
         });
         close();
       } catch (e) {
@@ -138,6 +140,8 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           email: trimmedEmail,
           avatar: meta?.avatar_url || "",
           joinedAt: data.user.created_at,
+          // app_metadata.role 보존 — 관리자 계정의 모더레이션 메뉴 노출 (audit P0-4).
+          app_metadata: data.user.app_metadata || {},
         });
         close();
       } catch (e) {

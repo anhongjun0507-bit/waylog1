@@ -5389,6 +5389,9 @@ function AppInner() {
       nickname: meta.nickname || session.user.email.split("@")[0],
       avatar,
       joinedAt: session.user.created_at,
+      // app_metadata 는 Supabase Dashboard·admin API 로만 설정되는 신뢰 가능한 metadata.
+      // SettingsScreen 의 isAdmin 판정에 필요 — 빠지면 관리자 메뉴 영구 비표시 (audit P0-4).
+      app_metadata: session.user.app_metadata || {},
     };
   };
   // 비동기 avatar hydrate: 실패/지연해도 user state 와 authLoading 해제는 이미 완료.
