@@ -143,6 +143,34 @@ export const initBackButtonHandler = async (handler) => {
   }
 };
 
+// ---------- Push Click (네이티브 알림 탭 → deep link) ----------
+// 사용자가 OS 알림 트레이에서 푸시 알림을 탭하면 호출. notification.data.url 을
+// handler 로 전달 → 호출측이 라우터로 이동.
+//
+// Capacitor PushNotifications 는 두 가지 click 이벤트를 통합 처리한다:
+//   - 백그라운드/종료 상태에서 알림 탭 → 앱 부팅 후 발화
+//   - 포그라운드에서 알림 탭 (드물지만 가능)
+//
+// 반환: { remove() } subscription 객체 또는 null.
+export const initPushClickHandler = async (handler) => {
+  if (!isNative()) return null;
+  if (typeof handler !== "function") return null;
+  try {
+    const { PushNotifications } = await import("@capacitor/push-notifications");
+    return await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      try {
+        const url = action?.notification?.data?.url || "/";
+        handler(url, action.notification);
+      } catch (e) {
+        console.warn("push click handler 오류:", e);
+      }
+    });
+  } catch (e) {
+    console.warn("push click listener 등록 실패:", e);
+    return null;
+  }
+};
+
 // Capacitor App.exitApp — 명시적으로 앱 종료 (호출측에서 조건 판단 후 사용).
 export const exitApp = async () => {
   if (!isNative()) return;

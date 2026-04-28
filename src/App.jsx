@@ -7197,6 +7197,32 @@ function AppInner() {
     return () => { sub?.remove?.(); };
   }, []);
 
+  // 1.4.0 — 네이티브 푸시 알림 탭 → deep link (audit P1-20).
+  // send-push 가 data.url 을 세팅해 보내지만 클라이언트가 listener 미등록이라 홈만 열렸음.
+  // 백그라운드/종료 상태에서 알림 탭 시 앱 부팅 후 1회 발화.
+  useEffect(() => {
+    let sub;
+    let cancelled = false;
+    import("./utils/platform.js").then(({ initPushClickHandler }) =>
+      initPushClickHandler((url) => {
+        try {
+          // url 형식: "/review/<id>", "/profile/<userId>", "/challenge", "/" 등
+          // navigate(0)·falsy 면 홈으로 안전 폴백
+          navigate(typeof url === "string" && url.startsWith("/") ? url : "/");
+        } catch (e) {
+          console.warn("push click navigate 실패:", e);
+        }
+      }).then((s) => {
+        if (cancelled) { s?.remove?.(); return; }
+        sub = s;
+      })
+    );
+    return () => {
+      cancelled = true;
+      sub?.remove?.();
+    };
+  }, [navigate]);
+
   // SearchScreen 은 라우트가 아닌 state 기반 오버레이라 브라우저 back 이 반응하지 않음.
   // history sentinel 로 우회: 열 때 push → 브라우저 back → popstate → setSearch(false).
   // Capacitor Android 는 기존 backHandler 가 closeSearch 를 호출해 동일 경로로 닫는다.
