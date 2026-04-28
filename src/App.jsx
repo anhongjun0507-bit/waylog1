@@ -5342,12 +5342,36 @@ function AppInner() {
     return () => clearTimeout(t);
   }, [armClearNotif]);
   const [notifications, setNotifications] = useStoredState("waylog:notifs", []);
-  const [notifPref, setNotifPref] = useStoredState("waylog:notifPref", true);
-  const notifPrefRef = useRef(notifPref);
-  useEffect(() => { notifPrefRef.current = notifPref; }, [notifPref]);
+
+  // 1.4.0 — notifPref(localStorage) 폐기 → 서버 notif_prefs(jsonb) 단일 source.
+  // 이전엔 "앱 내 알림" off 해도 좋아요/댓글/팔로우 푸시는 그대로 옴 (audit P1-25).
+  // 마이그: notifPref === "false" 였던 사용자는 서버 5종 모두 false 로 동기화 후 키 제거.
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    if (localStorage.getItem("waylog:notifPref:migrated")) return;
+    const stored = localStorage.getItem("waylog:notifPref");
+    const markDone = () => {
+      try {
+        localStorage.removeItem("waylog:notifPref");
+        localStorage.setItem("waylog:notifPref:migrated", "1");
+      } catch {}
+    };
+    if (stored === null || stored === "true") {
+      // default 가 true 라 서버 prefs(default 모두 true) 와 일치 — sync 불요.
+      markDone();
+      return;
+    }
+    // 사용자가 명시적으로 OFF 했었음 — 5종 모두 false 로 sync.
+    supabase.from("profiles")
+      .update({ notif_prefs: { likes: false, comments: false, follows: false, challenge: false, news: false } })
+      .eq("id", user.id)
+      .then(({ error }) => { if (!error) markDone(); })
+      .catch(() => {});
+  }, [user?.id]);
 
   const pushNotif = (text, extra = {}) => {
-    if (!notifPrefRef.current) return;
+    // 인앱 자동 알림 (챌린지 시작·완료 등) — 5종 type 매핑 안 되는 시스템 알림이라 항상 표시.
+    // notif_prefs 는 send-push Edge Function 측에서 type 별로 체크.
     const local = { id: Date.now() + Math.random(), text, createdAt: Date.now(), read: false, ...extra };
     setNotifications((p) => [local, ...p]);
     // 서버 동기화 — 실패해도 로컬 알림은 유지
@@ -7512,7 +7536,6 @@ function AppInner() {
         onOpenSettings={() => { setProfileOpen(false); setTimeout(() => setSettingsOpen(true), 100); }}
         dark={dark} favs={favs} moods={moods} userReviews={userReviews} taste={taste}/>}</Suspense>
       <Suspense fallback={null}>{settingsOpen && <SettingsScreen user={user} dark={dark} setDark={setDark}
-        notifPref={notifPref} setNotifPref={setNotifPref}
         blockedList={blockedArr} onUnblock={toggleBlock}
         onClose={() => setSettingsOpen(false)}
         onLogout={logout}

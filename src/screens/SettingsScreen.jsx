@@ -114,7 +114,7 @@ const NotifTypePrefs = ({ user, dark, onShowToast }) => {
   );
 };
 
-const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onEnablePush, onOpenAdmin }) => {
+const SettingsScreen = ({ user, dark, setDark, blockedList, onUnblock, onClose, onLogout, onClearData, onReplayOnboarding, onEnablePush, onOpenAdmin }) => {
   // setToast 는 Context 에서 구독 — prop drilling 제거
   const { setToast: onShowToast } = useAppContext();
   // app_metadata.role 은 Supabase 관리자 콘솔에서 사용자 별로 수동 설정
@@ -162,7 +162,7 @@ const SettingsScreen = ({ user, dark, setDark, notifPref, setNotifPref, blockedL
       { icon: dark ? Sun : Moon, label: "다크모드", value: dark, type: "toggle", onChange: () => setDark(!dark) },
     ]},
     { group: "알림", rows: [
-      { icon: Bell, label: "앱 내 알림", value: notifPref, type: "toggle", onChange: () => setNotifPref(!notifPref) },
+      // 1.4.0 — "앱 내 알림" 단일 토글 폐기. 알림 종류별 토글(NotifTypePrefs)로 통합.
       // 웹 푸시: Notification 권한 + Service Worker 구독을 요청.
       // 브라우저가 지원하지 않거나 VAPID 미설정이면 비활성화 상태로 표시.
       ...(typeof window !== "undefined" && "Notification" in window ? [
