@@ -39,7 +39,7 @@ import {
 // 디자인 시스템: W (Waylog Pinterest+IG+Shop), B (Bodyki Withings)
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
-  ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
+  ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState,
   WeeklyLifestyleCards,
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
