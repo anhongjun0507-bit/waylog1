@@ -20,6 +20,7 @@ import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
 import { identify, events as analyticsEvents } from "./utils/analytics.js";
 import { pushSupported, requestPushPermission, subscribePush, subscribeForegroundMessages } from "./utils/push.js";
+import { kstDayKey, todayKstKey } from "./utils/date.js";
 import { sendPushNotification } from "./utils/sendPush.js";
 import {
   BASE, CHALLENGE_WEEKS, CHALLENGE_DAYS, AI_CACHE_MAX, AI_CACHE_TTL_MS,
@@ -256,7 +257,7 @@ const aiCoachMessage = async (tone, dayNum, completedMissions, totalMissions) =>
 
 const aiDailyReport = async (totalCal, totalBurned, completedMissions, totalMissions) => {
   const rate = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKstKey();
   const cacheKey = `report:${today}:${totalCal}:${totalBurned}:${rate}`;
   const text = await cachedCallClaude(
     cacheKey,
@@ -697,7 +698,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
 
 // 피드 중간 챌린지 배너 — IG 스폰서 포스트 자리 같이 자연스럽게
 const ChallengeFeedCard = ({ dayNum, dailyLogs, dark, onOpen }) => {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayKstKey();
   const todayLog = dailyLogs?.[todayStr] || { completedMissions: [] };
   const weekNum = getChallengeWeek(dayNum);
   const weekMissions = CHALLENGE_MISSIONS[weekNum - 1] || CHALLENGE_MISSIONS[0];
@@ -865,7 +866,7 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
   // 챌린지 진행률
   const dayNum = challenge?.startDate ? getChallengeDay(challenge.startDate) : 0;
   const weekNum = dayNum ? getChallengeWeek(dayNum) : 0;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayKstKey();
   const todayLog = dailyLogs?.[todayStr] || { completedMissions: [] };
   const weekMissions = CHALLENGE_MISSIONS[weekNum - 1] || CHALLENGE_MISSIONS[0];
   const missionsDone = todayLog.completedMissions?.length || 0;
@@ -1312,15 +1313,9 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
   // 1.3.0 — KST 기준으로 그룹핑 (이전엔 UTC 날짜 문자열을 사용해 한국 시간 새벽/늦은 밤 작성 글이 어제로 빠지는 버그)
   const groupedByDate = useMemo(() => {
     if (sort !== "latest") return null;
-    // KST(UTC+9) 일자 키 — "2026-04-27"
-    const kstDayKey = (input) => {
-      if (!input) return "";
-      const d = typeof input === "number" ? new Date(input) : new Date(input);
-      if (Number.isNaN(d.getTime())) return "";
-      return new Date(d.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    };
-    const todayKey = kstDayKey(new Date());
-    const yesterdayKey = kstDayKey(new Date(Date.now() - 24 * 3600 * 1000));
+    // KST(UTC+9) 일자 키 — utils/date.js 의 kstDayKey 사용 (1.4.0 헬퍼 통일).
+    const todayKey = kstDayKey();
+    const yesterdayKey = kstDayKey(Date.now() - 24 * 3600 * 1000);
     // 7일 이내 (오늘 포함) 판별용 — KST 자정 cutoff
     const weekCutoff = new Date(`${todayKey}T00:00:00+09:00`).getTime() - 6 * 24 * 3600 * 1000;
     const groups = { today: [], yesterday: [], week: [], older: [] };
@@ -4291,7 +4286,7 @@ const ChallengeGraphScreen = ({ challenge, dailyLogs, inbodyRecords, onClose, da
 const DailyReportCard = ({ challenge, dailyLogs, dark }) => {
   // Hooks 는 early return 보다 앞에 와야 한다 (react-hooks/rules-of-hooks).
   const dayNum = getChallengeDay(challenge?.startDate);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKstKey();
   const todayLog = dailyLogs?.[today];
   const now = new Date().getHours();
 
@@ -4491,16 +4486,16 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
     });
     onShowToast && onShowToast("기본 미션으로 되돌렸어요");
   };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKstKey();
   const todayLog = dailyLogs?.[today] || { meals: [], exercises: [], completedMissions: [] };
   const progress = dayNum / CHALLENGE_DAYS;
 
-  // Streak 계산
+  // Streak 계산 — KST 자정 기준 (audit P1-11). 86_400_000ms 단위로 빼면서 KST day_key 변환.
   const calcStreak = () => {
     let streak = 0;
-    const d = new Date();
+    const now = Date.now();
     for (let i = 0; i < dayNum; i++) {
-      const dateStr = new Date(d.getTime() - i * 86400000).toISOString().slice(0, 10);
+      const dateStr = kstDayKey(now - i * 86400000);
       const log = dailyLogs?.[dateStr];
       if (log && (log.completedMissions?.length > 0 || log.meals?.length > 0)) streak++;
       else if (i > 0) break;
@@ -4985,7 +4980,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
   // 진행 중 상태
   const dayNum = getChallengeDay(challenge.startDate);
   const weekNum = getChallengeWeek(dayNum);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayKstKey();
   const todayLog = dailyLogs?.[todayStr] || { completedMissions: [] };
   const weekMissions = CHALLENGE_MISSIONS[weekNum - 1] || CHALLENGE_MISSIONS[0];
   const missionsDone = todayLog.completedMissions?.length || 0;
@@ -6476,7 +6471,8 @@ function AppInner() {
       media: localMedia,
       tags: data.tags.length ? data.tags : ["내웨이로그"],
       category: data.category, views: 0, likes: 0,
-      date: new Date().toISOString().slice(0, 10),
+      // KST 자정 기준 — today feed 그룹핑이 KST 라 review.date 도 KST 정합 (audit P1-11).
+      date: todayKstKey(),
       author: user?.nickname || "나",
       authorAvatar: user?.avatar || "",
     };

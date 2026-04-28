@@ -6,19 +6,23 @@ import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { AI_COACH_TONES, CHALLENGE_DAYS } from "../constants.js";
 import { calcBMR, calcTargetCalories } from "../utils/challenge.js";
+import { todayKstKey } from "../utils/date.js";
 
-// YYYY-MM-DD 에 일수 더하기
+// YYYY-MM-DD 에 일수 더하기 — 입력이 KST day_key 형태라 KST 자정 기준 가산.
+// `T00:00:00+09:00` 로 명시해서 UTC 변환 시 어긋나지 않게.
 const addDays = (ymd, days) => {
-  const d = new Date(`${ymd}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  const d = new Date(`${ymd}T00:00:00+09:00`);
+  d.setUTCDate(d.getUTCDate() + days);
+  // 결과 Date 의 KST 자정 ymd 추출.
+  return new Date(d.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 };
 
 // 8주 챌린지 시작 - 5-step 온보딩 (소개 → 신체정보 → 목표 → AI 코치 → 확인)
 export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
   const [exiting, close] = useExit(onClose);
   const [step, setStep] = useState(0);
-  const today = new Date().toISOString().slice(0, 10);
+  // KST 자정 기준 — 챌린지 시작·종료일은 사용자 체감 "오늘" (audit P1-11).
+  const today = todayKstKey();
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(addDays(today, CHALLENGE_DAYS - 1));
   const [endDateTouched, setEndDateTouched] = useState(false);
