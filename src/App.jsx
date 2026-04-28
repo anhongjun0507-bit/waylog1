@@ -5757,37 +5757,54 @@ function AppInner() {
       : [],
   });
 
+  // hydrated/inFlight ref 분리 (audit P1-15) — 1.3.0 까지 ref 가 fetch 호출 전 set 돼서
+  // 첫 fetch 실패 시 영구 빈 화면이었음. 이제 성공 후 hydrated set, 실패 시 false 유지 →
+  // deps 변경(예: 사용자 재로그인)에 자동 재시도 가능.
   const communityHydratedRef = useRef(false);
+  const communityInFlightRef = useRef(false);
   useEffect(() => {
-    if (authLoading || communityHydratedRef.current) return;
-    communityHydratedRef.current = true;
+    if (authLoading || communityHydratedRef.current || communityInFlightRef.current) return;
+    communityInFlightRef.current = true;
+    let cancelled = false;
     (async () => {
-      const { data, error } = await supabaseCommunity.fetchAll(50);
-      if (error || !Array.isArray(data)) return;
+      try {
+        const { data, error } = await supabaseCommunity.fetchAll(50);
+        if (cancelled) return;
+        if (error) throw error;
+        if (!Array.isArray(data)) throw new Error("invalid_response");
 
-      const postIds = data.map((p) => p.id);
-      // 병렬로 좋아요 count / 댓글 fetch
-      const [{ data: likeCounts }, { data: commentRows }] = await Promise.all([
-        supabaseCommunity.fetchPostLikeCounts(postIds),
-        supabaseCommunity.fetchCommentsByPosts(postIds),
-      ]);
+        const postIds = data.map((p) => p.id);
+        // 병렬로 좋아요 count / 댓글 fetch
+        const [{ data: likeCounts }, { data: commentRows }] = await Promise.all([
+          supabaseCommunity.fetchPostLikeCounts(postIds),
+          supabaseCommunity.fetchCommentsByPosts(postIds),
+        ]);
+        if (cancelled) return;
 
-      setCommunity(data.map((r) => ({
-        ...mapCommunityRow(r),
-        likes: (likeCounts && likeCounts[r.id]) || 0,
-      })));
+        setCommunity(data.map((r) => ({
+          ...mapCommunityRow(r),
+          likes: (likeCounts && likeCounts[r.id]) || 0,
+        })));
 
-      // 댓글을 postId 별로 그룹화
-      if (Array.isArray(commentRows)) {
-        const grouped = {};
-        commentRows.forEach((c) => {
-          const mapped = mapCommunityCommentRow(c);
-          if (!grouped[c.post_id]) grouped[c.post_id] = [];
-          grouped[c.post_id].push(mapped);
-        });
-        setCommunityComments(grouped);
+        // 댓글을 postId 별로 그룹화
+        if (Array.isArray(commentRows)) {
+          const grouped = {};
+          commentRows.forEach((c) => {
+            const mapped = mapCommunityCommentRow(c);
+            if (!grouped[c.post_id]) grouped[c.post_id] = [];
+            grouped[c.post_id].push(mapped);
+          });
+          setCommunityComments(grouped);
+        }
+        communityHydratedRef.current = true;
+      } catch (e) {
+        console.warn("community hydrate 실패", e);
+        // hydrated false 유지 — 다음 deps 변경 시 자동 재시도
+      } finally {
+        communityInFlightRef.current = false;
       }
     })();
+    return () => { cancelled = true; };
   }, [authLoading]);
 
   // 내가 좋아요한 게시물 hydrate — 로그인 후 1회. `liked` 플래그는 render 시점에 파생.
@@ -5801,17 +5818,20 @@ function AppInner() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  // moods / notifications 하이드레이션 (로그인 시 1회)
+  // moods / notifications 하이드레이션 (로그인 시 1회) — audit P1-15: 성공 후 hydrated set.
   const moodsNotifsHydratedRef = useRef(false);
+  const moodsNotifsInFlightRef = useRef(false);
   useEffect(() => {
-    if (!user?.id || !supabase || moodsNotifsHydratedRef.current) return;
-    moodsNotifsHydratedRef.current = true;
+    if (!user?.id || !supabase || moodsNotifsHydratedRef.current || moodsNotifsInFlightRef.current) return;
+    moodsNotifsInFlightRef.current = true;
+    let cancelled = false;
     (async () => {
       try {
         const [{ data: moodRows }, { data: notifRows }] = await Promise.all([
           supabaseMoods.fetchMine(user.id),
           supabaseNotifs.fetchMine(user.id, 50),
         ]);
+        if (cancelled) return;
         if (Array.isArray(moodRows) && moodRows.length) {
           const map = {};
           moodRows.forEach((m) => { map[m.review_id] = m.mood; });
@@ -5825,17 +5845,26 @@ function AppInner() {
             ...(n.data || {}),
           })));
         }
-      } catch (e) { console.warn("moods/notifs hydrate 실패", e); }
+        moodsNotifsHydratedRef.current = true;
+      } catch (e) {
+        console.warn("moods/notifs hydrate 실패", e);
+        // hydrated false 유지 — 다음 trigger(예: user 재로그인) 에 재시도
+      } finally {
+        moodsNotifsInFlightRef.current = false;
+      }
     })();
+    return () => { cancelled = true; };
     // user 변경(로그인)시에만 1회 hydrate — setter 들은 ref 안정적이므로 deps 제외
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // 로그아웃 시 하이드레이션 플래그 리셋 → 재로그인 시 다시 fetch
+  // 로그아웃 시 하이드레이션 플래그 리셋 → 재로그인 시 다시 fetch (inFlight 도 같이 클리어)
   useEffect(() => {
     if (!user) {
       moodsNotifsHydratedRef.current = false;
+      moodsNotifsInFlightRef.current = false;
       challengeHydratedRef.current = false;
+      challengeInFlightRef.current = false;
       identify(null);
     } else {
       identify(user.id, { nickname: user.nickname });
@@ -6096,13 +6125,17 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenge]);
 
-  // 로그인 시 Supabase에서 챌린지 데이터 하이드레이션 (한 번만)
+  // 로그인 시 Supabase에서 챌린지 데이터 하이드레이션 (한 번만) — audit P1-15.
+  const challengeInFlightRef = useRef(false);
   useEffect(() => {
-    if (!user?.id || !supabase || challengeHydratedRef.current) return;
-    challengeHydratedRef.current = true;
+    if (!user?.id || !supabase || challengeHydratedRef.current || challengeInFlightRef.current) return;
+    challengeInFlightRef.current = true;
+    let cancelled = false;
     (async () => {
       try {
-        const { data: ch } = await supabaseChallenges.fetchActive(user.id);
+        const { data: ch, error: chErr } = await supabaseChallenges.fetchActive(user.id);
+        if (cancelled) return;
+        if (chErr) throw chErr;
         if (ch) {
           setChallenge({
             id: ch.id,
@@ -6115,6 +6148,7 @@ function AppInner() {
             supabaseChallenges.fetchLogs(user.id, ch.id),
             supabaseChallenges.fetchInbody(user.id),
           ]);
+          if (cancelled) return;
           if (Array.isArray(logs) && logs.length) {
             const logMap = {};
             logs.forEach((l) => { logMap[l.day_key] = l.data || {}; });
@@ -6124,10 +6158,15 @@ function AppInner() {
             setChallengeInbody(inbody.map((i) => ({ id: i.id, measuredAt: i.measured_at, ...(i.data || {}) })));
           }
         }
+        challengeHydratedRef.current = true;
       } catch (e) {
         console.warn("challenge hydrate 실패", e);
+        // hydrated false 유지 — 다음 trigger 에 재시도
+      } finally {
+        challengeInFlightRef.current = false;
       }
     })();
+    return () => { cancelled = true; };
     // hydration은 user.id 최초 로그인 시 1회만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
