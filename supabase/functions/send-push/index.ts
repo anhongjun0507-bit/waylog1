@@ -1,4 +1,4 @@
-// Supabase Edge Function: Waylog 1.2.0 푸시 알림 발송
+// Supabase Edge Function: Waylog 푸시 알림 발송
 //
 // 배포: supabase functions deploy send-push
 //   (verify_jwt 기본 true — 익명 호출 차단. 클라이언트는 supabase.functions.invoke 사용 시 자동으로 user JWT 첨부)
@@ -17,17 +17,23 @@
 //   }
 //
 // 동작:
-//   1) profiles.notif_prefs[type] 이 false 면 skip
-//   2) notifications 테이블 row insert (인앱 알림)
-//   3) push_subscriptions fetch 후 endpoint 분기:
+//   1) sender 신원 + type 별 권한 검증 (1.4.0)
+//   2) profiles.notif_prefs[type] 이 false 면 skip
+//   3) notifications 테이블 row insert (인앱 알림)
+//   4) push_subscriptions fetch 후 endpoint 분기:
 //      - "web:<fcm_token>"            → FCM HTTP v1
 //      - "native:android:<fcm_token>" → FCM HTTP v1
 //      - 그 외 (legacy raw URL)        → 1.2.0 미지원, skip
-//   4) 응답 NOT_REGISTERED/INVALID_ARGUMENT/404 → push_subscriptions 행 삭제
+//   5) 응답 NOT_REGISTERED/INVALID_ARGUMENT/404 → push_subscriptions 행 삭제
 //
-// 보안 메모:
-//   1.2.0 첫 도입 단계라 sender 신원 검증은 안 함 (요청자가 임의 userId 발송 가능).
-//   악용 모니터링 후 1.3.0 에서 type 별 검증 (review 작성자 일치 여부 등) 추가 권장.
+// 1.4.0 보안 강화 (audit-2026-04-28.md P0-2, P0-3)
+//   sender 검증 부재 → 임의 사용자가 임의 userId 에게 임의 푸시 발송 가능했음.
+//   호출 모드 3 가지로 분기:
+//     1. service_role (cron / 내부 호출): Authorization 이 SERVICE_ROLE_KEY → 모든 type 허용.
+//     2. admin user JWT: app_metadata.role === "admin" → 모든 type 허용 (NewsBroadcast 포함).
+//     3. 일반 user JWT:
+//          - like / comment / follow → sender.id !== userId 강제 (셀프 푸시 차단)
+//          - news / challenge        → 거부 (admin / cron 만 가능)
 
 // deno-lint-ignore-file no-explicit-any
 // @ts-ignore - Deno 런타임 (로컬 타입체크 무시)
@@ -249,6 +255,66 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // ── 1.4.0 sender 검증 + type 별 권한 ────────────────────────────────
+  // verify_jwt 가 켜져 있어 Authorization 헤더는 게이트웨이에서 1차 검증되지만,
+  // 함수 안에서도 sender 신원을 직접 꺼내야 type 별 가드를 적용할 수 있다.
+  const authHeader = req.headers.get("authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!bearer) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { ...CORS, "content-type": "application/json" },
+    });
+  }
+
+  // service_role 호출 (send-challenge-reminders cron 등) 은 모든 type 허용.
+  // SERVICE_ROLE 토큰을 정확히 일치 비교 — 부분 매치는 위험.
+  const isServiceRole = bearer === SERVICE_ROLE;
+  let senderId: string | null = null;
+  let senderIsAdmin = false;
+  if (!isServiceRole) {
+    const { data: userData, error: userErr } = await supabase.auth.getUser(bearer);
+    const sender = userData?.user;
+    if (userErr || !sender?.id) {
+      return new Response(JSON.stringify({ error: "invalid_token" }), {
+        status: 401,
+        headers: { ...CORS, "content-type": "application/json" },
+      });
+    }
+    senderId = sender.id;
+    // app_metadata.role 은 Supabase Dashboard 또는 admin API 로만 설정 가능 → 신뢰 가능.
+    senderIsAdmin = (sender.app_metadata as Record<string, unknown> | null)?.role === "admin";
+  }
+
+  // type 별 가드
+  if (!isServiceRole) {
+    if (type === "news" || type === "challenge") {
+      // news: AdminModerationScreen 의 NewsBroadcast — admin 만.
+      // challenge: 평소엔 cron(service_role) 만 발송. 일반 user 가 보낼 일 없음.
+      if (!senderIsAdmin) {
+        return new Response(JSON.stringify({ error: "admin_only" }), {
+          status: 403,
+          headers: { ...CORS, "content-type": "application/json" },
+        });
+      }
+    } else if (type === "like" || type === "comment" || type === "follow") {
+      // 셀프 푸시 차단 — 다른 사용자에게만 발송 가능.
+      // 클라이언트(App.jsx)가 이미 if (authorId !== user.id) 가드하지만 서버에서도 강제.
+      if (senderId === userId) {
+        return new Response(JSON.stringify({ error: "self_push_not_allowed" }), {
+          status: 403,
+          headers: { ...CORS, "content-type": "application/json" },
+        });
+      }
+      // 추가 정합성 (sender 가 실제로 해당 review/comment/follow 를 했는지) 은
+      // 호출 빈도·DB 부하·UX 지연 trade-off 로 현 시점 미적용.
+      // 1.5.0 에서 type 별 review_id/comment_id/follow target 검증 검토.
+    }
+    // 다른 type (이미 위에서 unknown_type 으로 차단됨) — 도달 불가.
+  }
 
   // 1) notif_prefs 체크 — 기본값 ON. 명시적으로 false 면 skip.
   const { data: profile } = await supabase

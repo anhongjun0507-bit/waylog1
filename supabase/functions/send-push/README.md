@@ -72,13 +72,26 @@ curl -X POST \
 | `challenge` | `challenge` |
 | `news` | `news` |
 
-## 보안 메모
+## 보안 (1.4.0 강화)
 
-1.2.0 첫 도입 단계라 발송자(sender) 신원 검증은 함수 측에서 안 함.
-요청자가 임의 `userId` 로 발송 가능 — 악용 모니터링 후 1.3.0 에서
-`type` 별 검증(review 작성자 일치 여부 등) 추가 권장.
+호출 모드 3 가지로 분기 (audit-2026-04-28.md P0-2, P0-3 대응):
 
-verify_jwt 는 활성 (Authorization 헤더 필수). 익명 호출은 차단.
+| 모드 | Authorization | 허용 type |
+|---|---|---|
+| service_role (cron 등) | `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` | 모든 type |
+| admin user | user JWT + `app_metadata.role === "admin"` | 모든 type (NewsBroadcast 포함) |
+| 일반 user | user JWT | `like` / `comment` / `follow` 만 — 본인이 본인에게 발송은 차단 (`self_push_not_allowed`) |
+
+`news` / `challenge` 를 일반 user 가 보내려 하면 `403 admin_only`.
+`like` / `comment` / `follow` 에서 `senderId === userId` 면 `403 self_push_not_allowed`.
+
+⚠️ 1.3.0 까지는 인증된 user 라면 임의 userId 로 임의 type/title/body 발송 가능했음.
+   1.4.0 부터 위 가드 적용.
+
+추가 정합성 (sender 가 실제로 해당 review 좋아요 했는지 등) 은 호출 빈도·DB 부하·UX 지연 trade-off 로 미적용.
+1.5.0 에서 type 별 review_id/comment_id/follow target 검증 검토.
+
+verify_jwt 는 활성 (Authorization 헤더 필수). 익명 호출은 게이트웨이에서 차단.
 
 ## Web Push (legacy)
 
