@@ -29,16 +29,25 @@
 
     <title>웨이로그 | Waylog</title>
 
-    <!-- SW 자폭 — 기존 Service Worker 남아있으면 해제, 캐시 삭제. React 로드 전 실행. -->
+    <!-- SW 자폭 — 1.0.x 잘못 등록된 Service Worker 정리. React 로드 전 실행. -->
+    <!-- 주의: firebase-messaging-sw.js 는 보존해야 웹 백그라운드 푸시 가능 (audit P0-6). -->
     <!-- auth 세션 정리는 src/supabase.js 의 migrateLocalStorage() 가 담당. -->
     <script>
     (function(){
       try {
         if (navigator.serviceWorker) {
           navigator.serviceWorker.getRegistrations().then(function(regs){
-            regs.forEach(function(r){ r.unregister(); });
+            regs.forEach(function(r){
+              var url = (r.active && r.active.scriptURL)
+                || (r.installing && r.installing.scriptURL)
+                || (r.waiting && r.waiting.scriptURL)
+                || '';
+              if (url.indexOf('firebase-messaging-sw') !== -1) return;
+              r.unregister();
+            });
           });
         }
+        // caches 정리는 그대로 — firebase-messaging-sw 는 cache 를 사용하지 않음.
         if ('caches' in window) {
           caches.keys().then(function(ns){
             ns.forEach(function(n){ caches.delete(n); });

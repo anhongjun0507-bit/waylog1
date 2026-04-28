@@ -42,12 +42,17 @@ if (isNative()) {
   initDeepLinkHandler()
 }
 
-// SW 정리 — 기존 SW가 남아있으면 해제하고 캐시 삭제.
-// 새 sw.js(자폭형)가 알아서 처리하지만, 이중 안전장치.
+// SW 정리 — 1.0.x 잘못 등록된 SW 정리 (index.html 자폭 스크립트의 이중 안전장치).
+// 주의: firebase-messaging-sw.js 는 보존해야 웹 백그라운드 푸시 가능 (audit P0-6).
 if ('serviceWorker' in navigator && !isNative()) {
-  navigator.serviceWorker.getRegistrations().then((regs) =>
-    regs.forEach((r) => r.unregister())
-  ).catch(() => {})
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => {
+      const url = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
+      if (url.includes('firebase-messaging-sw')) return
+      r.unregister()
+    })
+  }).catch(() => {})
+  // caches 는 그대로 — firebase-messaging-sw 는 cache 미사용.
   if ('caches' in window) {
     caches.keys().then((names) =>
       Promise.all(names.map((n) => caches.delete(n)))
