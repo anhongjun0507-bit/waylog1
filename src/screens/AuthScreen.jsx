@@ -326,12 +326,12 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
                 className={cls("relative w-full py-2 rounded-lg font-semibold text-[14px] flex items-center justify-center gap-2 opacity-50 cursor-not-allowed",
                   dark ? "text-white" : "text-[#385185]")}>
                 <MessageCircle size={16} strokeWidth={2}/>
-                카카오로 로그인 <span className="text-[11px] ml-1">(준비중)</span>
+                카카오로 로그인 <span className="text-xs ml-1">(준비중)</span>
               </button>
               <button disabled
                 className={cls("relative w-full py-2 rounded-lg font-semibold text-[14px] flex items-center justify-center gap-2 opacity-50 cursor-not-allowed",
                   dark ? "text-white" : "text-[#385185]")}>
-                Google로 로그인 <span className="text-[11px] ml-1">(준비중)</span>
+                Google로 로그인 <span className="text-xs ml-1">(준비중)</span>
               </button>
             </div>
           </>

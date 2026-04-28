@@ -107,7 +107,7 @@ const NewsBroadcastForm = ({ dark, onShowToast }) => {
       <p className={cls("text-sm font-black mb-3", dark ? "text-white" : "text-gray-900")}>
         📢 앱 소식 발송
       </p>
-      <p className={cls("text-[11px] mb-3 leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
+      <p className={cls("text-xs mb-3 leading-relaxed", dark ? "text-gray-400" : "text-gray-500")}>
         모든 사용자에게 일괄 푸시 + 인앱 알림. 알림 OFF 한 사용자는 자동 제외돼요.
       </p>
 
@@ -119,7 +119,7 @@ const NewsBroadcastForm = ({ dark, onShowToast }) => {
             placeholder="예: 새 기능 출시"
             disabled={sending}
             className={inputCls}/>
-          <p className={cls("text-[11px] mt-1 text-right tabular-nums",
+          <p className={cls("text-xs mt-1 text-right tabular-nums",
             title.length >= NEWS_TITLE_MAX
               ? "text-rose-500"
               : dark ? "text-gray-500" : "text-gray-400")}>
@@ -134,7 +134,7 @@ const NewsBroadcastForm = ({ dark, onShowToast }) => {
             disabled={sending}
             rows={3}
             className={cls(inputCls, "resize-none")}/>
-          <p className={cls("text-[11px] mt-1 text-right tabular-nums",
+          <p className={cls("text-xs mt-1 text-right tabular-nums",
             body.length >= NEWS_BODY_MAX
               ? "text-rose-500"
               : dark ? "text-gray-500" : "text-gray-400")}>

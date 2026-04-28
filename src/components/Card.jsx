@@ -42,7 +42,7 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, 
             {r.author || "익명"}
           </p>
           {timestamp && (
-            <p className={cls("text-[11px]", dark ? "text-ink-400" : "text-ink-500")}>{timestamp}</p>
+            <p className={cls("text-xs", dark ? "text-ink-400" : "text-ink-500")}>{timestamp}</p>
           )}
         </div>
         {isMine && (
@@ -125,12 +125,12 @@ const PostImpl = ({ r, onOpen, isFav, toggleFav, dark, highlight = false, user, 
         return (
           <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
             {cat && (
-              <span className={cls("px-2.5 py-1 rounded-full text-[11px] font-bold", dark ? cat.dchip : cat.chip)}>
+              <span className={cls("px-2.5 py-1 rounded-full text-xs font-bold", dark ? cat.dchip : cat.chip)}>
                 {cat.label}
               </span>
             )}
             {productNames.map((name, i) => (
-              <span key={i} className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold max-w-[200px]",
+              <span key={i} className={cls("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold max-w-[200px]",
                 dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
                 <ShoppingBag size={10} strokeWidth={2.2} className="shrink-0"/>
                 <span className="truncate">{name}</span>

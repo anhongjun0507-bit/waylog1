@@ -94,7 +94,7 @@ export const PushPermissionBanner = ({ user, dark }) => {
         <p className={cls("text-[13px] font-bold leading-tight", dark ? "text-brand-100" : "text-brand-900")}>
           {permState === "denied" ? "알림이 꺼져 있어요" : "알림을 켜시겠어요?"}
         </p>
-        <p className={cls("text-[11px] mt-0.5 leading-snug", dark ? "text-brand-200/80" : "text-brand-700")}>
+        <p className={cls("text-xs mt-0.5 leading-snug", dark ? "text-brand-200/80" : "text-brand-700")}>
           {permState === "denied"
             ? "기기 설정에서 알림을 켜시면 댓글·좋아요 소식을 받으실 수 있어요"
             : "댓글·좋아요·팔로우 소식을 받으실 수 있어요"}

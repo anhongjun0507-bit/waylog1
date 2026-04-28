@@ -135,7 +135,7 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                   <div className={cls("w-9 h-9 rounded-lg flex items-center justify-center", dark ? "bg-[#262626]" : "bg-white")}>
                     <f.Icon size={16} className={dark ? "text-white" : "text-black"}/>
                   </div>
-                  <span className={cls("text-[11px] font-semibold", dark ? "text-white" : "text-black")}>{f.label}</span>
+                  <span className={cls("text-xs font-semibold", dark ? "text-white" : "text-black")}>{f.label}</span>
                 </div>
               ))}
             </div>
@@ -238,15 +238,15 @@ export const ChallengeStartScreen = ({ onClose, onStart, dark }) => {
                 <p className={cls("text-[12px] font-semibold uppercase tracking-wider mb-3", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>자동 계산 결과</p>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>기초대사량</p>
-                    <p className={cls("text-[16px] font-bold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>{bmr} <span className="text-[11px] opacity-60">kcal</span></p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>기초대사량</p>
+                    <p className={cls("text-[16px] font-bold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>{bmr} <span className="text-xs opacity-60">kcal</span></p>
                   </div>
                   <div>
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>목표</p>
-                    <p className={cls("text-[16px] font-bold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>{targetCal} <span className="text-[11px] opacity-60">kcal</span></p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>목표</p>
+                    <p className={cls("text-[16px] font-bold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>{targetCal} <span className="text-xs opacity-60">kcal</span></p>
                   </div>
                   <div>
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>BMI</p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>BMI</p>
                     <p className={cls("text-[16px] font-bold tabular-nums mt-0.5", dark ? "text-white" : "text-black")}>{bmiVal}</p>
                   </div>
                 </div>

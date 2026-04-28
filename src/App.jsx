@@ -567,7 +567,7 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                 <Dumbbell size={22} className="text-white" strokeWidth={2}/>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">진행 중</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-white/80">진행 중</p>
                 <p className="text-[16px] font-black text-white">바디키 D+{dayNum}</p>
                 <p className="text-[12px] text-white/80">오늘 미션 확인하기</p>
               </div>
@@ -614,17 +614,17 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
                   <div className={cls("relative w-full aspect-[3/4] rounded-xl overflow-hidden", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
                     <SmartImg r={r} className="w-full h-full object-cover"/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent"/>
-                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center shadow">
+                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-brand-500 text-white text-xs font-black flex items-center justify-center shadow">
                       {idx + 1}
                     </span>
                     {rCat && (
-                      <span className="absolute top-2 right-2 text-[11px] font-black px-2 py-0.5 rounded-full bg-black/60 text-white">
+                      <span className="absolute top-2 right-2 text-xs font-black px-2 py-0.5 rounded-full bg-black/60 text-white">
                         {rCat.label}
                       </span>
                     )}
                     <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 text-white">
                       <Heart size={11} className="fill-accent-300 text-accent-300 shrink-0"/>
-                      <span className="text-[11px] font-bold tabular-nums">{r.likes || 0}</span>
+                      <span className="text-xs font-bold tabular-nums">{r.likes || 0}</span>
                     </div>
                   </div>
                   <p className={cls("text-[12px] font-bold mt-1.5 line-clamp-2 leading-tight min-h-[2.7em]", dark ? "text-white" : "text-black")}>
@@ -715,12 +715,12 @@ const ChallengeFeedCard = ({ dayNum, dailyLogs, dark, onOpen }) => {
         </div>
         <div className="flex-1">
           <p className={cls("text-[13px] font-bold", dark ? "text-white" : "text-black")}>바디키 8주 챌린지</p>
-          <p className="text-[11px] text-[#737373]">스폰서 · Waylog</p>
+          <p className="text-xs text-[#737373]">스폰서 · Waylog</p>
         </div>
       </div>
       <div className="relative w-full aspect-square bg-gradient-to-br from-brand-500 via-brand-600 to-black overflow-hidden">
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-          <p className="text-[11px] uppercase tracking-[0.3em] opacity-80 font-bold mb-1">DAY</p>
+          <p className="text-xs uppercase tracking-[0.3em] opacity-80 font-bold mb-1">DAY</p>
           <p className="text-[120px] font-black leading-none tabular-nums">{dayNum}</p>
           <p className="text-[13px] opacity-80 mt-2">of {CHALLENGE_DAYS}</p>
           <div className="mt-6 w-48 h-[3px] rounded-full bg-white/20 overflow-hidden">
@@ -831,8 +831,8 @@ const ExploreScreen = ({ reviews, onOpen, favs, toggleFav, dark, onProductClick,
               </div>
               {item.data.price > 0 && (
                 <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-                  <p className="text-white text-[11px] font-bold truncate">{item.data.brand}</p>
-                  <p className="text-white text-[11px] tabular-nums">{item.data.price.toLocaleString()}원</p>
+                  <p className="text-white text-xs font-bold truncate">{item.data.brand}</p>
+                  <p className="text-white text-xs tabular-nums">{item.data.price.toLocaleString()}원</p>
                 </div>
               )}
             </button>
@@ -925,11 +925,11 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
           <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
             <button onClick={(e) => { e.stopPropagation(); onChallengeOpen(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
               <BarChart3 size={26} strokeWidth={1.8}/>
-              <span className="text-[11px] font-semibold">기록</span>
+              <span className="text-xs font-semibold">기록</span>
             </button>
             <button onClick={(e) => { e.stopPropagation(); onChallengeOpen(); }} className="flex flex-col items-center gap-1 active:scale-90 transition">
               <Activity size={26} strokeWidth={1.8}/>
-              <span className="text-[11px] font-semibold">인바디</span>
+              <span className="text-xs font-semibold">인바디</span>
             </button>
           </div>
         </button>
@@ -985,11 +985,11 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
               <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
                 <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-1 active:scale-90 transition">
                   <Heart size={28} strokeWidth={1.8}/>
-                  <span className="text-[11px] font-semibold">{r.likes || 0}</span>
+                  <span className="text-xs font-semibold">{r.likes || 0}</span>
                 </button>
                 <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-1 active:scale-90 transition">
                   <MessageCircle size={28} strokeWidth={1.8}/>
-                  <span className="text-[11px] font-semibold">댓글</span>
+                  <span className="text-xs font-semibold">댓글</span>
                 </button>
                 <button onClick={(e) => e.stopPropagation()} className="active:scale-90 transition">
                   <Send size={28} strokeWidth={1.8}/>
@@ -1069,7 +1069,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
             : <div className="w-full h-full flex items-center justify-center"><Camera size={24} strokeWidth={1.5} className={dark ? "text-[#404040]" : "text-[#c7c7c7]"}/></div>}
           {rCat && (
             <div className="absolute top-2 left-2">
-              <span className={cls("text-[11px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
+              <span className={cls("text-xs font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                 {rCat.label}
               </span>
             </div>
@@ -1084,7 +1084,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
           {r.title || "제목 없음"}
         </p>
         {r.likes > 0 && (
-          <span className={cls("text-[11px] inline-flex items-center gap-0.5 mt-1 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+          <span className={cls("text-xs inline-flex items-center gap-0.5 mt-1 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
             <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
             {r.likes}
           </span>
@@ -1124,18 +1124,18 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
           <div className="text-center py-3 border-r"
             style={{ borderColor: dark ? "#262626" : "#dbdbdb" }}>
             <p className="text-[18px] font-black tabular-nums">{myReviews.length}</p>
-            <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>게시물</p>
+            <p className={cls("text-xs mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>게시물</p>
           </div>
           <button onClick={() => user?.id && setFollowListOpen("followers")}
             className="text-center py-3 border-r active:opacity-60"
             style={{ borderColor: dark ? "#262626" : "#dbdbdb" }}>
             <p className="text-[18px] font-black tabular-nums">{followerCount}</p>
-            <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로워</p>
+            <p className={cls("text-xs mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로워</p>
           </button>
           <button onClick={() => user?.id && setFollowListOpen("following")}
             className="text-center py-3 active:opacity-60">
             <p className="text-[18px] font-black tabular-nums">{followingCount}</p>
-            <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로잉</p>
+            <p className={cls("text-xs mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>팔로잉</p>
           </button>
         </div>
 
@@ -1163,7 +1163,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
               </div>
               <div className="flex-1 text-left">
                 <p className="text-[13px] font-black text-white">바디키 챌린지 진행 중</p>
-                <p className="text-[11px] text-white/80 mt-0.5">D+{dayNum} / {CHALLENGE_DAYS} · 오늘 미션 확인</p>
+                <p className="text-xs text-white/80 mt-0.5">D+{dayNum} / {CHALLENGE_DAYS} · 오늘 미션 확인</p>
               </div>
               <ChevronRight size={18} className="text-white"/>
             </div>
@@ -1185,7 +1185,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
               className="flex-1 flex flex-col items-center justify-center py-3 gap-1 relative active:opacity-60">
               <Icon size={18} strokeWidth={2}
                 className={cls(active ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}/>
-              <span className={cls("text-[11px] font-bold",
+              <span className={cls("text-xs font-bold",
                 active ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 {label}{count > 0 && ` ${count}`}
               </span>
@@ -1227,7 +1227,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={28}/>
                       {pCat && (
                         <div className="absolute top-2 left-2">
-                          <span className={cls("text-[11px] font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
+                          <span className={cls("text-xs font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
                             {pCat.label}
                           </span>
                         </div>
@@ -1236,7 +1236,7 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
                     <p className={cls("text-[13px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
                       {p.name}
                     </p>
-                    {p.brand && <p className={cls("text-[11px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.brand}</p>}
+                    {p.brand && <p className={cls("text-xs mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.brand}</p>}
                   </button>
                 );
               })}
@@ -1429,7 +1429,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                   )}
                 {/* 카테고리 — 시각 무게 down (사이즈·대비·폰트 weight 낮춤). 제품 칩이 주인공 */}
                 {rCat && (
-                  <span className={cls("absolute top-2 left-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
+                  <span className={cls("absolute top-2 left-2 text-xs font-semibold px-1.5 py-0.5 rounded-md",
                     dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                     {rCat.label}
                   </span>
@@ -1459,20 +1459,20 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                 {r.product ? (
                   <>
                     <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
-                    <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
+                    <span className={cls("text-xs font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
                       {getReviewProductNames(r, CATALOG).join(" · ")}
                     </span>
                   </>
                 ) : (
                   <>
                     <Avatar id={r.authorAvatar} size={7} className="w-4 h-4 shrink-0"/>
-                    <span className={cls("text-[11px] font-medium truncate min-w-0 flex-1", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
+                    <span className={cls("text-xs font-medium truncate min-w-0 flex-1", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
                       {r.author || "익명"}
                     </span>
                   </>
                 )}
                 {r.likes > 0 && (
-                  <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                  <span className={cls("text-xs inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                     <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                     {r.likes}
                   </span>
@@ -1501,7 +1501,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
                         sec.key === "today" ? "bg-brand-500" : dark ? "bg-[#404040]" : "bg-[#d4d4d4]")}/>
                       {sec.label}
                     </h4>
-                    <span className={cls("text-[11px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{sec.items.length}개</span>
+                    <span className={cls("text-xs tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{sec.items.length}개</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {sec.items.map(renderCard)}
@@ -1670,7 +1670,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
         <div className={cls("w-full h-64 flex items-center justify-center p-6 relative", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
           <ProductImage src={product.imageUrl} alt={product.name} className="max-w-full max-h-full object-contain" iconSize={56}/>
           {product.imageUrl && (
-            <span className={cls("absolute bottom-2 right-3 text-[11px] opacity-50", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+            <span className={cls("absolute bottom-2 right-3 text-xs opacity-50", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               이미지: amway.co.kr
             </span>
           )}
@@ -1680,7 +1680,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
           {/* 카테고리 + 브랜드 */}
           <div className="flex items-center gap-2">
             {cat && (
-              <span className={cls("text-[11px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+              <span className={cls("text-xs font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                 {cat.label}
               </span>
             )}
@@ -1726,7 +1726,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                   <div className="flex-1 text-center">
                     <div className="flex flex-wrap justify-center gap-1">
                       {topTags.map((t) => (
-                        <span key={t} className={cls("text-[11px] font-semibold", dark ? "text-brand-300" : "text-brand-700")}>#{t}</span>
+                        <span key={t} className={cls("text-xs font-semibold", dark ? "text-brand-300" : "text-brand-700")}>#{t}</span>
                       ))}
                     </div>
                     <p className={cls("text-[12px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>인기 태그</p>
@@ -1748,7 +1748,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                   <div className="flex items-center gap-2">
                     <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>AI 분석 요약</p>
                     {aiSummary.isPlaceholder && (
-                      <span className={cls("text-[11px] font-bold px-1.5 py-0.5 rounded", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>DEMO</span>
+                      <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>DEMO</span>
                     )}
                   </div>
                   <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
@@ -1766,7 +1766,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       {aiSummary.data.pros.map((p, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className={cls("text-[13px] leading-relaxed flex-1", dark ? "text-white" : "text-black")}>· {p.text}</span>
-                          <span className={cls("text-[11px] font-semibold shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.count}명</span>
+                          <span className={cls("text-xs font-semibold shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.count}명</span>
                         </div>
                       ))}
                     </div>
@@ -1778,7 +1778,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       {aiSummary.data.cons.map((c, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className={cls("text-[13px] leading-relaxed flex-1", dark ? "text-white" : "text-black")}>· {c.text}</span>
-                          <span className={cls("text-[11px] font-semibold shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{c.count}명</span>
+                          <span className={cls("text-xs font-semibold shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{c.count}명</span>
                         </div>
                       ))}
                     </div>
@@ -1789,7 +1789,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                     <p className={cls("text-[13px] leading-relaxed", dark ? "text-white" : "text-black")}>{aiSummary.data.summary}</p>
                   </div>
                   {aiSummary.isPlaceholder && (
-                    <p className={cls("text-[11px] text-center pt-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+                    <p className={cls("text-xs text-center pt-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                       이 요약은 데모 데이터예요 · 곧 AI 자동 생성으로 전환됩니다
                     </p>
                   )}
@@ -1853,9 +1853,9 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                       {rv.title || "제목 없음"}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className={cls("text-[11px] truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{rv.author || "익명"}</p>
+                      <p className={cls("text-xs truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{rv.author || "익명"}</p>
                       {rv.likes > 0 && (
-                        <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                        <span className={cls("text-xs inline-flex items-center gap-0.5 ml-auto tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                           <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                           {rv.likes}
                         </span>
@@ -1890,7 +1890,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                     <div className="aspect-square flex items-center justify-center p-2">
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={16}/>
                     </div>
-                    <p className={cls("text-[11px] font-semibold px-2 pb-2 line-clamp-2 leading-tight", dark ? "text-white" : "text-black")}>{p.name}</p>
+                    <p className={cls("text-xs font-semibold px-2 pb-2 line-clamp-2 leading-tight", dark ? "text-white" : "text-black")}>{p.name}</p>
                   </button>
                 ))}
               </div>
@@ -2052,15 +2052,15 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={18}/>
                     </div>
                     {/* brand 슬롯 — 없어도 공간 예약 (타일 높이 통일) */}
-                    <p className={cls("text-[11px] font-bold mt-1 truncate h-[15px] leading-[15px]", dark ? "text-brand-300" : "text-brand-700")}>
+                    <p className={cls("text-xs font-bold mt-1 truncate h-[15px] leading-[15px]", dark ? "text-brand-300" : "text-brand-700")}>
                       {p.brand || "\u00A0"}
                     </p>
                     {/* 제품명 — 2줄 고정 (1줄이어도 2줄 공간 확보) */}
-                    <p className={cls("text-[11px] font-semibold line-clamp-2 leading-[1.3] min-h-[29px]", dark ? "text-white" : "text-black")}>
+                    <p className={cls("text-xs font-semibold line-clamp-2 leading-[1.3] min-h-[29px]", dark ? "text-white" : "text-black")}>
                       {p.name}
                     </p>
                     {/* 가격 슬롯 — 없어도 공간 예약 */}
-                    <p className={cls("text-[11px] font-black tabular-nums mt-0.5 h-[15px] leading-[15px]", dark ? "text-white" : "text-black")}>
+                    <p className={cls("text-xs font-black tabular-nums mt-0.5 h-[15px] leading-[15px]", dark ? "text-white" : "text-black")}>
                       {p.price > 0 ? `${p.price.toLocaleString()}원` : "\u00A0"}
                     </p>
                   </button>
@@ -2149,7 +2149,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                       </div>
                     )}
                   {rCat && (
-                    <span className={cls("absolute top-2 left-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
+                    <span className={cls("absolute top-2 left-2 text-xs font-semibold px-1.5 py-0.5 rounded-md",
                       dark ? "bg-black/55 text-white/90" : "bg-white/90 text-black/75")}>
                       {rCat.label}
                     </span>
@@ -2172,20 +2172,20 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                   {r.product ? (
                     <>
                       <ShoppingBag size={10} strokeWidth={2.2} className={cls("shrink-0 mt-[3px]", dark ? "text-brand-300" : "text-brand-600")}/>
-                      <span className={cls("text-[11px] font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
+                      <span className={cls("text-xs font-semibold line-clamp-2 min-w-0 flex-1", dark ? "text-brand-200" : "text-brand-700")}>
                         {getReviewProductNames(r, CATALOG).join(" · ")}
                       </span>
                     </>
                   ) : (
                     <>
                       <Avatar id={r.authorAvatar} size={7} className="w-4 h-4 shrink-0"/>
-                      <span className={cls("text-[11px] font-medium truncate min-w-0 flex-1", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
+                      <span className={cls("text-xs font-medium truncate min-w-0 flex-1", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>
                         {r.author || "익명"}
                       </span>
                     </>
                   )}
                   {r.likes > 0 && (
-                    <span className={cls("text-[11px] inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                    <span className={cls("text-xs inline-flex items-center gap-0.5 ml-auto tabular-nums shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                       <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                       {r.likes}
                     </span>
@@ -2235,7 +2235,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                             <button key={m.key} onClick={() => setMood(r.id, m.key)}
                               className={cls("text-[12px] px-2 py-1 rounded-lg flex items-center gap-1 transition", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
                               <m.Icon size={11} className={m.color}/>
-                              <span className="text-[11px] font-semibold">{m.label}</span>
+                              <span className="text-xs font-semibold">{m.label}</span>
                               {m.strong && <Star size={8} className="text-amber-400 fill-amber-400"/>}
                             </button>
                           ))}
@@ -2251,7 +2251,7 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                         <button onClick={() => setMoodPickerFor(r.id)}
                           className={cls("text-[12px] px-2 py-1 rounded-lg flex items-center gap-1", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
                           <mood.Icon size={11}/>
-                          <span className="text-[11px] font-semibold">{mood.label}</span>
+                          <span className="text-xs font-semibold">{mood.label}</span>
                           {mood.strong && <Star size={8} className="text-amber-400 fill-amber-400"/>}
                         </button>
                       ) : (
@@ -2533,10 +2533,10 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
               <div className="flex items-center gap-1.5 flex-wrap">
                 <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>{p.author}</p>
                 {isAnon && (
-                  <span className={cls("text-[11px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
+                  <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600")}>익명</span>
                 )}
                 {isAnon && p.challengeId && p.dayNum && (
-                  <span className={cls("text-[11px] px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
+                  <span className={cls("text-xs px-1.5 py-0.5 rounded-full font-bold", dark ? "bg-amber-900/40 text-amber-300" : "bg-amber-50 text-amber-700")}>
                     바디키 Day {p.dayNum}
                   </span>
                 )}
@@ -2599,7 +2599,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
           <div className={cls("ml-12 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg", dark ? "bg-[#121212]" : "bg-[#fafafa]")}>
             <ShoppingBag size={13} className={dark ? "text-brand-300" : "text-brand-600"}/>
             <span className={cls("text-[12px] font-semibold truncate", dark ? "text-white" : "text-black")}>{p.product.name}</span>
-            {p.product.brand && <span className="text-[11px] text-[#737373] shrink-0">{p.product.brand}</span>}
+            {p.product.brand && <span className="text-xs text-[#737373] shrink-0">{p.product.brand}</span>}
           </div>
         )}
         <div className="ml-12 flex items-center gap-5 mt-3">
@@ -2971,7 +2971,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                       <div className="flex-1 min-w-0">
                         <p className={cls("text-[14px] font-bold line-clamp-1", dark ? "text-white" : "text-black")}>{p.name}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          {pCat && <span className={cls("text-[11px] font-bold px-1.5 py-0.5 rounded", dark ? pCat.dchip : pCat.chip)}>{pCat.label}</span>}
+                          {pCat && <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded", dark ? pCat.dchip : pCat.chip)}>{pCat.label}</span>}
                           {p.brand && <p className={cls("text-[12px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.brand}</p>}
                           {p.price > 0 && <span className={cls("text-[13px] font-bold tabular-nums ml-auto", dark ? "text-white" : "text-black")}>{p.price.toLocaleString()}원</span>}
                         </div>
@@ -3003,12 +3003,12 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {rCat && (
-                              <span className={cls("text-[11px] font-bold px-1.5 py-0.5 rounded", dark ? rCat.dchip : rCat.chip)}>
+                              <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded", dark ? rCat.dchip : rCat.chip)}>
                                 {rCat.label}
                               </span>
                             )}
                             {r.product && (
-                              <span className={cls("text-[11px] truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                              <span className={cls("text-xs truncate", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                                 · {r.product}
                               </span>
                             )}
@@ -3022,17 +3022,17 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                             </p>
                           )}
                           <div className="flex items-center gap-3 mt-1.5">
-                            <span className={cls("text-[11px] font-bold truncate", dark ? "text-white" : "text-black")}>
+                            <span className={cls("text-xs font-bold truncate", dark ? "text-white" : "text-black")}>
                               {r.author || "익명"}
                             </span>
                             {r.likes > 0 && (
-                              <span className={cls("text-[11px] inline-flex items-center gap-0.5 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                              <span className={cls("text-xs inline-flex items-center gap-0.5 tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                                 <Heart size={10} strokeWidth={2.2} className="fill-accent-500 text-accent-500"/>
                                 {r.likes}
                               </span>
                             )}
                             {r.date && (
-                              <span className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+                              <span className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                                 {r.date.slice(5).replace("-", "/")}
                               </span>
                             )}
@@ -3459,7 +3459,7 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
 
         {matchedProducts.length > 0 && (
           <div className="mt-5 space-y-2">
-            <p className={cls("text-[11px] font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+            <p className={cls("text-xs font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               관련 상품 {matchedProducts.length > 1 && <span className="tabular-nums">· {matchedProducts.length}개</span>}
             </p>
             {matchedProducts.map(({ name, product }, idx) => {
@@ -3835,17 +3835,17 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
           <div className={cls("grid grid-cols-3 items-center mt-5 py-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
             <div className="text-center min-w-0 px-2">
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{allReviews.length}</p>
-              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>게시물</p>
+              <p className={cls("text-xs font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>게시물</p>
             </div>
             <button onClick={() => userId && setFollowListOpen("followers")}
               className={cls("text-center min-w-0 px-2 border-x active:scale-95 transition", dark ? "border-gray-700" : "border-gray-200")}>
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.followers}</p>
-              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로워</p>
+              <p className={cls("text-xs font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로워</p>
             </button>
             <button onClick={() => userId && setFollowListOpen("following")}
               className="text-center min-w-0 px-2 active:scale-95 transition">
               <p className={cls("text-lg font-black tabular-nums truncate", dark ? "text-white" : "text-gray-900")}>{counts.following}</p>
-              <p className={cls("text-[11px] font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로잉</p>
+              <p className={cls("text-xs font-bold mt-0.5 truncate", dark ? "text-gray-500" : "text-gray-500")}>팔로잉</p>
             </button>
           </div>
 
@@ -4668,9 +4668,9 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   </defs>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <p className={cls("text-[11px] font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>D+{dayNum}</p>
+                  <p className={cls("text-xs font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>D+{dayNum}</p>
                   <p className={cls("text-[24px] font-bold tabular-nums", dark ? "text-white" : "text-black")}>{Math.round(progress * 100)}%</p>
-                  <p className={cls("text-[11px] tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{dayNum}/{CHALLENGE_DAYS}일</p>
+                  <p className={cls("text-xs tabular-nums", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{dayNum}/{CHALLENGE_DAYS}일</p>
                 </div>
               </div>
             </div>
@@ -4686,11 +4686,11 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                 const isNegative = s.val !== "-" && parseFloat(s.val) < 0;
                 return (
                   <div key={s.label} className={cls("p-3 rounded-xl text-center border", dark ? "bg-[#121212] border-[#262626]" : "bg-[#fafafa] border-[#dbdbdb]")}>
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{s.label}</p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{s.label}</p>
                     <p className={cls("text-[16px] font-bold tabular-nums mt-0.5",
                       isPositive ? "text-brand-500" : isNegative ? "text-red-500" : (dark ? "text-white" : "text-black"))}>
                       {isPositive ? "+" : ""}{s.val}
-                      <span className="text-[11px] font-medium opacity-60">{s.unit}</span>
+                      <span className="text-xs font-medium opacity-60">{s.unit}</span>
                     </p>
                   </div>
                 );
@@ -4722,7 +4722,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                   <p className={cls("text-[13px] font-bold", dark ? "text-white" : "text-black")}>
                     ✨ 이번 주 권장 생활습관
                   </p>
-                  <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                  <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                     가장 최근 AI 분석 기반
                   </p>
                 </div>
@@ -4758,7 +4758,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                       Week {weekNum} · {weekMissions.title}
                     </p>
                     {hasCustomThisWeek && (
-                      <span className={cls("text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
+                      <span className={cls("text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
                         dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
                         내 미션
                       </span>
@@ -4774,7 +4774,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                       dark ? "bg-[#262626] text-white" : "bg-white text-black")}>
                     <PenLine size={13}/>
                   </button>
-                  <div className={cls("px-2.5 py-1 rounded text-[11px] font-bold tabular-nums",
+                  <div className={cls("px-2.5 py-1 rounded text-xs font-bold tabular-nums",
                     completedCount === weekMissions.missions.length
                       ? "bg-brand-500 text-white"
                       : (dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-white text-[#737373]"))}>
@@ -4829,7 +4829,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className={cls("text-[11px] font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{labels[mt]}</p>
+                        <p className={cls("text-xs font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{labels[mt]}</p>
                         <p className={cls("text-[13px] font-semibold truncate", dark ? "text-white" : "text-black")}>
                           {meal ? meal.name : "기록하기"}
                         </p>
@@ -4855,7 +4855,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                       <MissionIcon iconKey={ex.iconKey || ex.type || "free"} size={16} className={dark ? "text-white" : "text-black"}/>
                       <div className="flex-1 min-w-0">
                         <p className={cls("text-[13px] font-semibold", dark ? "text-white" : "text-black")}>{ex.label}</p>
-                        <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{ex.minutes}분 · {ex.intensity === "low" ? "저" : ex.intensity === "mid" ? "중" : "고"}강도</p>
+                        <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{ex.minutes}분 · {ex.intensity === "low" ? "저" : ex.intensity === "mid" ? "중" : "고"}강도</p>
                       </div>
                       <span className={cls("text-[12px] font-semibold shrink-0 tabular-nums", dark ? "text-white" : "text-black")}>{ex.calories}kcal</span>
                       <button onClick={() => setEditingExercise({ index: i, data: ex })}
@@ -4882,7 +4882,7 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
               <div className="flex items-center gap-2 mb-2">
                 {(() => { const CoachIcon = AI_COACH_TONES.find((t) => t.key === challenge?.coachTone)?.Icon || Sparkles; return <CoachIcon size={16} className={dark ? "text-white" : "text-black"}/>; })()}
                 <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>AI 코치</p>
-                <span className={cls("text-[11px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>BETA</span>
+                <span className={cls("text-xs px-1.5 py-0.5 rounded font-bold uppercase tracking-wider", dark ? "bg-[#262626] text-[#a8a8a8]" : "bg-[#efefef] text-[#737373]")}>BETA</span>
               </div>
               <p className={cls("text-[14px] leading-relaxed", dark ? "text-white/90" : "text-black/90")}>
                 {coachMsg}
@@ -5010,7 +5010,7 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
           <Trophy size={18} className="text-white"/>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cls("text-[11px] font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>COMPLETED</p>
+          <p className={cls("text-xs font-bold uppercase tracking-wider", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>COMPLETED</p>
           <p className={cls("text-[14px] font-bold", dark ? "text-white" : "text-black")}>챌린지 완주</p>
           <p className={cls("text-[12px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>8주간의 여정을 확인해보세요</p>
         </div>
@@ -7489,7 +7489,7 @@ function AppInner() {
               className="p-1 active:scale-90 transition relative">
                 <Heart size={24} strokeWidth={1.8} className={dark ? "text-white" : "text-black"}/>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 min-w-[16px] h-[16px] px-1 bg-red-500 rounded-full text-[11px] font-bold text-white flex items-center justify-center leading-none tabular-nums">
+                  <span className="absolute top-0 right-0 min-w-[16px] h-[16px] px-1 bg-red-500 rounded-full text-xs font-bold text-white flex items-center justify-center leading-none tabular-nums">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -7524,7 +7524,7 @@ function AppInner() {
                       <div className={cls("py-12 text-center", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                         <Heart size={32} className="mx-auto mb-2 opacity-30" strokeWidth={1.5}/>
                         <p className="text-[13px] font-bold">활동 내역이 없어요</p>
-                        <p className="text-[11px] mt-1 opacity-80">글을 작성하거나 좋아요·댓글을 남기면 여기에 표시돼요</p>
+                        <p className="text-xs mt-1 opacity-80">글을 작성하거나 좋아요·댓글을 남기면 여기에 표시돼요</p>
                       </div>
                     ) : (
                       notifications.map((n) => (
@@ -7636,7 +7636,7 @@ function AppInner() {
               <button
                 type="button"
                 onClick={() => { try { toast.action.onClick?.(); } finally { setToastRaw(null); } }}
-                className="ml-1 shrink-0 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-[11px] font-bold transition-colors"
+                className="ml-1 shrink-0 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white text-xs font-bold transition-colors"
               >
                 {toast.action.label}
               </button>
@@ -7788,7 +7788,7 @@ function AppInner() {
                 <Icon size={22} strokeWidth={isActive ? 2.2 : 1.6}
                   className={cls("transition-colors duration-200",
                     isActive ? "text-brand-700 dark:text-brand-200" : dark ? "text-ink-400" : "text-ink-500")}/>
-                <span className={cls("text-[11px] tracking-tight transition-colors duration-200",
+                <span className={cls("text-xs tracking-tight transition-colors duration-200",
                   isActive ? "font-semibold text-brand-700 dark:text-brand-200" : dark ? "font-medium text-ink-400" : "font-medium text-ink-500")}>
                   {label}
                 </span>

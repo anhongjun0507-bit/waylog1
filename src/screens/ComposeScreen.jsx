@@ -411,7 +411,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                         <div className="w-0 h-0 border-l-[8px] border-l-black border-y-[6px] border-y-transparent ml-0.5"/>
                       </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 text-[11px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
+                    <span className="absolute bottom-1 right-1 text-xs font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
                   </>
                 )}
                 {/* 1.4.0 (audit P1-44): hit area 36px (작은 썸네일 안 한정 — 48px 은 카드 가림) */}
@@ -433,7 +433,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               <label className={cls("aspect-square rounded-lg border border-dashed flex flex-col items-center justify-center cursor-pointer transition active:opacity-70",
                 dark ? "border-[#262626] bg-[#121212]" : "border-[#dbdbdb] bg-[#fafafa]")}>
                 <Camera size={20} className={dark ? "text-white" : "text-black"} strokeWidth={1.8}/>
-                <span className={cls("text-[11px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>추가</span>
+                <span className={cls("text-xs mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>추가</span>
                 <input type="file" accept="image/*,video/*" multiple onChange={handleMediaUpload}
                   className="absolute w-px h-px opacity-0 overflow-hidden -m-px p-0 border-0"/>
               </label>

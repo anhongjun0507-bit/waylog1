@@ -155,7 +155,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
               )}
             </button>
             {analyzing && (
-              <p className={cls("text-[11px] text-center", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+              <p className={cls("text-xs text-center", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 분석에 최대 20초 정도 걸려요
               </p>
             )}
@@ -174,7 +174,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
                 { label: "BMI", val: bmi, set: setBmi },
               ].map((f) => (
                 <div key={f.label}>
-                  <label className={cls("text-[11px] font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{f.label}</label>
+                  <label className={cls("text-xs font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{f.label}</label>
                   <input value={f.val} onChange={(e) => f.set(e.target.value)} type="number" inputMode="decimal" step="0.1"
                     className={cls("w-full min-h-tap px-4 py-3 rounded-btn text-[15px] font-semibold border outline-none focus:ring-2 focus:ring-brand-500/20",
                       dark ? "bg-ink-900 text-ink-50 border-ink-700 focus:border-brand-500"
@@ -206,12 +206,12 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
                 const good = d ? (item.invert ? d < 0 : d > 0) : null;
                 return (
                   <div key={item.label} className={cls("p-3 rounded-lg", dark ? "bg-black" : "bg-white")}>
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{item.label}</p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{item.label}</p>
                     <p className={cls("text-[20px] font-bold tabular-nums mt-1", dark ? "text-white" : "text-black")}>
-                      {item.val || "-"}<span className="text-[11px] font-medium opacity-60 ml-0.5">{item.unit}</span>
+                      {item.val || "-"}<span className="text-xs font-medium opacity-60 ml-0.5">{item.unit}</span>
                     </p>
                     {d !== null && (
-                      <p className={cls("text-[11px] font-semibold tabular-nums mt-0.5", good ? "text-brand-500" : "text-red-500")}>
+                      <p className={cls("text-xs font-semibold tabular-nums mt-0.5", good ? "text-brand-500" : "text-red-500")}>
                         {d > 0 ? "+" : ""}{d.toFixed(1)}{item.unit}
                       </p>
                     )}
@@ -242,7 +242,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
                     {pts.map((p, i) => (
                       <g key={i}>
                         <circle cx={p.x} cy={p.y} r="3" fill={dark ? "#ffffff" : "#000000"}/>
-                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[11px]" fill={dark ? "#a8a8a8" : "#737373"}>{vals[i]}</text>
+                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-xs" fill={dark ? "#a8a8a8" : "#737373"}>{vals[i]}</text>
                       </g>
                     ))}
                   </>
@@ -275,9 +275,9 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
+                    <p className={cls("text-xs", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{new Date(r.date).toLocaleDateString("ko-KR")}</p>
                     {aiAnalyzed && (
-                      <span className={cls("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                      <span className={cls("text-xs font-bold px-1.5 py-0.5 rounded-full",
                         dark ? "bg-brand-900/40 text-brand-200" : "bg-brand-50 text-brand-700")}>
                         🤖 AI 분석
                       </span>

@@ -108,7 +108,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
               {Object.entries(taste.cats).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([k,v]) => (
                 <div key={k} className="flex items-center gap-1">
                   <div className={cls("w-1.5 h-1.5 rounded-full bg-gradient-to-br", CATEGORIES[k].color)}/>
-                  <span className={cls("text-[11px] font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                  <span className={cls("text-xs font-semibold", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                     {CATEGORIES[k].label} {Math.round((v/totalCats)*100)}%
                   </span>
                 </div>

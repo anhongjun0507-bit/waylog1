@@ -75,7 +75,7 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
               📊 측정 결과
             </p>
             {!readOnly && (
-              <span className={cls("text-[10px] font-semibold inline-flex items-center gap-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+              <span className={cls("text-xs font-semibold inline-flex items-center gap-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 <Edit3 size={10}/> 수정 가능
               </span>
             )}
@@ -83,7 +83,7 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
           <div className="grid grid-cols-2 gap-3">
             {fields.map((f) => (
               <div key={f.key}>
-                <label className={cls("text-[11px] font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                <label className={cls("text-xs font-semibold block mb-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                   {f.label} <span className="font-normal opacity-60">({f.unit})</span>
                 </label>
                 <input
@@ -102,7 +102,7 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
             ))}
           </div>
           {!readOnly && (
-            <p className={cls("text-[11px] mt-3", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+            <p className={cls("text-xs mt-3", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
               💡 인식이 정확하지 않은 항목은 직접 수정해주세요
             </p>
           )}
@@ -130,7 +130,7 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
           </section>
         )}
 
-        <p className={cls("text-[11px] text-center pt-2 pb-4", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
+        <p className={cls("text-xs text-center pt-2 pb-4", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
           AI 분석은 의학적 진단이 아니에요. 건강 이상이 의심되면 전문의를 찾아주세요.
         </p>
       </div>
