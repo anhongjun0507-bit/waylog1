@@ -5236,28 +5236,7 @@ function AppInner() {
     window.storage?.delete("waylog:challengeAnonPosts").catch(() => {});
   }, []);
 
-  // 1.3.0 — 앱 첫 실행 시 Android/iOS 시스템 알림 권한 다이얼로그 자동 요청.
-  // 한 번만 시도 (localStorage 가드). 결과(허용/거부)는 OS 가 영구 기억.
-  useEffect(() => {
-    (async () => {
-      try {
-        const platform = Capacitor.getPlatform?.();
-        if (platform !== "android" && platform !== "ios") return;
-        if (localStorage.getItem("waylog:push:auto-requested")) return;
-
-        const { PushNotifications } = await import("@capacitor/push-notifications");
-        const { receive } = await PushNotifications.checkPermissions();
-        if (receive === "granted" || receive === "denied") {
-          localStorage.setItem("waylog:push:auto-requested", "1");
-          return;
-        }
-        await PushNotifications.requestPermissions();
-        localStorage.setItem("waylog:push:auto-requested", "1");
-      } catch (e) {
-        console.warn("auto push permission failed", e);
-      }
-    })();
-  }, []);
+  // (1.4.0 으로 자동 권한 요청 useEffect 는 onboarded 선언 후로 이동 — audit P1-26 참조)
 
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -5895,6 +5874,34 @@ function AppInner() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboarded, setOnboarded] = useStoredState("waylog:onboarded", false);
+
+  // 1.4.0 — 자동 권한 요청을 Onboarding 종료 시점으로 지연 (audit P1-26).
+  // 1.3.0 까지는 첫 마운트 즉시 요청 → 사용자가 앱 가치 보기 전 거부율 ↑.
+  // 이제 Onboarding(3-step) 완료 또는 "건너뛰기" 후 한 번만 요청.
+  // 기존 사용자(onboarded=true on first load) 는 이미 요청됐으면 auto-requested 가드로 skip.
+  // 비로그인 또는 웹 환경은 platform 가드로 skip.
+  useEffect(() => {
+    if (!onboarded) return;
+    (async () => {
+      try {
+        const platform = Capacitor.getPlatform?.();
+        if (platform !== "android" && platform !== "ios") return;
+        if (localStorage.getItem("waylog:push:auto-requested")) return;
+
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+        const { receive } = await PushNotifications.checkPermissions();
+        if (receive === "granted" || receive === "denied") {
+          localStorage.setItem("waylog:push:auto-requested", "1");
+          return;
+        }
+        await PushNotifications.requestPermissions();
+        localStorage.setItem("waylog:push:auto-requested", "1");
+      } catch (e) {
+        console.warn("auto push permission failed", e);
+      }
+    })();
+  }, [onboarded]);
+
   const [selectedUser, setSelectedUser] = useState(null);
   // following: 내가 팔로우한 사용자들의 user_id (uuid) Set.
   // 닉네임 기반(v1) 과 분리하기 위해 v2 키 사용.
