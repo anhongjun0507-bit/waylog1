@@ -215,18 +215,37 @@ export const auth = {
 // 거부해 쿼리 전체가 실패한다 (둘 다 auth.users 만 참조하기 때문).
 // fallback: join 없이 reviews 만 가져온 뒤 user_id 들을 모아 profiles 를
 // 한 번 더 fetch 해서 클라이언트 사이드로 합친다.
+//
+// 1.4.0 (audit P1-16): silent failure 박멸 + 1 회 retry.
+// 이전엔 catch 가 빈 블록이라 fetch 가 실패하면 사용자 글이 "익명" 으로 표시
+// 됐는데 디버깅 단서가 없었음. 이제 retry 후에도 실패하면 console.warn 로 기록.
+// rows 그대로 반환 — 호출측의 isMine 판정은 user_id 기반(authorId)으로 정합 유지.
 async function enrichWithProfiles(rows) {
   if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || []
   const ids = [...new Set(rows.map((r) => r?.user_id).filter(Boolean))]
   if (ids.length === 0) return rows
-  try {
-    const { data: profs } = await supabase.from('profiles')
+
+  const fetchProfiles = async () => {
+    const { data: profs, error } = await supabase.from('profiles')
       .select('id, nickname, avatar_url').in('id', ids)
-    const byId = new Map((profs || []).map((p) => [p.id, p]))
-    return rows.map((r) => ({ ...r, profiles: byId.get(r.user_id) || null }))
-  } catch {
-    return rows
+    if (error) throw error
+    return profs || []
   }
+
+  let profs = []
+  try {
+    profs = await fetchProfiles()
+  } catch (e1) {
+    // 1 회 retry — 일시적 네트워크 끊김 회복
+    try {
+      profs = await fetchProfiles()
+    } catch (e2) {
+      console.warn('[enrichWithProfiles] failed after retry:', e2?.message || e2)
+      return rows // profiles 없는 row 반환 — author 표시는 "익명" 으로 fallback
+    }
+  }
+  const byId = new Map(profs.map((p) => [p.id, p]))
+  return rows.map((r) => ({ ...r, profiles: byId.get(r.user_id) || null }))
 }
 
 // UI(mapReviewRow)에서 실제로 읽는 컬럼만 선택 — payload / 네트워크 절감.

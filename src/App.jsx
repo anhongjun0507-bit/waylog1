@@ -2699,7 +2699,8 @@ const PostCommentThread = ({ postId, comments, user, dark, onUserClick, onAdd, o
               {visibleReplies.length > 0 && (
                 <div className={cls("mt-2 ml-5 pl-5 space-y-2 border-l-2", dark ? "border-gray-700" : "border-gray-200")}>
                   {visibleReplies.map((reply) => {
-                    const isMyReply = user && reply.author === user.nickname;
+                    // authorId 비교 우선 (audit P1-16). enrichWithProfiles 실패해도 본인 답글 메뉴 정상.
+                    const isMyReply = !!(user && (reply.authorId === user.id || reply.author === user.nickname));
                     const replyLikedByMe = (reply.likedBy || []).some((k) => k === user?.id || k === user?.nickname);
                     return (
                       <div key={reply.id} className="flex gap-2 group">
@@ -3074,7 +3075,9 @@ const CommentItem = memo(function CommentItem({
   onUserClick, onSetReplyTo, onLike, onReport, onDelete, onToggleExpanded,
   setCommentRef,
 }) {
-  const isMyComment = user && c.author === user.nickname;
+  // authorId 비교를 우선으로 — enrichWithProfiles 실패로 author 가 "익명" 표시되어도
+  // 본인 댓글 메뉴(수정·삭제) 가 정상 노출되도록 (audit P1-16).
+  const isMyComment = !!(user && (c.authorId === user.id || c.author === user.nickname));
   const visibleReplies = isExpanded ? replies : replies.slice(0, 1);
   const mentionClick = useCallback((name) => onUserClick && onUserClick({ author: name, avatar: "" }), [onUserClick]);
   const refCb = useCallback((el) => { if (setCommentRef) setCommentRef(c.id, el); }, [setCommentRef, c.id]);
@@ -3124,7 +3127,8 @@ const CommentItem = memo(function CommentItem({
       {visibleReplies.length > 0 && (
         <div className={cls("mt-2 ml-5 pl-5 space-y-2 border-l-2", dark ? "border-gray-700" : "border-gray-200")}>
           {visibleReplies.map((reply) => {
-            const isMyReply = user && reply.author === user.nickname;
+            // authorId 비교 우선 (audit P1-16). enrichWithProfiles 실패해도 본인 답글 메뉴 정상.
+            const isMyReply = !!(user && (reply.authorId === user.id || reply.author === user.nickname));
             return (
             <div key={reply.id} className="flex gap-2 group">
               <button onClick={() => onUserClick({ author: reply.author, avatar: reply.avatar, authorId: reply.authorId })} className="active:scale-90 transition shrink-0">
