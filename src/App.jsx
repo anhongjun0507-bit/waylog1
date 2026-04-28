@@ -1184,9 +1184,9 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
               aria-label={label}
               className="flex-1 flex flex-col items-center justify-center py-3 gap-1 relative active:opacity-60">
               <Icon size={18} strokeWidth={2}
-                className={cls(active ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
+                className={cls(active ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}/>
               <span className={cls("text-[11px] font-bold",
-                active ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+                active ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 {label}{count > 0 && ` ${count}`}
               </span>
               {active && (
@@ -1338,13 +1338,13 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
           <div className={cls("flex border-b mb-2", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
             <button onClick={() => setFeedMode("all")}
               className={cls("flex-1 py-3 text-[14px] font-bold transition relative",
-                feedMode === "all" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#737373]" : "text-[#737373]"))}>
+                feedMode === "all" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#a8a8a8]" : "text-[#737373]"))}>
               전체
               {feedMode === "all" && <div className={cls("absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-[2px]", dark ? "bg-white" : "bg-black")}/>}
             </button>
             <button onClick={() => setFeedMode("following")}
               className={cls("flex-1 py-3 text-[14px] font-bold transition relative",
-                feedMode === "following" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#737373]" : "text-[#737373]"))}>
+                feedMode === "following" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#a8a8a8]" : "text-[#737373]"))}>
               팔로잉 {following && following.size > 0 && <span className="opacity-60 text-[12px] ml-1">{following.size}</span>}
               {feedMode === "following" && <div className={cls("absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-[2px]", dark ? "bg-white" : "bg-black")}/>}
             </button>
@@ -1534,7 +1534,7 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
               <RefreshCw size={14} className="animate-spin"/> 더 불러오는 중...
             </span>
           ) : (
-            <span className={cls("text-[13px]", dark ? "text-[#737373]" : "text-[#c7c7c7]")}>아래로 스크롤해서 더 보기</span>
+            <span className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#c7c7c7]")}>아래로 스크롤해서 더 보기</span>
           )}
         </div>
       )}
@@ -1789,7 +1789,7 @@ const ProductDetailModal = ({ product, onClose, reviews, dark, onOpenReview, onC
                     <p className={cls("text-[13px] leading-relaxed", dark ? "text-white" : "text-black")}>{aiSummary.data.summary}</p>
                   </div>
                   {aiSummary.isPlaceholder && (
-                    <p className={cls("text-[11px] text-center pt-1", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+                    <p className={cls("text-[11px] text-center pt-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                       이 요약은 데모 데이터예요 · 곧 AI 자동 생성으로 전환됩니다
                     </p>
                   )}
@@ -1983,18 +1983,18 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
         <div className={cls("flex mt-5 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
           <button onClick={() => setMainTab("catalog")}
             className="flex-1 py-3 text-[14px] font-bold transition relative inline-flex items-center justify-center gap-1.5">
-            <Package size={14} className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
-            <span className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>제품 카탈로그</span>
-            <span className={cls("tabular-nums text-[12px]", mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            <Package size={14} className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"}/>
+            <span className={mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"}>제품 카탈로그</span>
+            <span className={cls("tabular-nums text-[12px]", mainTab === "catalog" ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
               {catalogLoading ? "…" : CATALOG.length}
             </span>
             {mainTab === "catalog" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-brand-500 rounded-full"/>}
           </button>
           <button onClick={() => setMainTab("favs")}
             className="flex-1 py-3 text-[14px] font-bold transition relative inline-flex items-center justify-center gap-1.5">
-            <Heart size={14} className={cls(mainTab === "favs" ? "fill-accent-500 text-accent-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}/>
-            <span className={mainTab === "favs" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]"}>저장됨</span>
-            <span className={cls("tabular-nums text-[12px]", mainTab === "favs" ? "text-brand-500" : dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            <Heart size={14} className={cls(mainTab === "favs" ? "fill-accent-500 text-accent-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}/>
+            <span className={mainTab === "favs" ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"}>저장됨</span>
+            <span className={cls("tabular-nums text-[12px]", mainTab === "favs" ? "text-brand-500" : dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
               {list.length}
             </span>
             {mainTab === "favs" && <div className="absolute bottom-0 inset-x-4 h-[2px] bg-brand-500 rounded-full"/>}
@@ -2072,13 +2072,13 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
           {/* 무한스크롤 sentinel — IntersectionObserver 트리거 */}
           {filteredCatalog.length > catalogVisible && (
             <div ref={catalogLoadMoreRef} className="py-6 flex items-center justify-center">
-              <span className={cls("inline-flex items-center gap-2 text-[12px] font-medium", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+              <span className={cls("inline-flex items-center gap-2 text-[12px] font-medium", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 <RefreshCw size={12} className="animate-spin"/> 더 불러오는 중...
               </span>
             </div>
           )}
           {filteredCatalog.length > 0 && filteredCatalog.length <= catalogVisible && filteredCatalog.length > CATALOG_PAGE_SIZE && (
-            <p className={cls("text-center text-[12px] mt-4 py-2", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+            <p className={cls("text-center text-[12px] mt-4 py-2", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
               전체 {filteredCatalog.length}개 모두 표시됐어요
             </p>
           )}
@@ -2090,12 +2090,12 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
             <div className="flex gap-1">
               <button onClick={() => setView("grid")}
                 aria-label="그리드 보기"
-                className={cls("p-1.5 rounded transition", view === "grid" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#737373]" : "text-[#a8a8a8]"))}>
+                className={cls("p-1.5 rounded transition", view === "grid" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"))}>
                 <Grid3x3 size={20} strokeWidth={1.8}/>
               </button>
               <button onClick={() => setView("timeline")}
                 aria-label="월별 보기"
-                className={cls("p-1.5 rounded transition", view === "timeline" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#737373]" : "text-[#a8a8a8]"))}>
+                className={cls("p-1.5 rounded transition", view === "timeline" ? (dark ? "text-white" : "text-black") : (dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"))}>
                 <Calendar size={20} strokeWidth={1.8}/>
               </button>
             </div>
@@ -2491,7 +2491,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
     <button onClick={() => user ? onCompose() : onRequireAuth()}
       className={cls("w-full px-4 py-3 flex items-center gap-3 text-left active:opacity-80 border-b", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
       <Avatar id={user?.avatar || ""} size={14} className="w-10 h-10 shrink-0"/>
-      <span className={cls("text-[14px] flex-1", dark ? "text-[#737373]" : "text-[#737373]")}>
+      <span className={cls("text-[14px] flex-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
         {user ? "지금 어떤 생각이 드세요?" : "로그인 후 참여하기"}
       </span>
       <PenLine size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>
@@ -2524,7 +2524,7 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
             className={cls("flex items-center gap-3 flex-1 min-w-0", isAnon ? "" : "active:opacity-80")}>
             {isAnon ? (
               <div className={cls("w-9 h-9 rounded-full flex items-center justify-center shrink-0", dark ? "bg-[#262626]" : "bg-[#efefef]")}>
-                <CircleUser size={20} className={dark ? "text-[#737373]" : "text-[#a8a8a8]"}/>
+                <CircleUser size={20} className={dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]"}/>
               </div>
             ) : (
               <Avatar id={p.avatar} size={12} className="w-9 h-9"/>
@@ -3032,7 +3032,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
                               </span>
                             )}
                             {r.date && (
-                              <span className={cls("text-[11px]", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+                              <span className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                                 {r.date.slice(5).replace("-", "/")}
                               </span>
                             )}
@@ -7517,7 +7517,7 @@ function AppInner() {
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className={cls("py-12 text-center", dark ? "text-[#737373]" : "text-[#737373]")}>
+                      <div className={cls("py-12 text-center", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
                         <Heart size={32} className="mx-auto mb-2 opacity-30" strokeWidth={1.5}/>
                         <p className="text-[13px] font-bold">활동 내역이 없어요</p>
                         <p className="text-[11px] mt-1 opacity-80">글을 작성하거나 좋아요·댓글을 남기면 여기에 표시돼요</p>

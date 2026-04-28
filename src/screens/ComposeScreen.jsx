@@ -439,7 +439,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
               </label>
             )}
           </div>
-          <p className={cls("text-[12px] mt-2", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+          <p className={cls("text-[12px] mt-2", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
             사진/동영상 최대 10개
           </p>
         </div>

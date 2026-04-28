@@ -155,7 +155,7 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
               )}
             </button>
             {analyzing && (
-              <p className={cls("text-[11px] text-center", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+              <p className={cls("text-[11px] text-center", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
                 분석에 최대 20초 정도 걸려요
               </p>
             )}

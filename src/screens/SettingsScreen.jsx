@@ -241,7 +241,7 @@ const SettingsScreen = ({ user, dark, setDark, blockedList, onUnblock, onClose, 
             로그아웃
           </button>
         </div>
-        <p className={cls("text-[12px] text-center py-6", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>웨이로그 v{APP_VERSION}</p>
+        <p className={cls("text-[12px] text-center py-6", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>웨이로그 v{APP_VERSION}</p>
       </div>
 
       {confirmClear && (

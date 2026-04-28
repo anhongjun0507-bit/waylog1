@@ -74,7 +74,7 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
             <h2 className={cls("mt-4 text-[18px] font-bold", dark ? "text-white" : "text-black")}>{user.nickname}</h2>
           )}
           <p className={cls("text-[13px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{user.email}</p>
-          <p className={cls("text-[12px] mt-1", dark ? "text-[#737373]" : "text-[#a8a8a8]")}>
+          <p className={cls("text-[12px] mt-1", dark ? "text-[#a8a8a8]" : "text-[#a8a8a8]")}>
             가입일 · {new Date(user.joinedAt).toLocaleDateString("ko-KR")}
           </p>
         </div>
