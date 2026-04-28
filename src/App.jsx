@@ -1306,18 +1306,28 @@ const FeedScreen = ({ reviews, onOpen, favs, toggleFav, dark, onCompose: _onComp
   }, [reviews, activeCat, activeTag, sort, feedMode, following]);
 
   // "오늘뭐썼지" 컨셉 — 최신순일 때 날짜별 섹션(오늘/어제/이번 주/이전)으로 묶어 오늘의 활동이 부각되도록
+  // 1.3.0 — KST 기준으로 그룹핑 (이전엔 UTC 날짜 문자열을 사용해 한국 시간 새벽/늦은 밤 작성 글이 어제로 빠지는 버그)
   const groupedByDate = useMemo(() => {
     if (sort !== "latest") return null;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterday = today - 24 * 3600 * 1000;
-    const weekAgo = today - 6 * 24 * 3600 * 1000; // 오늘 포함 7일
+    // KST(UTC+9) 일자 키 — "2026-04-27"
+    const kstDayKey = (input) => {
+      if (!input) return "";
+      const d = typeof input === "number" ? new Date(input) : new Date(input);
+      if (Number.isNaN(d.getTime())) return "";
+      return new Date(d.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    };
+    const todayKey = kstDayKey(new Date());
+    const yesterdayKey = kstDayKey(new Date(Date.now() - 24 * 3600 * 1000));
+    // 7일 이내 (오늘 포함) 판별용 — KST 자정 cutoff
+    const weekCutoff = new Date(`${todayKey}T00:00:00+09:00`).getTime() - 6 * 24 * 3600 * 1000;
     const groups = { today: [], yesterday: [], week: [], older: [] };
     for (const r of filtered) {
-      const t = r.date ? new Date(r.date).getTime() : 0;
-      if (t >= today) groups.today.push(r);
-      else if (t >= yesterday) groups.yesterday.push(r);
-      else if (t >= weekAgo) groups.week.push(r);
+      const ts = r.createdAt || r.date;
+      const key = kstDayKey(ts);
+      const t = ts ? new Date(ts).getTime() : 0;
+      if (key === todayKey) groups.today.push(r);
+      else if (key === yesterdayKey) groups.yesterday.push(r);
+      else if (t >= weekCutoff) groups.week.push(r);
       else groups.older.push(r);
     }
     return groups;
