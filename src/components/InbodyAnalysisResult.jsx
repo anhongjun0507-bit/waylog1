@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Edit3, Sparkles } from "lucide-react";
 import { cls } from "../utils/ui.js";
+import { WeeklyLifestyleCards } from "./WeeklyLifestyleCards.jsx";
 
 // 인바디 사진 AI 분석 결과 — 5필드 수정 + 해석 + 주간 생활습관 5카드.
 // readOnly 모드에서는 저장된 기록을 다시 보여주는 용도로 재사용 (수정/저장 버튼 숨김).
@@ -23,12 +24,7 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
   ];
 
   const lifestyle = result?.weekly_lifestyle || {};
-  const lifestyleCards = [
-    { icon: "🏃", title: "운동", content: lifestyle.exercise },
-    { icon: "🥗", title: "식습관", content: lifestyle.diet },
-    { icon: "😴", title: "수면", content: lifestyle.sleep },
-    { icon: "💧", title: "물 섭취", content: lifestyle.hydration },
-  ].filter((c) => !!c.content);
+  const hasLifestyle = !!(lifestyle.exercise || lifestyle.diet || lifestyle.sleep || lifestyle.hydration || lifestyle.tip);
 
   const handleSave = async () => {
     if (saving || readOnly) return;
@@ -125,27 +121,12 @@ export const InbodyAnalysisResult = ({ result, onSave, onCancel, dark, readOnly 
         )}
 
         {/* 주간 생활습관 */}
-        {(lifestyleCards.length > 0 || lifestyle.tip) && (
+        {hasLifestyle && (
           <section className="space-y-2">
             <p className={cls("text-[13px] font-bold uppercase tracking-wider px-1", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               ✨ 이번 주 권장 생활습관
             </p>
-            {lifestyleCards.map((c) => (
-              <div key={c.title}
-                className={cls("p-3.5 rounded-2xl border flex gap-3", dark ? "bg-[#121212] border-[#262626]" : "bg-white border-[#dbdbdb]")}>
-                <div className="text-[24px] leading-none shrink-0">{c.icon}</div>
-                <div className="min-w-0 flex-1">
-                  <p className={cls("text-[13px] font-bold mb-0.5", dark ? "text-white" : "text-black")}>{c.title}</p>
-                  <p className={cls("text-[13px] leading-[1.55]", dark ? "text-[#d4d4d4]" : "text-[#525252]")}>{c.content}</p>
-                </div>
-              </div>
-            ))}
-            {lifestyle.tip && (
-              <div className={cls("p-3.5 rounded-2xl border-l-4 border-brand-500", dark ? "bg-brand-900/20" : "bg-brand-50")}>
-                <p className={cls("text-[12px] font-bold mb-1", dark ? "text-brand-200" : "text-brand-700")}>이번 주 핵심 팁</p>
-                <p className={cls("text-[13px] leading-[1.55]", dark ? "text-brand-100" : "text-brand-900")}>{lifestyle.tip}</p>
-              </div>
-            )}
+            <WeeklyLifestyleCards weeklyLifestyle={lifestyle} dark={dark}/>
           </section>
         )}
 

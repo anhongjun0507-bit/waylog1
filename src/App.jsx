@@ -40,6 +40,7 @@ import {
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
   ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
+  WeeklyLifestyleCards,
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
@@ -4579,6 +4580,16 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
     return weekAgoRecord.weight - latestInbody.weight;
   })();
 
+  // 1.3.0 — 가장 최근 AI 분석 인바디 기록의 weekly_lifestyle 을 메인에 노출.
+  // inbody_records.data 안에 analyzed_by_ai/weekly_lifestyle 가 펼쳐져 들어옴 (App.jsx hydrate 참조).
+  const latestAILifestyle = (() => {
+    if (!Array.isArray(inbodyRecords) || inbodyRecords.length === 0) return null;
+    const aiRecords = [...inbodyRecords]
+      .filter((r) => !!r.analyzed_by_ai && r.weekly_lifestyle && Object.keys(r.weekly_lifestyle).length > 0)
+      .sort((a, b) => new Date(b.date || b.measuredAt || 0) - new Date(a.date || a.measuredAt || 0));
+    return aiRecords[0]?.weekly_lifestyle || null;
+  })();
+
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-40 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
@@ -4652,6 +4663,40 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
                 <Flame size={18} className="text-amber-500"/>
                 <p className={cls("text-[14px] font-semibold", dark ? "text-white" : "text-black")}>{streak}일 연속 기록 중</p>
               </div>
+            )}
+
+            {/* 1.3.0 — AI 주간 생활습관 팁 (가장 최근 인바디 분석 결과) */}
+            {latestAILifestyle ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <p className={cls("text-[13px] font-bold", dark ? "text-white" : "text-black")}>
+                    ✨ 이번 주 권장 생활습관
+                  </p>
+                  <p className={cls("text-[11px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                    가장 최근 AI 분석 기반
+                  </p>
+                </div>
+                <WeeklyLifestyleCards weeklyLifestyle={latestAILifestyle} dark={dark}/>
+              </div>
+            ) : (
+              <button onClick={() => setInbodyOpen(true)}
+                className={cls("w-full p-4 rounded-2xl border-2 border-dashed text-left active:opacity-70 transition",
+                  dark ? "border-[#262626] bg-[#121212]" : "border-[#dbdbdb] bg-[#fafafa]")}>
+                <div className="flex items-start gap-3">
+                  <Sparkles size={20} className="text-brand-500 mt-0.5 shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className={cls("text-[13px] font-bold mb-0.5", dark ? "text-white" : "text-black")}>
+                      AI 맞춤 운동·생활 가이드
+                    </p>
+                    <p className={cls("text-[12px] leading-snug", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
+                      인바디를 등록하면 맞춤 운동·생활 가이드를 받으실 수 있어요
+                    </p>
+                    <p className={cls("text-[12px] font-bold mt-2", dark ? "text-brand-300" : "text-brand-600")}>
+                      인바디 등록하기 →
+                    </p>
+                  </div>
+                </div>
+              </button>
             )}
 
             {/* 주간 미션 */}

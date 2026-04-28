@@ -13,3 +13,4 @@ export { BottomSheet } from "./BottomSheet.jsx";
 export { InbodyAnalysisResult } from "./InbodyAnalysisResult.jsx";
 export { InbodyFirstTimeHint } from "./InbodyFirstTimeHint.jsx";
 export { PushPermissionBanner } from "./PushPermissionBanner.jsx";
+export { WeeklyLifestyleCards } from "./WeeklyLifestyleCards.jsx";
