@@ -19,7 +19,7 @@ import { sanitizeImageUrl, sanitizeText, sanitizeInline } from "./utils/sanitize
 import { compressImage } from "./utils/image.js";
 import { friendlyError } from "./utils/errors.js";
 import { identify, events as analyticsEvents } from "./utils/analytics.js";
-import { pushSupported, requestPushPermission, subscribePush } from "./utils/push.js";
+import { pushSupported, requestPushPermission, subscribePush, subscribeForegroundMessages } from "./utils/push.js";
 import { sendPushNotification } from "./utils/sendPush.js";
 import {
   BASE, CHALLENGE_WEEKS, CHALLENGE_DAYS, AI_CACHE_MAX, AI_CACHE_TTL_MS,
@@ -7196,6 +7196,37 @@ function AppInner() {
     });
     return () => { sub?.remove?.(); };
   }, []);
+
+  // 1.4.0 — 웹 포그라운드 푸시 도착 → 인앱 토스트 (audit P1-21).
+  // 백그라운드는 firebase-messaging-sw 가 OS 알림 표시. 포그라운드는 OS 가 안 띄우므로
+  // onMessage 로 직접 받아 토스트로 사용자에게 노출.
+  // notifications 테이블 row 는 send-push Edge Function 이 이미 insert 하므로
+  // 인앱 알림 패널에는 자동 반영 — 여기선 토스트만 책임.
+  useEffect(() => {
+    if (!user?.id) return;
+    let unsub = null;
+    let cancelled = false;
+    subscribeForegroundMessages((payload) => {
+      try {
+        const noti = payload?.notification || {};
+        const data = payload?.data || {};
+        const title = noti.title || data.title || "";
+        const body = noti.body || data.body || "";
+        if (!title && !body) return;
+        const msg = title && body ? `${title} — ${body}` : (title || body);
+        setToast(msg);
+      } catch (e) {
+        console.warn("foreground push handler 오류:", e);
+      }
+    }).then((u) => {
+      if (cancelled) { try { u && u(); } catch {} return; }
+      unsub = u;
+    });
+    return () => {
+      cancelled = true;
+      try { unsub && unsub(); } catch {}
+    };
+  }, [user?.id, setToast]);
 
   // 1.4.0 — 네이티브 푸시 알림 탭 → deep link (audit P1-20).
   // send-push 가 data.url 을 세팅해 보내지만 클라이언트가 listener 미등록이라 홈만 열렸음.
