@@ -3710,9 +3710,29 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
   const [exiting, close] = useExit(onClose);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 1.4.0 — fetch 실패 시 영구 로딩 회피 + 사용자 회복 경로 (audit P1-27).
+  // 이전엔 .catch 누락이라 네트워크 실패 시 then 진입 안 함 → loading=true 영원.
+  const [error, setError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   useEffect(() => {
-    fetchFn(userId).then(({ data }) => { setList(data || []); setLoading(false); });
-  }, [userId]);
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    Promise.resolve(fetchFn(userId))
+      .then(({ data, error: err }) => {
+        if (cancelled) return;
+        if (err) { setError(true); setLoading(false); return; }
+        setList(data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, retryNonce]);
   return (
     <div role="dialog" aria-modal="true" className={cls("fixed inset-0 z-50 max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto flex flex-col", exiting ? "animate-slide-down" : "animate-slide-up", dark ? "bg-gray-900" : "bg-gray-50")}>
       <header className={cls("flex items-center justify-between p-4 border-b", dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100")}>
@@ -3722,7 +3742,19 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {loading && <p className={cls("text-center text-sm py-8", dark ? "text-gray-500" : "text-gray-400")}>불러오는 중...</p>}
-        {!loading && list.length === 0 && (
+        {!loading && error && (
+          <div className={cls("py-12 text-center", dark ? "text-gray-400" : "text-gray-500")}>
+            <p className={cls("text-sm font-bold", dark ? "text-gray-200" : "text-gray-800")}>
+              불러오기에 실패했어요
+            </p>
+            <p className="text-xs mt-1.5 opacity-80">잠시 후 다시 시도해주세요</p>
+            <button onClick={() => setRetryNonce((n) => n + 1)}
+              className="mt-4 px-4 py-2 rounded-full bg-brand-500 text-white text-xs font-bold active:scale-95 transition">
+              다시 시도
+            </button>
+          </div>
+        )}
+        {!loading && !error && list.length === 0 && (
           <div className={cls("py-12 text-center", dark ? "text-gray-400" : "text-gray-500")}>
             <p className={cls("text-sm font-bold", dark ? "text-gray-200" : "text-gray-800")}>
               {title === "팔로워" ? "아직 팔로워가 없어요" : "아직 팔로우한 사용자가 없어요"}
