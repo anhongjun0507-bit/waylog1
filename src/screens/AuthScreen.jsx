@@ -341,8 +341,9 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           <div className={cls("mt-10 pt-5 border-t text-center", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
             <p className={cls("text-[13px]", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>
               {mode === "signup" ? "계정이 있으신가요? " : "계정이 없으신가요? "}
+              {/* 1.4.0 (audit P1-10): 다크모드는 brand-300 (CLAUDE.md L≥0.376). */}
               <button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); setInfo(""); }}
-                className="text-brand-700 font-semibold">
+                className={cls("font-semibold", dark ? "text-brand-300" : "text-brand-700")}>
                 {mode === "signup" ? "로그인" : "가입하기"}
               </button>
             </p>

@@ -3563,7 +3563,10 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
               }
             }}
               disabled={!comment.trim()}
-              className={cls("shrink-0 whitespace-nowrap text-[14px] font-semibold transition", comment.trim() ? "text-brand-700 active:opacity-60" : "text-brand-700/40")}>
+              className={cls("shrink-0 whitespace-nowrap text-[14px] font-semibold transition",
+                comment.trim()
+                  ? (dark ? "text-brand-300 active:opacity-60" : "text-brand-700 active:opacity-60")
+                  : (dark ? "text-brand-300/40" : "text-brand-700/40"))}>
               게시
             </button>
           </div>
@@ -7499,9 +7502,10 @@ function AppInner() {
                     <p className={cls("text-[15px] font-bold", dark ? "text-white" : "text-black")}>활동</p>
                     {notifications.length > 0 && (
                       <div className="flex gap-3">
+                        {/* 1.4.0 (audit P1-10): 다크모드는 brand-300 (CLAUDE.md L≥0.376). */}
                         {unreadCount > 0 && (
                           <button onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
-                            className="text-[13px] font-bold text-brand-700 active:opacity-60">
+                            className={cls("text-[13px] font-bold active:opacity-60", dark ? "text-brand-300" : "text-brand-700")}>
                             모두 읽음
                           </button>
                         )}
