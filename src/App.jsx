@@ -5324,6 +5324,17 @@ function AppInner() {
   }, [armClearNotif]);
   const [notifications, setNotifications] = useStoredState("waylog:notifs", []);
 
+  // 1.4.0 — 기존 user-scope 안 된 ComposeScreen draft 키 1 회성 정리 (audit P1-23).
+  // 새 키는 waylog:draft:compose:<uid>:* 형식. orphan 5 개를 한 번만 폐기.
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    if (localStorage.getItem("waylog:draft:compose:cleaned-v1")) return;
+    ["title", "body", "tags", "category", "products"].forEach((k) => {
+      window.storage?.delete(`waylog:draft:compose:${k}`)?.catch?.(() => {});
+    });
+    try { localStorage.setItem("waylog:draft:compose:cleaned-v1", "1"); } catch {}
+  }, []);
+
   // 1.4.0 — notifPref(localStorage) 폐기 → 서버 notif_prefs(jsonb) 단일 source.
   // 이전엔 "앱 내 알림" off 해도 좋아요/댓글/팔로우 푸시는 그대로 옴 (audit P1-25).
   // 마이그: notifPref === "false" 였던 사용자는 서버 5종 모두 false 로 동기화 후 키 제거.

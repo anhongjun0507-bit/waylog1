@@ -7,6 +7,12 @@ import { useExit, useDebouncedValue, useStoredState } from "../hooks.js";
 import { BASE, CATEGORIES, PRODUCTS } from "../constants.js";
 import { useCatalog, useCatalogLoading } from "../catalog.js";
 import { ProductImage } from "../components/index.js";
+import { useAppContext } from "../contexts/AppContext.js";
+
+// 1.4.0 — draft 키에 userId 포함 (audit P1-23). 공용 디바이스에서 사용자 A 의 작성 중인 글이
+// 사용자 B 에게 노출되던 문제 해소. user 가 없으면 "anon" 으로 격리 (실제로는 ComposeScreen
+// 진입 자체가 로그인 가드 통과 후라 도달 가능성 낮음).
+const draftKey = (uid, field) => `waylog:draft:compose:${uid || "anon"}:${field}`;
 
 const TagChipInput = ({ tags, setTags, dark }) => {
   const [draft, setDraft] = useState("");
@@ -58,12 +64,14 @@ const TagChipInput = ({ tags, setTags, dark }) => {
 
 const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => {
   const [exiting, close] = useExit(onClose);
-  const [title, setTitle, titleLoaded] = useStoredState("waylog:draft:compose:title", "");
-  const [body, setBody, bodyLoaded] = useStoredState("waylog:draft:compose:body", "");
-  const [tags, setTags, tagsLoaded] = useStoredState("waylog:draft:compose:tags", "");
-  const [category, setCategory, catLoaded] = useStoredState("waylog:draft:compose:category", "");
+  const { user } = useAppContext();
+  const uid = user?.id;
+  const [title, setTitle, titleLoaded] = useStoredState(draftKey(uid, "title"), "");
+  const [body, setBody, bodyLoaded] = useStoredState(draftKey(uid, "body"), "");
+  const [tags, setTags, tagsLoaded] = useStoredState(draftKey(uid, "tags"), "");
+  const [category, setCategory, catLoaded] = useStoredState(draftKey(uid, "category"), "");
   const [mediaItems, setMediaItems] = useState([]);
-  const [selectedProducts, setSelectedProducts, prodLoaded] = useStoredState("waylog:draft:compose:products", []);
+  const [selectedProducts, setSelectedProducts, prodLoaded] = useStoredState(draftKey(uid, "products"), []);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [productQuery, setProductQuery] = useState("");
   const [pickerCat, setPickerCat] = useState("all");
@@ -94,11 +102,11 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     setRestorePrompt(false);
     try {
       await Promise.all([
-        window.storage?.delete("waylog:draft:compose:title"),
-        window.storage?.delete("waylog:draft:compose:body"),
-        window.storage?.delete("waylog:draft:compose:tags"),
-        window.storage?.delete("waylog:draft:compose:category"),
-        window.storage?.delete("waylog:draft:compose:products"),
+        window.storage?.delete(draftKey(uid, "title")),
+        window.storage?.delete(draftKey(uid, "body")),
+        window.storage?.delete(draftKey(uid, "tags")),
+        window.storage?.delete(draftKey(uid, "category")),
+        window.storage?.delete(draftKey(uid, "products")),
       ]);
     } catch {}
   };
@@ -141,12 +149,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
     setTitle(""); setBody(""); setTags(""); setCategory("");
     setMediaItems([]); setSelectedProducts([]);
     try {
-      await window.storage?.delete("waylog:draft:compose:title");
-      await window.storage?.delete("waylog:draft:compose:body");
-      await window.storage?.delete("waylog:draft:compose:tags");
-      await window.storage?.delete("waylog:draft:compose:category");
+      await window.storage?.delete(draftKey(uid, "title"));
+      await window.storage?.delete(draftKey(uid, "body"));
+      await window.storage?.delete(draftKey(uid, "tags"));
+      await window.storage?.delete(draftKey(uid, "category"));
       // mediaItems는 useState로 관리되므로 localStorage 삭제 불필요
-      await window.storage?.delete("waylog:draft:compose:products");
+      await window.storage?.delete(draftKey(uid, "products"));
     } catch {}
   };
 
