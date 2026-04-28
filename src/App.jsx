@@ -6657,14 +6657,38 @@ function AppInner() {
     }
   }, [user, commentsMap, setToast]);
 
-  const deleteComment = useCallback((rid, cid) => {
+  // 댓글 삭제 — 본인 가드 + optimistic + 실패 시 rollback (audit P0-8).
+  // UI 의 isMine 가드(2664 의 `c.authorId === user.id`)와 동일 기준을 핸들러에서도 강제.
+  // 핸들러를 직접 호출하는 경우(콘솔/회귀)에 권한 우회되거나, 서버 실패가 silent 로 묻히던 회귀 차단.
+  const deleteComment = useCallback(async (rid, cid) => {
+    if (!user) { setToast("로그인이 필요해요"); return; }
+    const list = commentsMap[rid] || [];
+    const target = list.find((c) => c.id === cid);
+    if (!target) return; // 이미 사라짐 — 조용히 무시
+    const isMine = target.authorId === user.id || target.author === user.nickname;
+    if (!isMine) { setToast("본인 댓글만 삭제할 수 있어요"); return; }
+
+    // optimistic 제거 + rollback 용 snapshot
     setCommentsMap((prev) => ({
       ...prev,
       [rid]: (prev[rid] || []).filter((c) => c.id !== cid),
     }));
-    if (supabase && typeof cid === "string") supabaseComments.delete(cid).catch(() => {});
-    setToast("댓글이 삭제됐어요");
-  }, [setToast]);
+
+    // 서버 동기화 — 로컬 전용(아직 sync 전 임시 댓글, id 가 number) 은 즉시 성공.
+    if (!supabase || typeof cid !== "string") {
+      setToast("댓글이 삭제됐어요");
+      return;
+    }
+    try {
+      const { error } = await supabaseComments.delete(cid);
+      if (error) throw error;
+      setToast("댓글이 삭제됐어요");
+    } catch {
+      // RLS 거부·네트워크 실패 시 rollback — 새로고침 시 댓글 부활하던 회귀 차단.
+      setCommentsMap((prev) => ({ ...prev, [rid]: list }));
+      setToast("댓글 삭제에 실패했어요. 잠시 후 다시 시도해주세요");
+    }
+  }, [user, commentsMap, setToast]);
 
   const clearAllData = async () => {
     setFavsArr([]); setMoods({}); setUserReviews([]); setCommentsMap({});
