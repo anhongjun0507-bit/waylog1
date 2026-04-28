@@ -272,8 +272,10 @@ const SettingsScreen = ({ user, dark, setDark, blockedList, onUnblock, onClose, 
               <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>
                 {docOpen === "terms" ? "이용약관" : docOpen === "privacy" ? "개인정보 처리방침" : "앱 안내"}
               </p>
-              <button onClick={() => setDocOpen(null)} aria-label="닫기" className={cls("w-8 h-8 rounded-full flex items-center justify-center", dark ? "bg-gray-800" : "bg-gray-100")}>
-                <X size={14} className={dark ? "text-gray-400" : "text-gray-500"}/>
+              <button onClick={() => setDocOpen(null)} aria-label="닫기" className="min-w-tap min-h-tap flex items-center justify-center -mr-2">
+                <span className={cls("inline-flex w-8 h-8 rounded-full items-center justify-center", dark ? "bg-gray-800" : "bg-gray-100")}>
+                  <X size={14} className={dark ? "text-gray-400" : "text-gray-500"}/>
+                </span>
               </button>
             </div>
             <div className={cls("flex-1 overflow-y-auto px-6 pb-8 text-xs leading-relaxed", dark ? "text-gray-400" : "text-gray-600")}>
@@ -332,8 +334,10 @@ const SettingsScreen = ({ user, dark, setDark, blockedList, onUnblock, onClose, 
             <div className={cls("w-12 h-1 rounded-full mx-auto mt-3 mb-2 shrink-0", dark ? "bg-gray-700" : "bg-gray-300")}/>
             <div className="px-6 py-2 flex items-center justify-between shrink-0">
               <p className={cls("text-base font-black", dark ? "text-white" : "text-gray-900")}>차단된 사용자</p>
-              <button onClick={() => setBlockListOpen(false)} aria-label="닫기" className={cls("w-8 h-8 rounded-full flex items-center justify-center", dark ? "bg-gray-800" : "bg-gray-100")}>
-                <X size={14} className={dark ? "text-gray-400" : "text-gray-500"}/>
+              <button onClick={() => setBlockListOpen(false)} aria-label="닫기" className="min-w-tap min-h-tap flex items-center justify-center -mr-2">
+                <span className={cls("inline-flex w-8 h-8 rounded-full items-center justify-center", dark ? "bg-gray-800" : "bg-gray-100")}>
+                  <X size={14} className={dark ? "text-gray-400" : "text-gray-500"}/>
+                </span>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 pb-8">

@@ -2239,9 +2239,12 @@ const FavScreen = ({ reviews, onOpen, favs, toggleFav, dark, moods, setMoods, on
                               {m.strong && <Star size={8} className="text-amber-400 fill-amber-400"/>}
                             </button>
                           ))}
-                          <button onClick={() => setMoodPickerFor(null)}
-                            className={cls("ml-auto w-6 h-6 rounded-full flex items-center justify-center", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
-                            <X size={12}/>
+                          {/* 1.4.0 (audit P1-44): 무드 picker close hit area 36px (인라인 한정) */}
+                          <button onClick={() => setMoodPickerFor(null)} aria-label="무드 선택 닫기"
+                            className="ml-auto w-9 h-9 flex items-center justify-center active:opacity-60">
+                            <span className={cls("inline-flex w-6 h-6 rounded-full items-center justify-center", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
+                              <X size={12}/>
+                            </span>
                           </button>
                         </>
                       ) : mood ? (

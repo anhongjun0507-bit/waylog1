@@ -414,9 +414,12 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                     <span className="absolute bottom-1 right-1 text-[11px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">{m.duration}s</span>
                   </>
                 )}
-                <button onClick={() => removeMedia(m.id)}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center active:scale-90 transition">
-                  <X size={11} className="text-white"/>
+                {/* 1.4.0 (audit P1-44): hit area 36px (작은 썸네일 안 한정 — 48px 은 카드 가림) */}
+                <button onClick={() => removeMedia(m.id)} aria-label="미디어 제거"
+                  className="absolute top-0 right-0 w-9 h-9 flex items-start justify-end p-1 active:scale-90 transition">
+                  <span className="inline-flex w-5 h-5 rounded-full bg-black/70 items-center justify-center">
+                    <X size={11} className="text-white"/>
+                  </span>
                 </button>
               </div>
             ))}
@@ -455,7 +458,7 @@ const ComposeScreen = ({ onClose, onSubmit, dark, editing, prefillProduct }) => 
                 <div key={p.id} className={cls("inline-flex items-center gap-2 pl-2.5 pr-1 py-1 rounded-lg", dark ? "bg-[#262626] text-white" : "bg-[#efefef] text-black")}>
                   <ShoppingBag size={11}/>
                   <span className="text-[12px] font-semibold max-w-[140px] truncate">{p.name}</span>
-                  <button onClick={() => toggleProduct(p)} className="w-5 h-5 rounded-full flex items-center justify-center active:scale-90 opacity-60">
+                  <button onClick={() => toggleProduct(p)} aria-label="제품 제거" className="w-9 h-9 -mr-2 flex items-center justify-center active:scale-90 opacity-60">
                     <X size={11}/>
                   </button>
                 </div>

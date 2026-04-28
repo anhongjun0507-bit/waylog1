@@ -11,10 +11,14 @@ export const InbodyFirstTimeHint = ({ onStart, onClose, dark }) => {
       <div className="absolute inset-0 bg-black/50 animate-fade-in" onClick={onClose}/>
       <div className={cls("relative w-full max-w-md rounded-3xl p-6 shadow-2xl animate-slide-up",
         dark ? "bg-gray-900" : "bg-white")}>
+        {/* 1.4.0 (audit P1-44): hit area 48px (min-w-tap min-h-tap) — 시각 크기는 32px 유지 */}
         <button onClick={onClose} aria-label="닫기"
-          className={cls("absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition active:opacity-60",
-            dark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500")}>
-          <X size={14}/>
+          className={cls("absolute top-1 right-1 min-w-tap min-h-tap rounded-full flex items-center justify-center transition active:opacity-60",
+            dark ? "text-gray-400" : "text-gray-500")}>
+          <span className={cls("inline-flex w-8 h-8 rounded-full items-center justify-center",
+            dark ? "bg-gray-800" : "bg-gray-100")}>
+            <X size={14}/>
+          </span>
         </button>
 
         <div className={cls("w-12 h-12 rounded-2xl flex items-center justify-center mb-4",

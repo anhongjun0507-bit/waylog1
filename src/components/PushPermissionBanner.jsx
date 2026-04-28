@@ -105,10 +105,13 @@ export const PushPermissionBanner = ({ user, dark }) => {
           busy ? "bg-brand-500/50 text-white cursor-wait" : "bg-brand-500 text-white")}>
         켜기
       </button>
+      {/* 1.4.0 (audit P1-44): hit area 48px, 시각 28px 유지 */}
       <button onClick={handleDismiss} aria-label="알림 권유 닫기"
-        className={cls("shrink-0 w-7 h-7 rounded-full flex items-center justify-center active:opacity-60",
+        className="shrink-0 min-w-tap min-h-tap flex items-center justify-center active:opacity-60 -mr-1">
+        <span className={cls("inline-flex w-7 h-7 rounded-full items-center justify-center",
           dark ? "bg-brand-800/40 text-brand-300" : "bg-brand-100 text-brand-600")}>
-        <X size={12}/>
+          <X size={12}/>
+        </span>
       </button>
     </div>
   );
