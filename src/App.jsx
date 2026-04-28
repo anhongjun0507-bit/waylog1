@@ -40,7 +40,6 @@ import {
 import {
   Avatar, MissionIcon, CategoryIcon, CategoryChip,
   ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState, BottomSheet,
-  PushPermissionBanner,
 } from "./components/index.js";
 import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
@@ -534,9 +533,6 @@ const HomeScreen = ({ reviews, onOpen, favs, toggleFav, dark, user, onPrimary, t
           라이프스타일을 기록하고 발견하는 공간
         </p>
       </div>
-
-      {/* 1.2.0 — 알림 권유 banner. 가입 후 2~14일 + 권한 미요청일 때만 노출. */}
-      <PushPermissionBanner user={user} dark={dark}/>
 
       {/* 카테고리 픽커 — 민트 액센트, 가로 스크롤 */}
       <div className="px-4 pt-5 pb-1 overflow-x-auto scrollbar-hide flex gap-2" style={{ scrollbarWidth: "none" }}>
@@ -5185,6 +5181,29 @@ function AppInner() {
     window.storage?.delete("waylog:challengeAnonPosts").catch(() => {});
   }, []);
 
+  // 1.3.0 — 앱 첫 실행 시 Android/iOS 시스템 알림 권한 다이얼로그 자동 요청.
+  // 한 번만 시도 (localStorage 가드). 결과(허용/거부)는 OS 가 영구 기억.
+  useEffect(() => {
+    (async () => {
+      try {
+        const platform = Capacitor.getPlatform?.();
+        if (platform !== "android" && platform !== "ios") return;
+        if (localStorage.getItem("waylog:push:auto-requested")) return;
+
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+        const { receive } = await PushNotifications.checkPermissions();
+        if (receive === "granted" || receive === "denied") {
+          localStorage.setItem("waylog:push:auto-requested", "1");
+          return;
+        }
+        await PushNotifications.requestPermissions();
+        localStorage.setItem("waylog:push:auto-requested", "1");
+      } catch (e) {
+        console.warn("auto push permission failed", e);
+      }
+    })();
+  }, []);
+
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const refreshingRef = useRef(false);
@@ -5404,6 +5423,35 @@ function AppInner() {
       const { data } = await supabaseFavorites.fetchMine(user.id);
       if (data) setFavsArr(data);
     })();
+  }, [user]);
+
+  // 1.3.0 — 알림 권한 'granted' 인데 push_subscriptions 등록 안 됐으면 자동 등록.
+  // 자동 권한 요청에서 허용한 경우, 로그인 후 즉시 토큰 발급/저장.
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const platform = Capacitor.getPlatform?.();
+        if (platform !== "android" && platform !== "ios") return;
+        const { PushNotifications } = await import("@capacitor/push-notifications");
+        const { receive } = await PushNotifications.checkPermissions();
+        if (receive !== "granted") return;
+        if (cancelled) return;
+
+        const { data } = await supabase
+          .from("push_subscriptions")
+          .select("id")
+          .eq("user_id", user.id)
+          .like("endpoint", "native:%")
+          .maybeSingle();
+        if (cancelled) return;
+        if (!data) await subscribePush(user.id);
+      } catch (e) {
+        console.warn("token register failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   // --- 취향/무드/리뷰/댓글 ---
