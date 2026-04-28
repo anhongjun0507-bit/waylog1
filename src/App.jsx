@@ -7635,7 +7635,10 @@ function AppInner() {
         onClose={() => setChallengeStartOpen(false)}
         onStart={(data) => {
           setChallenge(data);
-          setChallengeInbody([{ id: Date.now(), date: new Date().toISOString(), weight: data.weight, bodyFat: data.bodyFat, muscle: 0, bmi: data.bmi }]);
+          // sync wrapper 사용 — 첫 인바디 record 가 inbody_records 테이블에 저장돼야
+          // 다른 디바이스·새로고침 후에도 그래프에 시작점이 표시됨 (audit P1-12).
+          // 1.3.0 까지 raw setter 라 server 동기화 누락.
+          setChallengeInbodySync([{ id: Date.now(), date: new Date().toISOString(), weight: data.weight, bodyFat: data.bodyFat, muscle: 0, bmi: data.bmi }]);
           setToast("챌린지가 시작됐어요!");
           pushNotif("바디키 8주 챌린지가 시작됐어요!");
           setTimeout(() => setChallengeMainOpen(true), 300);
