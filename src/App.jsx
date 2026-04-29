@@ -5366,32 +5366,6 @@ function AppInner() {
     try { localStorage.setItem("waylog:draft:compose:cleaned-v1", "1"); } catch {}
   }, []);
 
-  // 1.4.0 — notifPref(localStorage) 폐기 → 서버 notif_prefs(jsonb) 단일 source.
-  // 이전엔 "앱 내 알림" off 해도 좋아요/댓글/팔로우 푸시는 그대로 옴 (audit P1-25).
-  // 마이그: notifPref === "false" 였던 사용자는 서버 5종 모두 false 로 동기화 후 키 제거.
-  useEffect(() => {
-    if (!user?.id || !supabase) return;
-    if (localStorage.getItem("waylog:notifPref:migrated")) return;
-    const stored = localStorage.getItem("waylog:notifPref");
-    const markDone = () => {
-      try {
-        localStorage.removeItem("waylog:notifPref");
-        localStorage.setItem("waylog:notifPref:migrated", "1");
-      } catch {}
-    };
-    if (stored === null || stored === "true") {
-      // default 가 true 라 서버 prefs(default 모두 true) 와 일치 — sync 불요.
-      markDone();
-      return;
-    }
-    // 사용자가 명시적으로 OFF 했었음 — 5종 모두 false 로 sync.
-    supabase.from("profiles")
-      .update({ notif_prefs: { likes: false, comments: false, follows: false, challenge: false, news: false } })
-      .eq("id", user.id)
-      .then(({ error }) => { if (!error) markDone(); })
-      .catch(() => {});
-  }, [user?.id]);
-
   const pushNotif = (text, extra = {}) => {
     // 인앱 자동 알림 (챌린지 시작·완료 등) — 5종 type 매핑 안 되는 시스템 알림이라 항상 표시.
     // notif_prefs 는 send-push Edge Function 측에서 type 별로 체크.
@@ -5419,6 +5393,34 @@ function AppInner() {
   // --- 인증 — Supabase 를 single source of truth 로. 로컬 폴백(waylog:user) 제거 ---
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // 1.4.0 — notifPref(localStorage) 폐기 → 서버 notif_prefs(jsonb) 단일 source.
+  // 이전엔 "앱 내 알림" off 해도 좋아요/댓글/팔로우 푸시는 그대로 옴 (audit P1-25).
+  // 마이그: notifPref === "false" 였던 사용자는 서버 5종 모두 false 로 동기화 후 키 제거.
+  // 이 useEffect 는 `user` 선언 이후에 와야 함 — `[user?.id]` deps 가 첫 렌더에 즉시
+  // 평가되므로 user 가 TDZ 면 ReferenceError. (1.4.0 P0 hotfix — 첫 진입 시 화이트스크린)
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    if (localStorage.getItem("waylog:notifPref:migrated")) return;
+    const stored = localStorage.getItem("waylog:notifPref");
+    const markDone = () => {
+      try {
+        localStorage.removeItem("waylog:notifPref");
+        localStorage.setItem("waylog:notifPref:migrated", "1");
+      } catch {}
+    };
+    if (stored === null || stored === "true") {
+      // default 가 true 라 서버 prefs(default 모두 true) 와 일치 — sync 불요.
+      markDone();
+      return;
+    }
+    // 사용자가 명시적으로 OFF 했었음 — 5종 모두 false 로 sync.
+    supabase.from("profiles")
+      .update({ notif_prefs: { likes: false, comments: false, follows: false, challenge: false, news: false } })
+      .eq("id", user.id)
+      .then(({ error }) => { if (!error) markDone(); })
+      .catch(() => {});
+  }, [user?.id]);
 
   // 세션 한 번당 profile 은 한 번만 fetch (토큰 리프레시 때마다 재요청 방지)
   const profileCacheRef = useRef({ userId: null, avatar: "" });
