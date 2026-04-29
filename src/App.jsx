@@ -5444,13 +5444,21 @@ function AppInner() {
     };
   };
   // 비동기 avatar hydrate: 실패/지연해도 user state 와 authLoading 해제는 이미 완료.
+  // 1.4.0 P0 hotfix — 빈 avatar_url 로 user state 덮어쓰지 않음. 새로고침 직후 profile fetch 가
+  // 일시 실패하거나 RLS 가 막거나 row 가 비어있을 때, session.user_metadata.avatar_url
+  // (buildUserFromSession 이 이미 적용한 값) 을 보존해 "프로필 사진이 기본으로 돌아가는" 회귀 차단.
   const hydrateProfileAvatar = async (userId) => {
     if (!userId || profileCacheRef.current.userId === userId) return;
     try {
       const { data: profile } = await supabaseAuth.getProfile(userId);
       const avatar = profile?.avatar_url || "";
       profileCacheRef.current = { userId, avatar };
-      setUser((prev) => (prev && prev.id === userId ? { ...prev, avatar } : prev));
+      setUser((prev) => {
+        if (!prev || prev.id !== userId) return prev;
+        // 빈 값으로 기존 avatar 를 wipe 하지 않음 — 메타데이터의 최신 값 유지
+        if (!avatar && prev.avatar) return prev;
+        return { ...prev, avatar };
+      });
     } catch {}
   };
 
@@ -7708,12 +7716,25 @@ function AppInner() {
         onUpdateProfile={async (u, avatarFile) => {
           let avatarUrl = u.avatar;
           if (avatarFile && supabase && u.id) {
-            const { url } = await supabaseStorage.uploadAvatar(u.id, avatarFile);
-            if (url) avatarUrl = url;
+            const { url, error: uploadErr } = await supabaseStorage.uploadAvatar(u.id, avatarFile);
+            if (uploadErr || !url) {
+              console.warn("[avatar] uploadAvatar failed:", uploadErr);
+              setToast(friendlyError(uploadErr, "프로필 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요"));
+              return;
+            }
+            avatarUrl = url;
           }
           if (supabase && u.id) {
-            await supabaseAuth.updateProfile(u.id, { nickname: u.nickname, avatar_url: avatarUrl });
-            await supabaseAuth.updateUserMetadata({ nickname: u.nickname, avatar_url: avatarUrl });
+            // 1.4.0 hotfix — 두 DB 쓰기를 명시적으로 verify. 둘 중 하나라도 실패하면
+            // 새로고침 시 hydrate 가 빈 값을 읽어 프로필이 기본으로 돌아가던 회귀 방지.
+            const { error: profileErr } = await supabaseAuth.updateProfile(u.id, { nickname: u.nickname, avatar_url: avatarUrl });
+            if (profileErr) {
+              console.warn("[avatar] updateProfile failed:", profileErr);
+              setToast(friendlyError(profileErr, "프로필 저장에 실패했어요. 다시 시도해주세요"));
+              return;
+            }
+            const { error: metaErr } = await supabaseAuth.updateUserMetadata({ nickname: u.nickname, avatar_url: avatarUrl });
+            if (metaErr) console.warn("[avatar] updateUserMetadata failed:", metaErr);
           }
           const updated = { ...u, avatar: avatarUrl };
           profileCacheRef.current = { userId: u.id, avatar: avatarUrl };
