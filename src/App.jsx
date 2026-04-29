@@ -26,9 +26,9 @@ import {
   BASE, CHALLENGE_WEEKS, CHALLENGE_DAYS, AI_CACHE_MAX, AI_CACHE_TTL_MS,
   PRODUCTS, MOODS, CATEGORIES, CAT_SOLID, CAT_ICON,
   CHALLENGE_MISSIONS, EXERCISE_TYPES,
-  AI_COACH_TONES, REPORT_REASONS,
+  AI_COACH_TONES, REPORT_REASONS, POPULAR_TAGS,
 } from "./constants.js";
-import { useDebouncedValue, useStoredState, useExit, useTimeGradient } from "./hooks.js";
+import { useDebouncedValue, useStoredState, useExit, useTimeGradient, useOptimisticToggle } from "./hooks.js";
 import { cls, formatRelativeTime } from "./utils/ui.js";
 import { getReviewProductNames } from "./utils/products.js";
 import {
@@ -43,7 +43,6 @@ import {
   ProductImage, SmartImg, Card, SectionTitle, SkeletonCard, MentionText, EmptyState,
   WeeklyLifestyleCards, PushPermissionBanner,
 } from "./components/index.js";
-import { SEED_REVIEWS, SEED_COMMENTS, POPULAR_TAGS } from "./mocks/seed.js";
 import { AppProvider, useAppContext } from "./contexts/AppContext.js";
 import { Capacitor } from "@capacitor/core";
 import { Share as CapShare } from "@capacitor/share";
@@ -113,9 +112,8 @@ class ErrorBoundary extends Component {
   }
 }
 
-// ---------- SEED DATA ----------
-// SEED_REVIEWS / SEED_COMMENTS / POPULAR_TAGS 는 src/mocks/seed.js 로 이전됨 (#29).
-// 상수(CATEGORIES, MOODS, CHALLENGE_*, AVATAR_OPTIONS 등)는 src/constants.js 로 이전됨.
+// 상수(CATEGORIES, MOODS, CHALLENGE_*, POPULAR_TAGS 등)는 src/constants.js 로 이전됨.
+// 1.4.0 — 시드 사용자/리뷰/댓글 mocks/seed.js 완전 제거 (audit P1-36).
 
 // MISSION_ICONS lookup 을 감싸는 작은 presentational 컴포넌트
 
@@ -126,19 +124,32 @@ class ErrorBoundary extends Component {
 // 서버측 Supabase Edge Function(`claude`)이 Anthropic API 키를 보유한다.
 // 클라이언트 번들에는 Anthropic 키가 포함되지 않는다.
 // 배포: supabase/functions/claude/README.md 참조.
+
+// P1-33: AI 호출 timeout — UI 안내(최대 20초) 위에 여유 10초 추가해 30s.
+// timeout 시 "ai_timeout" 으로 reject 해 caller 가 한국어 메시지를 띄우게 한다.
+const AI_CALL_TIMEOUT_MS = 30_000;
+const withAiTimeout = (promise, ms = AI_CALL_TIMEOUT_MS) => {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("ai_timeout")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+};
+
 const callClaude = async (prompt, maxTokens = 500) => {
   if (!supabase) {
     console.warn("Supabase 미설정 - Claude 폴백 사용");
     return null;
   }
   try {
-    const { data, error } = await supabase.functions.invoke("claude", {
+    const { data, error } = await withAiTimeout(supabase.functions.invoke("claude", {
       body: { prompt, max_tokens: maxTokens },
-    });
+    }));
     if (error) throw error;
     if (!data?.ok) throw new Error(data?.error || "claude_failed");
     return data.text || "";
   } catch (e) {
+    if (e?.message === "ai_timeout") throw e; // caller 에게 timeout 명시적 전달
     console.warn("Claude API 호출 실패, 폴백 사용:", e?.message || e);
     return null;
   }
@@ -146,6 +157,7 @@ const callClaude = async (prompt, maxTokens = 500) => {
 
 // Vision 호출 — data URL(base64) 이미지를 Claude 에 전달해 사진 분석.
 // 실패 시 null 반환 → 호출측이 텍스트 기반 폴백 사용.
+// timeout 시 "ai_timeout" throw → caller 가 친절한 한국어 안내 표시.
 const callClaudeVision = async (prompt, imageDataUrl, maxTokens = 500) => {
   if (!supabase || !imageDataUrl) return null;
   const match = /^data:(image\/\w+);base64,(.+)$/.exec(imageDataUrl);
@@ -153,7 +165,7 @@ const callClaudeVision = async (prompt, imageDataUrl, maxTokens = 500) => {
   const mediaType = match[1];
   const data = match[2];
   try {
-    const { data: resp, error } = await supabase.functions.invoke("claude", {
+    const { data: resp, error } = await withAiTimeout(supabase.functions.invoke("claude", {
       body: {
         messages: [{
           role: "user",
@@ -164,11 +176,12 @@ const callClaudeVision = async (prompt, imageDataUrl, maxTokens = 500) => {
         }],
         max_tokens: maxTokens,
       },
-    });
+    }));
     if (error) throw error;
     if (!resp?.ok) throw new Error(resp?.error || "claude_vision_failed");
     return resp.text || "";
   } catch (e) {
+    if (e?.message === "ai_timeout") throw e;
     console.warn("Claude Vision 호출 실패, 폴백 사용:", e?.message || e);
     return null;
   }
@@ -204,25 +217,31 @@ const aiMealAnalysis = async (mealType, photoDataUrl) => {
   const mealLabel = { breakfast: "아침", lunch: "점심", dinner: "저녁" }[mealType] || "식사";
 
   // 1) 사진이 있으면 Vision 분석 시도
+  // P1-33: callClaudeVision/callClaude 가 timeout 에 throw 할 수 있어 try 로 감싸 폴백 보장.
   if (photoDataUrl) {
     const visionPrompt = `이 사진은 사용자의 ${mealLabel} 식사입니다. 음식을 식별하고 영양 정보를 추정해주세요.
 - 여러 음식이 보이면 한 끼의 총합으로 합쳐 계산하세요.
 - 사진에 음식이 전혀 보이지 않으면 {"name":"음식 아님","cal":0,"protein":0,"carb":0,"fat":0}로 응답.
 - 한국 음식이면 한국어 이름, 외국 음식이면 현지어/한국어 혼용.
 JSON만 출력하세요 (코드블록/설명 없이): {"name":"음식 이름","cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`;
-    const visionText = await callClaudeVision(visionPrompt, photoDataUrl, 300);
-    const block = extractJsonBlock(visionText);
-    if (block) {
-      try { return { ...JSON.parse(block), isFallback: false, source: "vision" }; }
-      catch {}
-    }
+    try {
+      const visionText = await callClaudeVision(visionPrompt, photoDataUrl, 300);
+      const block = extractJsonBlock(visionText);
+      if (block) {
+        try { return { ...JSON.parse(block), isFallback: false, source: "vision" }; }
+        catch {}
+      }
+    } catch {} // timeout 등 — 텍스트 폴백으로 진행
   }
 
   // 2) Vision 실패 → 텍스트 기반 추정 폴백
-  const text = await callClaude(
-    `한국인의 일반적인 ${mealLabel} 식사 메뉴를 하나 추정해주세요. JSON만 응답: {"name":"음식 이름","cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`,
-    200
-  );
+  let text = null;
+  try {
+    text = await callClaude(
+      `한국인의 일반적인 ${mealLabel} 식사 메뉴를 하나 추정해주세요. JSON만 응답: {"name":"음식 이름","cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`,
+      200
+    );
+  } catch {} // timeout 등 — 고정 폴백으로 진행
   const block = extractJsonBlock(text);
   if (block) {
     try { return { ...JSON.parse(block), isFallback: false, source: "text" }; }
@@ -314,7 +333,9 @@ const _aiCacheSet = async (key, value, ttl = AI_CACHE_TTL_MS) => {
 const cachedCallClaude = async (cacheKey, prompt, maxTokens = 500, ttl = AI_CACHE_TTL_MS) => {
   const cached = await _aiCacheGet(cacheKey);
   if (cached) return cached;
-  const text = await callClaude(prompt, maxTokens);
+  // P1-33: callClaude 가 timeout 에 throw 할 수 있어 try 로 감싸 폴백 보장.
+  let text = null;
+  try { text = await callClaude(prompt, maxTokens); } catch {}
   if (text) await _aiCacheSet(cacheKey, text, ttl);
   return text;
 };
@@ -331,7 +352,9 @@ const summarizeProduct = async (product, reviews) => {
 장점 3개, 단점 2개, 전반 요약 1-2문장을 JSON으로만 응답하세요. 형식:
 {"pros":[{"text":"...","count":n},{"text":"...","count":n},{"text":"...","count":n}],"cons":[{"text":"...","count":n},{"text":"...","count":n}],"summary":"..."}
 리뷰 JSON: ${JSON.stringify(sample)}`;
-  const text = await callClaude(prompt, 800);
+  // P1-33: callClaude timeout 에 throw — null 반환 보장.
+  let text = null;
+  try { text = await callClaude(prompt, 800); } catch {}
   if (!text) return null;
   try {
     const cleaned = text.replace(/```json|```/g, "").trim();
@@ -1010,11 +1033,10 @@ const ReelsScreen = ({ reviews, onOpen, dark: _dark, user, challenge, dailyLogs,
 // ProfileSelfScreen — 내 프로필 (Waylog 매거진 스타일)
 // 상단 header (avatar + nick + stats) → bio + action buttons → 탭 → 컨텐츠 그리드
 // ============================================================
-const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, onOpen, onProductClick,
+const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, onOpen, onProductClick: _onProductClick,
   challenge, dailyLogs: _dailyLogs, onChallengeOpen, onChallengeStart: _onChallengeStart,
   onEditProfile, onOpenSettings, onAuthOpen, following, followingArr: _followingArr, community: _community,
   toggleFollow, onUserClick }) => {
-  const CATALOG = useCatalog();
   const [profileTab, setProfileTab] = useState("posts"); // posts | saved | tagged
   // 팔로워·팔로잉 수 — UserProfileScreen 과 동일 패턴.
   // 훅은 early-return 이전에 호출되어야 하므로 ProfileSelfScreen 상단에 둔다.
@@ -1049,7 +1071,6 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
   // 사용자의 리뷰만 필터
   const myReviews = reviews.filter((r) => r.authorId === user.id || r.author === user.nickname);
   const savedReviews = reviews.filter((r) => favs.has(r.id));
-  const savedProducts = (CATALOG || []).slice(0, 12); // 저장된 제품 — 지금은 샘플
 
   // 서버 count 우선. 로컬 following Set 은 초기 렌더/optimistic 반영용 (서버 fetch 완료 전).
   const followerCount = followCounts.followers;
@@ -1215,31 +1236,6 @@ const ProfileSelfScreen = ({ user, reviews, favs, toggleFav: _toggleFav, dark, o
           {savedReviews.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 px-4 pt-4">
               {savedReviews.map(renderGridItem)}
-            </div>
-          ) : savedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 px-4 pt-4">
-              {savedProducts.map((p) => {
-                const pCat = CATEGORIES[p.category];
-                return (
-                  <button key={p.id} onClick={() => onProductClick && onProductClick(p)}
-                    className="text-left active:scale-[0.98] transition">
-                    <div className={cls("relative w-full aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center p-6", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
-                      <ProductImage src={p.imageUrl} alt={p.name} className="max-w-full max-h-full object-contain" iconSize={28}/>
-                      {pCat && (
-                        <div className="absolute top-2 left-2">
-                          <span className={cls("text-xs font-black px-2 py-0.5 rounded-full", dark ? "bg-black/70 text-white" : "bg-white/95 text-black")}>
-                            {pCat.label}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className={cls("text-[13px] font-bold mt-2 line-clamp-2 leading-[1.35]", dark ? "text-white" : "text-black")}>
-                      {p.name}
-                    </p>
-                    {p.brand && <p className={cls("text-xs mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>{p.brand}</p>}
-                  </button>
-                );
-              })}
             </div>
           ) : (
             <EmptyGridHint dark={dark} icon={Bookmark} title="저장한 항목이 없어요"
@@ -2481,7 +2477,7 @@ const CommunityComposeModal = ({ onClose, onPost, dark, user, challenge, editing
   );
 };
 
-const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, onCompose, onEditPost, onDeletePost }) => {
+const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRequireAuth, comments, onAddComment, onDeleteComment, onToggleCommentLike, onCompose, onEditPost, onDeletePost, loading = false }) => {
   const [expanded, setExpanded] = useState({});
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -2497,7 +2493,27 @@ const CommunityScreen = ({ dark, posts, onLike, onShare, onUserClick, user, onRe
       <PenLine size={16} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/>
     </button>
 
-    {posts.length === 0 && (
+    {/* 첫 fetch 동안 skeleton — empty state 가 잠깐 떴다 사라지는 깜박임 방지 (P1-32) */}
+    {loading && posts.length === 0 && (
+      <div className="px-4 py-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={cls("py-4 border-b animate-pulse", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={cls("w-9 h-9 rounded-full", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}/>
+              <div className="flex-1 space-y-1.5">
+                <div className={cls("h-3 w-24 rounded", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}/>
+                <div className={cls("h-2.5 w-16 rounded", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}/>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className={cls("h-3 rounded", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}/>
+              <div className={cls("h-3 w-4/5 rounded", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}/>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+    {!loading && posts.length === 0 && (
       <div className="px-6 py-16 text-center">
         <div className={cls("w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center", dark ? "bg-[#121212]" : "bg-[#f2f2f2]")}>
           <Users size={28} strokeWidth={1.5} className="text-brand-500"/>
@@ -2827,7 +2843,11 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
     return list.slice(0, 10);
   }, [dq, CATALOG, filterCat, hasText, hasCat]);
 
-  const submit = (term) => { setQ(term); addRecent(term); };
+  // P1-40: 사용자가 검색을 "커밋"한 시점(태그/최근 클릭 또는 입력 blur)에만 트래킹.
+  // 타이핑마다 fire 하면 "샴푸" 4글자가 4번 → 분석 노이즈. blur·click 만 진짜 의도.
+  const trackSearch = (term) => analyticsEvents.search(term, results.length);
+  const submit = (term) => { setQ(term); addRecent(term); trackSearch(term); };
+  const onSearchBlur = () => { if (q) { addRecent(q); trackSearch(q); } };
 
   // 카테고리 또는 텍스트 중 하나라도 활성이면 결과 화면 — 카테고리 단독 필터도 지원
   const hasQuery = hasText || hasCat;
@@ -2841,7 +2861,7 @@ const SearchScreen = ({ reviews, onOpen, favs, toggleFav, dark, onClose, recents
         </button>
         <div className={cls("flex-1 min-w-0 flex items-center gap-2 px-3 py-2 rounded-full", dark ? "bg-[#1a1a1a]" : "bg-[#f2f2f2]")}>
           <Search size={16} className={cls("shrink-0", dark ? "text-[#a8a8a8]" : "text-[#737373]")}/>
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q && addRecent(q)}
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onBlur={onSearchBlur}
             placeholder="제품, 리뷰, 태그로 찾기"
             className={cls("flex-1 min-w-0 bg-transparent outline-none text-[14px]", dark ? "text-white placeholder-[#737373]" : "text-black placeholder-[#8e8e8e]")}/>
           {q && <button onClick={() => setQ("")} aria-label="지우기" className="shrink-0"><X size={14} className={dark ? "text-[#a8a8a8]" : "text-[#737373]"}/></button>}
@@ -3210,11 +3230,10 @@ const DetailScreen = ({ r, onBack, onOpen, reviews: allReviews, favs, toggleFav,
     setReportSheet(null);
   };
   // 관련 리뷰는 리뷰 수×태그 수가 많을 때 비용이 커짐 → memoize.
-  // 실데이터(allReviews)가 있으면 그것만 사용. 비어있을 때만 SEED_REVIEWS fallback
-  // (온보딩/빈 상태 UX 보장). 사용자 데이터와 시드가 섞여 이상한 추천이 나오는 것 방지.
+  // 실데이터(allReviews)만 사용. 시드 fallback 제거 (1.4.0 P1-36).
   const related = useMemo(() => {
     const tagSet = new Set(r.tags || []);
-    const pool = (allReviews && allReviews.length > 0) ? allReviews : SEED_REVIEWS;
+    const pool = allReviews || [];
     return pool
       .filter((x) => x.id !== r.id && (x.tags || []).some((t) => tagSet.has(t)))
       .slice(0, 4);
@@ -3802,11 +3821,8 @@ const FollowListModal = ({ title, userId, fetchFn, currentUser, following, onTog
 
 const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFollowing, onToggleFollow, following, onClose, onOpen, onUserClick, dark }) => {
   const [exiting, close] = useExit(onClose);
-  const userData = SEED_USERS[author];
-  const seedReviews = userData ? userData.reviewIds.map((id) => SEED_REVIEWS.find((r) => r.id === id)).filter(Boolean) : [];
-  const userReviews = reviews.filter((r) => r.author === author);
-  const allReviews = [...userReviews, ...seedReviews];
-  const finalAvatar = avatar || userData?.avatar || "";
+  const allReviews = reviews.filter((r) => r.author === author);
+  const finalAvatar = avatar || "";
   const isMe = currentUser && currentUser.nickname === author;
   const canFollow = !!userId && !isMe && !!currentUser;
 
@@ -3829,7 +3845,7 @@ const UserProfileScreen = ({ author, avatar, userId, reviews, currentUser, isFol
           <Avatar id={finalAvatar} size={48} className="w-24 h-24 mx-auto shadow-lg" rounded="rounded-full"/>
           <h2 className={cls("text-2xl font-black mt-4 tracking-tight break-words", dark ? "text-white" : "text-gray-900")}>{author}</h2>
           <p className={cls("text-xs mt-1.5 max-w-xs mx-auto line-clamp-3 break-words", dark ? "text-gray-400" : "text-gray-500")}>
-            {userData?.bio || (allReviews.length > 0 ? `${allReviews.length}개의 웨이로그를 기록 중` : "웨이로그 멤버")}
+            {allReviews.length > 0 ? `${allReviews.length}개의 웨이로그를 기록 중` : "웨이로그 멤버"}
           </p>
 
           <div className={cls("grid grid-cols-3 items-center mt-5 py-4 rounded-2xl", dark ? "bg-gray-800" : "bg-white")}>
@@ -3921,7 +3937,9 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
     reanalyzeTimer.current = setTimeout(async () => {
       setReanalyzing(true);
       const prompt = `"${newName.trim()}" 한 인분의 영양 정보를 추정해주세요. JSON만 응답: {"cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`;
-      const text = await callClaude(prompt, 150);
+      // P1-33: callClaude timeout 에 throw — try 로 감싸 reanalyzing flag 보존.
+      let text = null;
+      try { text = await callClaude(prompt, 150); } catch {}
       const block = extractJsonBlock(text);
       if (block) {
         try {
@@ -4563,6 +4581,8 @@ const ChallengeMainScreen = ({ challenge, setChallenge, dailyLogs, setDailyLogs,
       const next = has
         ? log.completedMissions.filter((id) => id !== missionId)
         : [...log.completedMissions, missionId];
+      // P1-40: 미션 완료(체크 추가) 시점에만 분석 이벤트 — uncheck 는 제외.
+      if (!has) analyticsEvents.missionCompleted(missionId);
       // 전체 완료 시 축하
       if (!has && next.length === weekMissions.missions.length) {
         setMissionToast("오늘의 미션 전체 클리어!");
@@ -5077,20 +5097,11 @@ const ChallengeEntryCard = ({ challenge, dailyLogs, dark, hero = false, onStart,
   );
 };
 
-const SEED_USERS = {
-  "건강한엄마": { avatar: "flower", reviewIds: [142, 152, 304], bio: "건강한 식탁을 사랑하는 두 아이 엄마" },
-  "라떼러버": { avatar: "coffee", reviewIds: [252, 254], bio: "하루 5잔 카페인 중독자" },
-  "다이어터김": { avatar: "leaf", reviewIds: [253, 302, 309], bio: "지속 가능한 다이어트 2년차" },
-  "요가맘": { avatar: "feather", reviewIds: [147, 311], bio: "매일 아침 명상과 요가" },
-};
-
-const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile, isFollowing, onToggleFollow, isBlocked, onToggleBlock, currentUser, dark }) => {
+const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen: _onOpen, onOpenProfile, isFollowing, onToggleFollow, isBlocked, onToggleBlock, currentUser, dark }) => {
   const [exiting, close] = useExit(onClose);
-  const userData = SEED_USERS[author];
-  const reviews = userData ? userData.reviewIds.map((id) => SEED_REVIEWS.find((r) => r.id === id)).filter(Boolean) : [];
-  const finalAvatar = avatar || userData?.avatar || "";
+  const finalAvatar = avatar || "";
   const isMe = currentUser && currentUser.nickname === author;
-  // user_id 가 있어야 Supabase 팔로우가 가능. 시드 author 는 user_id 없음.
+  // user_id 가 있어야 Supabase 팔로우가 가능.
   const canFollow = !!userId && !isMe && !!currentUser;
 
   return (
@@ -5102,29 +5113,9 @@ const UserMiniSheet = ({ author, avatar, userId, onClose, onOpen, onOpenProfile,
           <Avatar id={finalAvatar} size={36} className="w-20 h-20 shadow-lg" rounded="rounded-full"/>
           <div className="flex-1 min-w-0">
             <h3 className={cls("text-xl font-black tracking-tight", dark ? "text-white" : "text-gray-900")}>{author}</h3>
-            {userData?.bio && <p className={cls("text-xs mt-0.5", dark ? "text-gray-400" : "text-gray-500")}>{userData.bio}</p>}
-            <p className={cls("text-xs mt-1.5 font-bold", dark ? "text-brand-300" : "text-brand-600")}>웨이로그 {reviews.length}개 작성</p>
+            <p className={cls("text-xs mt-1.5", dark ? "text-gray-400" : "text-gray-500")}>웨이로그 멤버</p>
           </div>
         </div>
-        {reviews.length > 0 ? (
-          <div className="mt-5">
-            <p className={cls("text-xs font-bold uppercase tracking-wider mb-2", dark ? "text-gray-500" : "text-gray-500")}>최근 활동</p>
-            <div className="grid grid-cols-3 gap-2">
-              {reviews.slice(0, 3).map((r) => (
-                <button key={r.id} onClick={() => { close(); setTimeout(() => onOpen(r), 280); }}
-                  className="rounded-xl overflow-hidden active:scale-95 transition">
-                  <SmartImg r={r} className="w-full aspect-square object-cover"/>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={cls("mt-5 py-6 text-center rounded-2xl border-2 border-dashed", dark ? "border-gray-700 text-gray-500" : "border-gray-200 text-gray-400")}>
-            <Sparkles size={24} className="mx-auto mb-2 opacity-40"/>
-            <p className={cls("text-sm font-bold", dark ? "text-gray-300" : "text-gray-600")}>아직 공유한 활동이 없어요</p>
-            <p className="text-xs mt-1 opacity-80">마음에 드는 글을 친구들에게 공유해 보세요</p>
-          </div>
-        )}
         <div className="flex gap-2 mt-5">
           {canFollow && (
             <button onClick={() => onToggleFollow()}
@@ -5243,6 +5234,8 @@ function UserProfileRoute() {
 function AppInner() {
   const navigate = useNavigate();
   const location = useLocation();
+  // P1-39: optimistic+rollback 보일러플레이트 hook (likePost 1곳 마이그레이션 — 나머지 4곳은 P1.5.0)
+  const optimisticToggle = useOptimisticToggle();
   // 게시 직후 하이라이트할 리뷰 ID — 1.8초 후 자동 해제
   const [highlightId, setHighlightId] = useState(null);
   // toast: null | { msg: string, type: "info"|"success"|"error", action?: { label, onClick } }
@@ -5813,11 +5806,14 @@ function AppInner() {
   // hydrated/inFlight ref 분리 (audit P1-15) — 1.3.0 까지 ref 가 fetch 호출 전 set 돼서
   // 첫 fetch 실패 시 영구 빈 화면이었음. 이제 성공 후 hydrated set, 실패 시 false 유지 →
   // deps 변경(예: 사용자 재로그인)에 자동 재시도 가능.
+  // P1-32: communityLoading 으로 첫 fetch 동안 empty state(가짜 "글이 없어요") 깜박임 방지.
   const communityHydratedRef = useRef(false);
   const communityInFlightRef = useRef(false);
+  const [communityLoading, setCommunityLoading] = useState(true);
   useEffect(() => {
     if (authLoading || communityHydratedRef.current || communityInFlightRef.current) return;
     communityInFlightRef.current = true;
+    setCommunityLoading(true);
     let cancelled = false;
     (async () => {
       try {
@@ -5855,6 +5851,7 @@ function AppInner() {
         // hydrated false 유지 — 다음 deps 변경 시 자동 재시도
       } finally {
         communityInFlightRef.current = false;
+        if (!cancelled) setCommunityLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -5938,7 +5935,7 @@ function AppInner() {
   }, [setToast]);
 
   const [recents, setRecents] = useStoredState("waylog:recents", []);
-  const [commentsMap, setCommentsMap] = useState(SEED_COMMENTS);
+  const [commentsMap, setCommentsMap] = useState({});
   // 커뮤니티 — Supabase community_posts 테이블에서 fetch.
   // 이전에는 localStorage 만 사용해 다른 사용자에게 보이지 않던 버그 수정 (2026-04-19).
   const [community, setCommunity] = useState([]);
@@ -6087,13 +6084,9 @@ function AppInner() {
   }, [notifOpen]);
 
   const reviews = useMemo(() => {
-    // 서버/로컬 pending 리뷰 우선. 실제 데이터가 있으면 seed 를 절대 섞지 않음 (테스트 데이터 혼선 방지).
-    // userReviews 가 완전히 비어있을 때만 onboarding 용 seed fallback — 빈 화면 대신 예시 표시.
-    const real = userReviews.filter((r) => !blocked.has(r.author));
-    if (real.length > 0) return real;
-    if (reviewsLoading) return []; // 로딩 중엔 빈 배열 → skeleton 표시
-    return SEED_REVIEWS.filter((r) => !blocked.has(r.author));
-  }, [userReviews, blocked, reviewsLoading]);
+    // 1.4.0 P1-36: seed fallback 제거 — 빈 상태는 EmptyState 가 처리.
+    return userReviews.filter((r) => !blocked.has(r.author));
+  }, [userReviews, blocked]);
 
   // ---------- Challenge State ----------
   // localStorage가 오프라인/미로그인 캐시 역할을 하고, 로그인 시 Supabase와 양방향 동기화.
@@ -6251,7 +6244,7 @@ function AppInner() {
 
   const toggleFav = useCallback(async (id) => {
     const has = favsArr.includes(id);
-    const rev = [...userReviews, ...SEED_REVIEWS].find((x) => x.id === id);
+    const rev = userReviews.find((x) => x.id === id);
     const prevMood = moods[id];
 
     // 취향 학습 (로컬)
@@ -6265,6 +6258,7 @@ function AppInner() {
 
     // 낙관적 업데이트
     setFavsArr((prev) => has ? prev.filter((x) => x !== id) : [...prev, id]);
+    analyticsEvents.favToggled(id, !has); // P1-40
 
     // Supabase 동기화 — 숫자 id 는 아직 서버 sync 전 local pending 리뷰.
     // favorites.review_id 는 uuid 컬럼이라 insert 시도 시 type 거부 → 토스트 발생.
@@ -6314,7 +6308,7 @@ function AppInner() {
       const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
       allKeys.forEach((rid) => {
         if (next[rid] !== prev[rid]) {
-          const rev = [...userReviews, ...SEED_REVIEWS].find((x) => x.id === Number(rid));
+          const rev = userReviews.find((x) => x.id === Number(rid));
           if (rev) {
             if (prev[rid] === "love" || prev[rid] === "wow") learnFrom(rev, -2);
             if (next[rid] === "love" || next[rid] === "wow") learnFrom(rev, 2);
@@ -6466,16 +6460,18 @@ function AppInner() {
       const safeUrl = typeof m.url === "string" && /^https?:/i.test(m.url) ? m.url : "";
       if (safeUrl) uploaded.push({ id: m.id, type: m.type, url: safeUrl, duration: m.duration });
     }
+    // P1-29/P1-30: 토스트는 caller(submitReview) 가 결정. 호출측에서 사용자에게
+    // 명시적 안내(longer action toast)를 줄 수 있게 failures + 친화적 사유까지 같이 반환.
+    let detail = "";
     if (failures > 0) {
       const reason = lastError?.message || lastError?.error || "";
-      const hint = /bucket|not found/i.test(reason)
-        ? " (Supabase 'review-media' 버킷 확인 필요)"
+      detail = /bucket|not found/i.test(reason)
+        ? "이미지 저장소를 찾을 수 없어요"
         : /policy|permission|row.level|rls/i.test(reason)
-          ? " (Storage RLS 정책 확인 필요)"
-          : reason ? ` (${reason})` : "";
-      setToast(`업로드 ${failures}개 실패${hint}`);
+          ? "이미지 저장 권한이 없어요"
+          : (reason ? friendlyError(lastError, "") : "");
     }
-    return uploaded;
+    return { uploaded, failures, failureDetail: detail };
   };
 
   const submitReview = async (data) => {
@@ -6526,8 +6522,25 @@ function AppInner() {
         savePendingEdit(uid, reviewId, basePayload).catch(() => {});
         (async () => {
           let uploaded = localMedia;
-          try { uploaded = await uploadMedia(data.media || []); } catch {}
+          let uploadFailures = 0;
+          let uploadDetail = "";
+          try {
+            const res = await uploadMedia(data.media || []);
+            uploaded = res.uploaded;
+            uploadFailures = res.failures || 0;
+            uploadDetail = res.failureDetail || "";
+          } catch {}
           if (userIdRef.current !== uid) return; // 업로드 도중 로그아웃/사용자 교체 시 중단
+          // P1-30: 사진 업로드 일부/전체 실패 시 사용자에게 명시적 안내 (6s action toast).
+          if (uploadFailures > 0) {
+            setToast({
+              msg: uploadDetail
+                ? `사진 ${uploadFailures}개 업로드 실패 — ${uploadDetail}. 사진 없이 저장됐어요`
+                : `사진 ${uploadFailures}개 업로드 실패. 사진 없이 저장됐어요`,
+              type: "error",
+              action: { label: "다시 시도", onClick: () => loadReviewsRef.current?.() },
+            });
+          }
           const payload = { ...basePayload, media: uploaded };
           // 업로드 반영된 payload 로 pending 갱신
           await savePendingEdit(uid, reviewId, payload);
@@ -6569,6 +6582,7 @@ function AppInner() {
       authorAvatar: user?.avatar || "",
     };
     setUserReviews((prev) => [localR, ...prev]);
+    analyticsEvents.reviewCreated(data.category); // P1-40
 
     setTimeout(() => {
       navigate("/feed");
@@ -6584,9 +6598,26 @@ function AppInner() {
     const uid = user.id;
     (async () => {
       let uploaded = localMedia;
-      try { uploaded = await uploadMedia(data.media || []); } catch {}
+      let uploadFailures = 0;
+      let uploadDetail = "";
+      try {
+        const res = await uploadMedia(data.media || []);
+        uploaded = res.uploaded;
+        uploadFailures = res.failures || 0;
+        uploadDetail = res.failureDetail || "";
+      } catch {}
       // 업로드 도중 사용자 바뀌었으면 중단 (로그아웃/계정 교체)
       if (userIdRef.current !== uid) return;
+      // P1-30: 사진 업로드 일부/전체 실패 시 사용자에게 명시적 안내 (6s action toast).
+      if (uploadFailures > 0) {
+        setToast({
+          msg: uploadDetail
+            ? `사진 ${uploadFailures}개 업로드 실패 — ${uploadDetail}. 사진 없이 발행됐어요`
+            : `사진 ${uploadFailures}개 업로드 실패. 사진 없이 발행됐어요`,
+          type: "error",
+          action: { label: "다시 시도", onClick: () => loadReviewsRef.current?.() },
+        });
+      }
       // mapReviewRow 와 동일하게 첫 미디어 URL 사용 (이미지 우선이지만 동영상-only 게시도 썸네일 영상으로 표시)
       const serverThumb = uploaded[0]?.url || "";
       // 업로드 결과를 로컬 pending 에도 반영 (다음 앱 실행 시 재시도할 때 동일한 media URL 사용)
@@ -6735,6 +6766,7 @@ function AppInner() {
         );
       }
     }
+    analyticsEvents.commentAdded(rid); // P1-40
     return true;
   }, [user, commentsMap, reviews, setToast]);
 
@@ -6857,39 +6889,34 @@ function AppInner() {
     }
     setUser(null);
     resetUserState();
+    analyticsEvents.authLogout(); // P1-40
     setToast("로그아웃되었어요");
   };
 
+  // P1-39: 5곳에서 반복되던 optimistic+rollback 보일러플레이트의 첫 마이그레이션 (likePost).
+  // 다른 4곳 (toggleFav, toggleFollow, toggleCommentLike, toggleCommunityCommentLike) 은
+  // push 알림/취향 학습/힌트 토스트 등 부수효과가 얽혀 점진적 이관 권장 → P1.5.0 으로 이월.
   const likePost = async (id) => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
     // 임시 id (optimistic 게시물) 는 서버에 아직 없으므로 좋아요 스킵
     if (typeof id !== "string" || id.startsWith("temp-")) return;
     const wasLiked = likedPostIds.has(id);
-    // 낙관적 업데이트
-    setLikedPostIds((prev) => {
+    const togglePostId = (add) => setLikedPostIds((prev) => {
       const next = new Set(prev);
-      if (wasLiked) next.delete(id); else next.add(id);
+      if (add) next.add(id); else next.delete(id);
       return next;
     });
-    setCommunity((prev) => prev.map((p) => p.id === id
-      ? { ...p, likes: Math.max(0, (p.likes || 0) + (wasLiked ? -1 : 1)) }
+    const adjustLikeCount = (delta) => setCommunity((prev) => prev.map((p) => p.id === id
+      ? { ...p, likes: Math.max(0, (p.likes || 0) + delta) }
       : p));
-    // 서버 동기화
-    const { error } = wasLiked
-      ? await supabaseCommunity.unlikePost(user.id, id)
-      : await supabaseCommunity.likePost(user.id, id);
-    if (error) {
-      // 롤백
-      setLikedPostIds((prev) => {
-        const next = new Set(prev);
-        if (wasLiked) next.add(id); else next.delete(id);
-        return next;
-      });
-      setCommunity((prev) => prev.map((p) => p.id === id
-        ? { ...p, likes: Math.max(0, (p.likes || 0) + (wasLiked ? 1 : -1)) }
-        : p));
-      setToast("좋아요 반영에 실패했어요");
-    }
+    await optimisticToggle({
+      apply: () => { togglePostId(!wasLiked); adjustLikeCount(wasLiked ? -1 : 1); },
+      rollback: () => { togglePostId(wasLiked); adjustLikeCount(wasLiked ? 1 : -1); },
+      serverCall: () => wasLiked
+        ? supabaseCommunity.unlikePost(user.id, id)
+        : supabaseCommunity.likePost(user.id, id),
+      onError: () => setToast("좋아요 반영에 실패했어요"),
+    });
   };
 
   const addCommunityPost = async (text, product = null, image = null, meta = {}) => {
@@ -6953,7 +6980,8 @@ function AppInner() {
     }
     if (error || !created?.id) {
       setCommunity((prev) => prev.filter((p) => p.id !== tempId));
-      setToast(`게시 실패: ${error?.message || "알 수 없음"}`);
+      // P1-29: raw supabase 메시지 노출 금지 — 한국어로 매핑.
+      setToast(friendlyError(error, "게시에 실패했어요. 잠시 후 다시 시도해주세요"));
       return;
     }
     setCommunity((prev) => prev.map((p) => p.id === tempId
@@ -7166,6 +7194,7 @@ function AppInner() {
         comments: (communityComments[p.id] || []).length,
         liked: likedPostIds.has(p.id),
       }))}
+      loading={communityLoading}
       onLike={likePost} onUserClick={openUser}
       user={user}
       onRequireAuth={() => { setAuthOpen(true); setToast("로그인이 필요해요"); }}
@@ -7732,6 +7761,7 @@ function AppInner() {
           // 다른 디바이스·새로고침 후에도 그래프에 시작점이 표시됨 (audit P1-12).
           // 1.3.0 까지 raw setter 라 server 동기화 누락.
           setChallengeInbodySync([{ id: Date.now(), date: new Date().toISOString(), weight: data.weight, bodyFat: data.bodyFat, muscle: 0, bmi: data.bmi }]);
+          analyticsEvents.challengeStarted(); // P1-40
           setToast("챌린지가 시작됐어요!");
           pushNotif("바디키 8주 챌린지가 시작됐어요!");
           setTimeout(() => setChallengeMainOpen(true), 300);
