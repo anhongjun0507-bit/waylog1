@@ -85,7 +85,10 @@ export const InbodyScreen = ({ records, onAdd, onClose, dark, user, onAnalyzeIma
       setAnalysisResult(result);
     } catch (err) {
       const code = err?.message || "";
-      if (code === "ai_unavailable") {
+      if (code === "ai_timeout") {
+        // P1-33: 30초 timeout — 네트워크 지연/서버 응답 지연 시 무한 대기 방지.
+        onToast?.("분석 시간이 초과됐어요. 잠시 후 다시 시도해주세요");
+      } else if (code === "ai_unavailable") {
         onToast?.("AI 분석을 잠시 사용할 수 없어요. 수동으로 입력해주세요");
       } else if (code === "ai_parse_failed") {
         onToast?.("사진을 인식하지 못했어요. 다른 각도로 다시 찍어주세요");
