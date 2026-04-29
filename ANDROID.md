@@ -61,6 +61,11 @@ npm run android:open         # 빌드 + sync + Studio 실행
 
 ## 4. 릴리스 빌드 (AAB — Play Store 업로드용)
 
+> **현재 운영 경로**: 로컬/Sandbox 환경에서는 Gradle 빌드 불가(Android SDK 부재).
+> 운영은 **GitHub Actions** 의 `Android Release AAB` 워크플로 사용 중.
+> 4-1 ~ 4-4 단계는 신규 환경에 처음 셋업하거나 로컬 디버그 빌드용 참고.
+> 일상 빌드는 [4-5. GitHub Actions 빌드](#4-5-github-actions-빌드-현재-운영-방식) 로.
+
 ### 4-1. 서명 키 생성 (1회, 안전 백업 필수)
 
 ```bash
@@ -122,6 +127,32 @@ npm run android:release
 ```
 
 이 `.aab` 파일을 Play Console 에 업로드합니다.
+
+### 4-5. GitHub Actions 빌드 (현재 운영 방식)
+
+워크플로 파일: `.github/workflows/android-release.yml`
+
+**트리거**:
+- 수동: GitHub repo → Actions 탭 → "Android Release AAB" → "Run workflow"
+- 태그 push: `git tag v1.4.0 && git push origin v1.4.0` 시 자동 실행
+
+**필요한 GitHub Repo Secrets** (Settings → Secrets and variables → Actions):
+
+| Name | 값 |
+|---|---|
+| `VITE_SUPABASE_URL` | Vercel 환경변수와 동일 |
+| `VITE_SUPABASE_ANON_KEY` | Vercel 환경변수와 동일 |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -i ~/waylog-release.jks` 결과 |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore 비밀번호 |
+| `ANDROID_KEY_ALIAS` | `waylog` (4-1 단계 설정값) |
+| `ANDROID_KEY_PASSWORD` | key 비밀번호 |
+
+**결과 다운로드**:
+워크플로 실행 결과 페이지 하단의 Artifacts → `app-release-aab` 다운로드 → `app-release.aab` 추출 → Play Console 업로드.
+
+`VITE_FIREBASE_*` 는 native 빌드에 직접 들어가지 않음 (FCM 은 `android/app/google-services.json` 에서 읽음). 웹 푸시는 Vercel 환경변수만 사용.
+
+⚠️ **Sandbox 빌드 불가**: 이 저장소가 동작하는 Sandbox/IDX 환경에는 Android SDK 가 설치돼 있지 않아 `./gradlew bundleRelease` 실행 시 SDK location 에러. 변경 후 빌드 검증이 필요한 경우 GitHub Actions 트리거.
 
 ---
 
