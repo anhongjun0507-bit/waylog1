@@ -11,6 +11,10 @@ import {
 // 레거시 상대경로 이미지 CDN 접두 (빈 문자열이면 상대경로 그대로 사용)
 export const BASE = import.meta.env.VITE_MEDIA_BASE || "";
 
+// 검색 화면 "지금 뜨는 태그" 칩에 노출되는 고정 태그 목록.
+// 추후 서버 집계로 대체 예정.
+export const POPULAR_TAGS = ["다이어트","푸로틴","비타민","더마아키텍트","바디워시","샴푸","원포원","나눔","힐링","무수분요리","명상","면역"];
+
 // 챌린지 기간
 export const CHALLENGE_WEEKS = 8;
 export const CHALLENGE_DAYS = CHALLENGE_WEEKS * 7;
