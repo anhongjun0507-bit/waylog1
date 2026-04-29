@@ -140,3 +140,38 @@ export const useTimeGradient = (dark = false) => {
   const map = dark ? darkMap : lightMap;
   return map.find((m) => hour >= m.range[0] && hour < m.range[1]) || map[0];
 };
+
+// optimistic toggle 보일러플레이트 — apply → server → rollback on error.
+// 5곳(toggleFav/toggleFollow/likePost/toggleCommentLike/toggleCommunityCommentLike)에서
+// 거의 동일한 형태로 반복되어 일관된 추출 (audit P1-39).
+//
+// 사용:
+//   const optimisticToggle = useOptimisticToggle();
+//   await optimisticToggle({
+//     apply: () => setX(next),                 // optimistic UI 갱신
+//     rollback: () => setX(prev),              // 서버 실패 시 원복
+//     serverCall: () => api.toggle(...),       // {error?} 또는 throw 하는 Promise
+//     onError: (err) => setToast("실패"),       // 사용자 피드백 (선택)
+//   });
+//
+// React 18.3 환경 — React 19 의 useOptimistic 미사용 (호환성 우선).
+// 추가 부수효과(push 알림, 학습, 히트 등)는 caller 에서 apply/onSuccess 직후에 직접 실행.
+export const useOptimisticToggle = () => {
+  return useCallback(async ({ apply, rollback, serverCall, onError }) => {
+    apply();
+    if (!serverCall) return { ok: true };
+    try {
+      const result = await serverCall();
+      if (result?.error) {
+        rollback();
+        if (onError) onError(result.error);
+        return { ok: false, error: result.error };
+      }
+      return { ok: true, data: result?.data };
+    } catch (e) {
+      rollback();
+      if (onError) onError(e);
+      return { ok: false, error: e };
+    }
+  }, []);
+};
