@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase, auth as supabaseAuth } from "../supabase.js";
 import { friendlyError } from "../utils/errors.js";
+import { events as analyticsEvents } from "../utils/analytics.js";
 import { cls } from "../utils/ui.js";
 import { useExit } from "../hooks.js";
 import { Avatar } from "../components/index.js";
@@ -102,6 +103,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           // app_metadata.role 보존 — 누락 시 관리자 계정도 admin 메뉴 못 봄 (audit P0-4).
           app_metadata: data?.user?.app_metadata || {},
         });
+        analyticsEvents.authSignup(); // P1-40
         close();
       } catch (e) {
         setLoading(false);
@@ -143,6 +145,7 @@ const AuthScreen = ({ onClose, onAuth, dark }) => {
           // app_metadata.role 보존 — 관리자 계정의 모더레이션 메뉴 노출 (audit P0-4).
           app_metadata: data.user.app_metadata || {},
         });
+        analyticsEvents.authLogin(); // P1-40
         close();
       } catch (e) {
         setLoading(false);
