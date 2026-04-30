@@ -24,6 +24,30 @@ export const getPlatform = () => {
 // 네이티브: @capacitor/push-notifications 로 FCM/APNs 토큰 획득 후
 //   push_subscriptions 테이블에 동일 스키마로 저장 (endpoint 대신 토큰)
 
+// 1.4.5: Android 8+ 알림 채널 생성 — IMPORTANCE_HIGH 로 heads-up 알림 보장.
+// FCM 의 send-push 가 channel_id="waylog_push_default" 로 메시지 전송하므로
+// 동일 ID 의 채널이 디바이스에 존재해야 OS 가 그 채널 importance 로 표시.
+// 채널은 한 번 생성되면 OS 영구 보존 — 매번 호출해도 멱등.
+export const ensurePushChannel = async () => {
+  if (!isNative() || getPlatform() !== "android") return;
+  try {
+    const { PushNotifications } = await import("@capacitor/push-notifications");
+    if (typeof PushNotifications.createChannel !== "function") return;
+    await PushNotifications.createChannel({
+      id: "waylog_push_default",
+      name: "웨이로그 알림",
+      description: "좋아요·댓글·팔로우·챌린지 알림",
+      importance: 5, // IMPORTANCE_HIGH (heads-up + 사운드)
+      visibility: 1, // VISIBILITY_PUBLIC (잠금화면 표시)
+      sound: "default",
+      vibration: true,
+      lights: true,
+    });
+  } catch (e) {
+    console.warn("createChannel 실패:", e);
+  }
+};
+
 /**
  * 네이티브 푸시 권한 요청 + 토큰 등록.
  * 반환: { platform, token } | null
@@ -34,6 +58,8 @@ export const registerNativePush = async (userId) => {
     const { PushNotifications } = await import("@capacitor/push-notifications");
     const perm = await PushNotifications.requestPermissions();
     if (perm.receive !== "granted") return null;
+    // 1.4.5: register() 전에 채널 보장 — 첫 메시지가 default 채널로 가지 않도록.
+    await ensurePushChannel();
     await PushNotifications.register();
     // 실제 토큰 수신은 이벤트로. Promise 로 감싸 반환.
     return new Promise((resolve) => {

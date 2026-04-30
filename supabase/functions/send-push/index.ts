@@ -161,10 +161,21 @@ async function sendFCM(
             webpush: {
               fcm_options: { link: data.url || "/" },
             },
-            // 안드로이드 push 옵션
+            // 1.4.5: 알림 도달 즉시화 + heads-up 표시.
+            //   priority "high" — FCM 메시지 전달 즉시 (Android Doze 우회)
+            //   notification_priority "PRIORITY_MAX" — heads-up 알림으로 표시
+            //   channel_id "waylog_push_default" — Android 8+ IMPORTANCE_HIGH 채널
+            //   default_sound true — 기본 알림음
+            //   default_vibrate_timings true — 기본 진동
             android: {
-              priority: "HIGH",
-              notification: { sound: "default" },
+              priority: "high",
+              notification: {
+                sound: "default",
+                channel_id: "waylog_push_default",
+                notification_priority: "PRIORITY_MAX",
+                default_sound: true,
+                default_vibrate_timings: true,
+              },
             },
           },
         }),

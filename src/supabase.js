@@ -201,9 +201,17 @@ export const auth = {
   },
   async updateProfile(userId, patch) {
     if (!supabase) return noop
+    // 1.4.5: PostgREST upsert + RLS 가 어떤 path 에서 silent fail (profiles.avatar_url
+    // 만 안 갱신되는 회귀) — SECURITY DEFINER RPC `update_my_profile` 로 통일.
+    // userId 인자는 호환성 위해 받지만 실제로는 auth.uid() 사용 (서버 측 신뢰).
     try {
-      return await supabase.from('profiles').upsert({ id: userId, ...patch, updated_at: new Date().toISOString() })
-        .select().single()
+      const { data, error } = await supabase.rpc('update_my_profile', {
+        _nickname: patch?.nickname ?? null,
+        _avatar_url: patch?.avatar_url ?? null,
+        _bio: typeof patch?.bio === 'string' ? patch.bio : null,
+      })
+      if (error) return { data: null, error }
+      return { data, error: null }
     } catch (e) { return { data: null, error: e } }
   },
   // 회원가입/최초 로그인 시 profile 테이블에 row 가 없으면 생성.

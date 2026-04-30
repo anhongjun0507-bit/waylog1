@@ -45,6 +45,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- 1.4.5: FCM 메시지가 channel_id 미지정으로 와도 IMPORTANCE_HIGH 채널 사용 -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="waylog_push_default" />
     </application>
 
     <!-- ========== 권한 ========== -->

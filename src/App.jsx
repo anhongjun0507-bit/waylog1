@@ -5984,6 +5984,9 @@ function AppInner() {
         if (platform !== "android" && platform !== "ios") return;
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
+        const { ensurePushChannel } = await import("./utils/platform.js");
+        // 채널은 권한과 무관하게 미리 보장 — 권한 허용 후 첫 알림이 IMPORTANCE_HIGH 로 표시.
+        await ensurePushChannel();
         const { receive } = await PushNotifications.checkPermissions();
         // granted/denied 면 OS 가 이미 결정 완료 — 다이얼로그 다시 못 띄움. skip.
         if (receive === "granted" || receive === "denied") return;
