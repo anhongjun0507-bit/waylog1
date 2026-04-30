@@ -169,3 +169,11 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# ===== Edge Functions 함수별 설정 =====
+# send-challenge-reminders 는 GitHub Actions cron 이 호출 (사용자 JWT 없음).
+# CRON_SECRET 헤더로 자체 인증하므로 platform JWT 검증을 끈다.
+# 이 설정 없이 기본값(verify_jwt=true)으로 두면 platform 단계에서 401 반환되어
+# 함수 본체의 CRON_SECRET 검증 로직에 도달하지 못함 (1.4.0 회귀).
+[functions.send-challenge-reminders]
+verify_jwt = false

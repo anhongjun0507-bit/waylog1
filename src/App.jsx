@@ -5423,41 +5423,50 @@ function AppInner() {
   }, [user?.id]);
 
   // 세션 한 번당 profile 은 한 번만 fetch (토큰 리프레시 때마다 재요청 방지)
-  const profileCacheRef = useRef({ userId: null, avatar: "" });
-  // 동기 빌드: 세션만으로 즉시 user 객체 생성. avatar 는 캐시 또는 user_metadata fallback.
+  const profileCacheRef = useRef({ userId: null, avatar: "", nickname: "", bio: "" });
+  // 동기 빌드: 세션만으로 즉시 user 객체 생성. avatar/nickname 은 캐시 또는 user_metadata fallback.
   // getProfile 을 blocking 경로에서 제거 — 새로고침 직후 GoTrueClient 내부 초기화와
   // 경쟁해 쿼리가 hang 할 경우 authLoading 이 풀리지 않는 회귀 원인이었음.
+  // 1.4.1: bio 필드 추가. user_metadata 에 bio 가 있으면 사용, 없으면 빈 문자열.
   const buildUserFromSession = (session) => {
     const meta = session.user.user_metadata || {};
-    const avatar = profileCacheRef.current.userId === session.user.id
-      ? profileCacheRef.current.avatar
-      : (meta.avatar_url || "");
+    const cached = profileCacheRef.current.userId === session.user.id ? profileCacheRef.current : null;
     return {
       id: session.user.id,
       email: session.user.email,
-      nickname: meta.nickname || session.user.email.split("@")[0],
-      avatar,
+      nickname: cached?.nickname || meta.nickname || session.user.email.split("@")[0],
+      avatar: cached?.avatar || meta.avatar_url || "",
+      bio: cached?.bio !== undefined ? cached.bio : (meta.bio || ""),
       joinedAt: session.user.created_at,
       // app_metadata 는 Supabase Dashboard·admin API 로만 설정되는 신뢰 가능한 metadata.
       // SettingsScreen 의 isAdmin 판정에 필요 — 빠지면 관리자 메뉴 영구 비표시 (audit P0-4).
       app_metadata: session.user.app_metadata || {},
     };
   };
-  // 비동기 avatar hydrate: 실패/지연해도 user state 와 authLoading 해제는 이미 완료.
-  // 1.4.0 P0 hotfix — 빈 avatar_url 로 user state 덮어쓰지 않음. 새로고침 직후 profile fetch 가
-  // 일시 실패하거나 RLS 가 막거나 row 가 비어있을 때, session.user_metadata.avatar_url
-  // (buildUserFromSession 이 이미 적용한 값) 을 보존해 "프로필 사진이 기본으로 돌아가는" 회귀 차단.
-  const hydrateProfileAvatar = async (userId) => {
+  // 비동기 profile hydrate: 실패/지연해도 user state 와 authLoading 해제는 이미 완료.
+  // 1.4.0 P0 hotfix — 빈 avatar_url 로 user state 덮어쓰지 않음.
+  // 1.4.1: avatar 외 nickname/bio 도 profiles 에서 master 로 덮어씀. updateUserMetadata 가
+  // silent fail 했거나 다른 디바이스에서 가져온 옛 user_metadata 를 profiles 의 최신값으로
+  // 정정. 빈 값(서버에 비어있음)은 wipe 하지 않고 기존 값 유지.
+  const hydrateProfile = async (userId) => {
     if (!userId || profileCacheRef.current.userId === userId) return;
     try {
       const { data: profile } = await supabaseAuth.getProfile(userId);
       const avatar = profile?.avatar_url || "";
-      profileCacheRef.current = { userId, avatar };
+      const nickname = profile?.nickname || "";
+      // bio 컬럼이 스키마에 없을 수 있음 (1.4.1 시점) — undefined 면 무시.
+      const bioRaw = profile?.bio;
+      const bio = typeof bioRaw === "string" ? bioRaw : "";
+      profileCacheRef.current = { userId, avatar, nickname, bio };
       setUser((prev) => {
         if (!prev || prev.id !== userId) return prev;
-        // 빈 값으로 기존 avatar 를 wipe 하지 않음 — 메타데이터의 최신 값 유지
-        if (!avatar && prev.avatar) return prev;
-        return { ...prev, avatar };
+        return {
+          ...prev,
+          // 빈 값으로 기존 값을 wipe 하지 않음 — 서버 RLS 거부·일시 fail 시 옛 데이터 보존
+          avatar: avatar || prev.avatar,
+          nickname: nickname || prev.nickname,
+          bio: bioRaw === undefined ? prev.bio : bio,
+        };
       });
     } catch {}
   };
@@ -5479,7 +5488,7 @@ function AppInner() {
         if (cancelled) return;
         if (session?.user) {
           setUser(buildUserFromSession(session));      // 동기, 즉시 완료
-          hydrateProfileAvatar(session.user.id);        // 백그라운드, 결과 대기 안 함
+          hydrateProfile(session.user.id);        // 백그라운드, 결과 대기 안 함
         }
       } catch (e) {
         console.warn("초기 세션 로드 실패:", e);
@@ -5501,7 +5510,7 @@ function AppInner() {
           }
           if (session?.user) {
             setUser(buildUserFromSession(session));
-            hydrateProfileAvatar(session.user.id);
+            hydrateProfile(session.user.id);
             if (event === "SIGNED_IN") {
               setAuthOpen(false);
               // DB trigger 미설정 환경 방어: profile row 없으면 생성 (idempotent).
@@ -7358,7 +7367,14 @@ function AppInner() {
   // 1.4.0 — 네이티브 푸시 알림 탭 → deep link (audit P1-20).
   // send-push 가 data.url 을 세팅해 보내지만 클라이언트가 listener 미등록이라 홈만 열렸음.
   // 백그라운드/종료 상태에서 알림 탭 시 앱 부팅 후 1회 발화.
+  //
+  // 1.4.1: 비로그인 신규 사용자에게서 첫 실행 후 3~5초 종료 회귀가 보고됨.
+  // 1.3.0 까지 mount-time 에 PushNotifications 플러그인을 만지지 않았으나, P1-20 에서
+  // mount 즉시 addListener 호출로 native plugin 초기화가 권한 미허용 + Android 13+ 에서
+  // race 상태가 됐을 가능성. 비로그인 사용자는 알림 받을 수 없으므로 deep link listener
+  // 도 불필요. user?.id 가 있을 때(= 로그인 후)에만 등록하도록 가드 추가.
   useEffect(() => {
+    if (!user?.id) return;
     let sub;
     let cancelled = false;
     import("./utils/platform.js").then(({ initPushClickHandler }) =>
@@ -7379,7 +7395,7 @@ function AppInner() {
       cancelled = true;
       sub?.remove?.();
     };
-  }, [navigate]);
+  }, [user?.id, navigate]);
 
   // SearchScreen 은 라우트가 아닌 state 기반 오버레이라 브라우저 back 이 반응하지 않음.
   // history sentinel 로 우회: 열 때 push → 브라우저 back → popstate → setSearch(false).
@@ -7724,20 +7740,36 @@ function AppInner() {
             }
             avatarUrl = url;
           }
+          // bio 가 caller 에 의해 전달되면 같이 저장. 미전달이면 기존 값 유지.
+          const bioPatch = typeof u.bio === "string" ? { bio: u.bio } : {};
           if (supabase && u.id) {
-            // 1.4.0 hotfix — 두 DB 쓰기를 명시적으로 verify. 둘 중 하나라도 실패하면
-            // 새로고침 시 hydrate 가 빈 값을 읽어 프로필이 기본으로 돌아가던 회귀 방지.
-            const { error: profileErr } = await supabaseAuth.updateProfile(u.id, { nickname: u.nickname, avatar_url: avatarUrl });
+            // profiles 테이블이 master — 실패 시 사용자 토스트 + abort.
+            const { error: profileErr } = await supabaseAuth.updateProfile(u.id, {
+              nickname: u.nickname,
+              avatar_url: avatarUrl,
+              ...bioPatch,
+            });
             if (profileErr) {
-              console.warn("[avatar] updateProfile failed:", profileErr);
+              console.warn("[profile] updateProfile failed:", profileErr);
               setToast(friendlyError(profileErr, "프로필 저장에 실패했어요. 다시 시도해주세요"));
               return;
             }
-            const { error: metaErr } = await supabaseAuth.updateUserMetadata({ nickname: u.nickname, avatar_url: avatarUrl });
-            if (metaErr) console.warn("[avatar] updateUserMetadata failed:", metaErr);
+            // 1.4.1: updateUserMetadata 가 silent fail 하면 새로고침 시 buildUserFromSession 이
+            // 옛 user_metadata 의 nickname 을 읽어 "기본값 복귀" 회귀가 발생. 따라서 명시적
+            // 사용자 알림 + cache 는 profiles 결과로 갱신해 hydrateProfile 이 source of truth.
+            const { error: metaErr } = await supabaseAuth.updateUserMetadata({
+              nickname: u.nickname,
+              avatar_url: avatarUrl,
+              ...bioPatch,
+            });
+            if (metaErr) {
+              console.warn("[profile] updateUserMetadata failed:", metaErr);
+              setToast("프로필이 저장됐지만 일부 동기화가 지연될 수 있어요");
+            }
           }
-          const updated = { ...u, avatar: avatarUrl };
-          profileCacheRef.current = { userId: u.id, avatar: avatarUrl };
+          const updatedBio = typeof u.bio === "string" ? u.bio : (user?.bio || "");
+          const updated = { ...u, avatar: avatarUrl, bio: updatedBio };
+          profileCacheRef.current = { userId: u.id, avatar: avatarUrl, nickname: u.nickname, bio: updatedBio };
           setUser(updated);
           setToast("프로필이 수정됐어요");
         }}

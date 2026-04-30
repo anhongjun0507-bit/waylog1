@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import { cls } from "../utils/ui.js";
 import { pushSupported, requestPushPermission, subscribePush } from "../utils/push.js";
+import { isNative } from "../utils/platform.js";
 import { useAppContext } from "../contexts/AppContext.js";
 
 const DISMISS_KEY = "waylog:banner:push-dismissed";
@@ -25,9 +26,11 @@ export const PushPermissionBanner = ({ user, dark }) => {
     if (!pushSupported()) return;
 
     // 웹은 Notification.permission 으로 직접 확인. 네이티브는 default 로 간주 (Capacitor 가 처리).
+    // 1.4.1: native WebView 에서 Notification global access 가 일부 디바이스에서 throw 가능.
+    // typeof check 만으로 부족할 수 있어 isNative() 로 명시 분기.
     let perm = "default";
-    if (typeof Notification !== "undefined") {
-      perm = Notification.permission; // "default" | "granted" | "denied"
+    if (!isNative() && typeof Notification !== "undefined") {
+      try { perm = Notification.permission; } catch { perm = "default"; }
     }
     if (perm === "granted") return; // 이미 허용 — banner 불필요
     setPermState(perm === "denied" ? "denied" : "default");

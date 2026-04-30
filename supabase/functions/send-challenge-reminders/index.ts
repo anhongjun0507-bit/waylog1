@@ -7,10 +7,13 @@
 //     → 각 활성 사용자에게 send-push 호출
 //
 // 배포: supabase functions deploy send-challenge-reminders
-//   (verify_jwt 기본 true. CRON_SECRET 헤더로 자체 인증)
+//   verify_jwt = false 필수 — 호출자가 사용자 JWT 없이 CRON_SECRET 헤더만 보내므로
+//   platform 단계에서 거부되지 않게 supabase/config.toml 의 [functions.send-challenge-reminders]
+//   에서 비활성화. 함수 본체에서 CRON_SECRET 으로 자체 인증.
+//   CLI 옵션 사용 시: supabase functions deploy send-challenge-reminders --no-verify-jwt
 //
 // 비밀 설정 (한 번만):
-//   supabase secrets set CRON_SECRET=<랜덤 문자열, Vercel 측과 동일 값>
+//   supabase secrets set CRON_SECRET=<랜덤 문자열, GitHub Actions secret 과 동일 값>
 //
 // 활성 사용자 정의:
 //   최근 7일 내 challenge_logs 에 row 가 있는 user_id (= 챌린지 진행 중)
@@ -44,6 +47,20 @@ function dateKeyDaysAgoKST(days: number): string {
   return kstNow.toISOString().slice(0, 10);
 }
 
+// 상수 시간 비교 — 비밀값 검증에 timing attack 방어용.
+// `===` 또는 `!==` 는 첫 불일치 바이트에서 즉시 종료하므로 응답 시간 차로 비밀값을
+// 한 바이트씩 추측할 수 있다. 길이 미스매치도 길이를 노출하지 않도록 max(la, lb) 길이로 순회.
+function constantTimeEqual(a: string, b: string): boolean {
+  const la = a.length;
+  const lb = b.length;
+  let diff = la ^ lb;
+  const len = la > lb ? la : lb;
+  for (let i = 0; i < len; i++) {
+    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  }
+  return diff === 0;
+}
+
 // @ts-ignore - Deno.serve 런타임 제공
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -54,16 +71,21 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // CRON_SECRET 인증 — Vercel Cron 측에서 동일 값을 Authorization Bearer 로 전달
-  const auth = req.headers.get("authorization") || "";
-  const expected = `Bearer ${Deno.env.get("CRON_SECRET") || ""}`;
-  if (!Deno.env.get("CRON_SECRET")) {
+  // CRON_SECRET 인증 — GitHub Actions cron 이 동일 값을 Authorization Bearer 로 전달.
+  // verify_jwt 비활성화돼 있으므로 이 검증이 유일한 인증 게이트.
+  // 비교는 timing attack 방어를 위해 constant-time.
+  const cronSecret = Deno.env.get("CRON_SECRET") || "";
+  if (!cronSecret) {
+    console.warn("[send-challenge-reminders] CRON_SECRET 미설정 — 호출 거부");
     return new Response(JSON.stringify({ error: "cron_secret_not_configured" }), {
       status: 500,
       headers: { ...CORS, "content-type": "application/json" },
     });
   }
-  if (auth !== expected) {
+  const auth = req.headers.get("authorization") || "";
+  const expected = `Bearer ${cronSecret}`;
+  if (!constantTimeEqual(auth, expected)) {
+    console.warn("[send-challenge-reminders] CRON_SECRET 불일치 — 401");
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { ...CORS, "content-type": "application/json" },

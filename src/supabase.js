@@ -100,40 +100,53 @@ export const supabase = isConfigured
 // Preferences 에서 옛 auth 키 + sb-*/supabase. 접두사 전부 삭제 (세션 복구 없음).
 // App.jsx 초기 로드 훅은 이 Promise 를 await 후 getSession() 호출 → 삭제 완료 보장.
 // 웹에서는 즉시 resolve — 웹 마이그레이션은 migrateLocalStorage() 에서 동기 완료.
+//
+// 1.4.1: Preferences plugin 의 keys()/remove() 가 일부 디바이스에서 첫 실행 시 매우
+// 느리거나 hang 가능 → App.jsx 의 `await migrationReady` 가 영구 hang → 첫 화면이
+// 빈 채 시스템 종료의 원인이 될 수 있음. 5초 timeout 으로 race 해 무한 대기 차단.
+// timeout 시 마이그레이션 플래그가 안 set 되므로 다음 실행에서 재시도 (안전).
+const NATIVE_MIGRATION_TIMEOUT_MS = 5000
 export const migrationReady = (async () => {
   if (!isNativeApp || !supabase) return
-  try {
-    const { Preferences } = await import('@capacitor/preferences')
-    const flagRes = await Preferences.get({ key: MIGRATION_FLAG })
-    if (flagRes.value === '1') return
-
-    // 명시적 옛 키 (접두사로 안 잡히는 것들)
-    const explicit = [
-      'waylog-auth-v2',
-      'waylog:user',
-      'waylog-direct-token',
-      'waylog:auth-ver',
-      'waylog:migrated-auth-v3',
-      'waylog:auth-migrated-to-prefs',
-    ]
-    for (const k of explicit) {
-      try { await Preferences.remove({ key: k }) } catch {}
-    }
-
-    // Preferences.keys() 로 나열해 sb-*/supabase. 접두사 일괄 삭제
+  const work = (async () => {
     try {
-      const { keys } = await Preferences.keys()
-      for (const k of (keys || [])) {
-        if (k.startsWith('sb-') || k.startsWith('supabase.')) {
-          try { await Preferences.remove({ key: k }) } catch {}
-        }
-      }
-    } catch {}
+      const { Preferences } = await import('@capacitor/preferences')
+      const flagRes = await Preferences.get({ key: MIGRATION_FLAG })
+      if (flagRes.value === '1') return
 
-    await Preferences.set({ key: MIGRATION_FLAG, value: '1' })
-  } catch (e) {
-    console.warn('native auth 마이그레이션 실패:', e)
-  }
+      // 명시적 옛 키 (접두사로 안 잡히는 것들)
+      const explicit = [
+        'waylog-auth-v2',
+        'waylog:user',
+        'waylog-direct-token',
+        'waylog:auth-ver',
+        'waylog:migrated-auth-v3',
+        'waylog:auth-migrated-to-prefs',
+      ]
+      for (const k of explicit) {
+        try { await Preferences.remove({ key: k }) } catch {}
+      }
+
+      // Preferences.keys() 로 나열해 sb-*/supabase. 접두사 일괄 삭제
+      try {
+        const { keys } = await Preferences.keys()
+        for (const k of (keys || [])) {
+          if (k.startsWith('sb-') || k.startsWith('supabase.')) {
+            try { await Preferences.remove({ key: k }) } catch {}
+          }
+        }
+      } catch {}
+
+      await Preferences.set({ key: MIGRATION_FLAG, value: '1' })
+    } catch (e) {
+      console.warn('native auth 마이그레이션 실패:', e)
+    }
+  })()
+  const timeout = new Promise((resolve) => setTimeout(() => {
+    console.warn('native auth 마이그레이션 timeout(5s) — 다음 실행에서 재시도')
+    resolve()
+  }, NATIVE_MIGRATION_TIMEOUT_MS))
+  await Promise.race([work, timeout])
 })()
 
 // 네이티브에서는 OAuth 리다이렉트 URL 로 이 값을 Supabase 로그인 옵션에 넘겨야 함

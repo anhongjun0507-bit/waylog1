@@ -32,9 +32,14 @@
     <!-- SW 자폭 — 1.0.x 잘못 등록된 Service Worker 정리. React 로드 전 실행. -->
     <!-- 주의: firebase-messaging-sw.js 는 보존해야 웹 백그라운드 푸시 가능 (audit P0-6). -->
     <!-- auth 세션 정리는 src/supabase.js 의 migrateLocalStorage() 가 담당. -->
+    <!-- 1.4.1: native(Capacitor) 에서 SW API 접근이 WebView 정책상 미정의 동작이라 조기 종료. -->
     <script>
     (function(){
       try {
+        // Capacitor 네이티브에서는 SW 정리 자체를 skip — WebView 의 SW API 호출이
+        // 일부 Android 버전에서 hang 또는 internal exception 을 일으킬 수 있음.
+        var cap = window.Capacitor;
+        if (cap && cap.isNativePlatform && cap.isNativePlatform()) return;
         if (navigator.serviceWorker) {
           navigator.serviceWorker.getRegistrations().then(function(regs){
             regs.forEach(function(r){
@@ -45,13 +50,13 @@
               if (url.indexOf('firebase-messaging-sw') !== -1) return;
               r.unregister();
             });
-          });
+          }).catch(function(){});  // unhandled rejection 차단
         }
         // caches 정리는 그대로 — firebase-messaging-sw 는 cache 를 사용하지 않음.
         if ('caches' in window) {
           caches.keys().then(function(ns){
             ns.forEach(function(n){ caches.delete(n); });
-          });
+          }).catch(function(){});
         }
       } catch(e) {}
     })();
