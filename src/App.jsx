@@ -5974,29 +5974,38 @@ function AppInner() {
   // 1.4.0 — 자동 권한 요청을 Onboarding 종료 시점으로 지연 (audit P1-26).
   // 1.3.0 까지는 첫 마운트 즉시 요청 → 사용자가 앱 가치 보기 전 거부율 ↑.
   // 이제 Onboarding(3-step) 완료 또는 "건너뛰기" 후 한 번만 요청.
-  // 기존 사용자(onboarded=true on first load) 는 이미 요청됐으면 auto-requested 가드로 skip.
-  // 비로그인 또는 웹 환경은 platform 가드로 skip.
+  //
+  // 1.4.3: 1.4.2 까지 `waylog:push:auto-requested` 가드가 한 번 set 되면 영구 skip 이라
+  // 사용자가 1.3.0 → 1.4.0 시도 중 권한 다이얼로그를 받지 못한 채 키만 set 되면
+  // 영영 권한 요청이 안 되는 회귀 → 가드 약화: 권한이 default 상태면 매번 재시도 가능,
+  // granted/denied 일 때만 영구 skip. 또한 결과를 사용자에게 토스트로 알려 silent skip 방지.
   useEffect(() => {
     if (!onboarded) return;
     (async () => {
       try {
         const platform = Capacitor.getPlatform?.();
         if (platform !== "android" && platform !== "ios") return;
-        if (localStorage.getItem("waylog:push:auto-requested")) return;
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const { receive } = await PushNotifications.checkPermissions();
+        // granted/denied 면 OS 가 이미 결정 완료 — 다이얼로그 다시 못 띄움. 영구 skip.
         if (receive === "granted" || receive === "denied") {
           localStorage.setItem("waylog:push:auto-requested", "1");
           return;
         }
-        await PushNotifications.requestPermissions();
+        // default 상태에서만 다이얼로그 발화. 결과를 사용자에게 알림.
+        const res = await PushNotifications.requestPermissions();
+        if (res?.receive === "granted") {
+          setToast("알림을 켰어요");
+        } else if (res?.receive === "denied") {
+          setToast("알림이 꺼져 있어요. 설정에서 다시 켜실 수 있어요");
+        }
         localStorage.setItem("waylog:push:auto-requested", "1");
       } catch (e) {
         console.warn("auto push permission failed", e);
       }
     })();
-  }, [onboarded]);
+  }, [onboarded, setToast]);
 
   const [selectedUser, setSelectedUser] = useState(null);
   // following: 내가 팔로우한 사용자들의 user_id (uuid) Set.

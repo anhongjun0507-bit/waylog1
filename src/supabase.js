@@ -720,9 +720,13 @@ export const storage = {
     const path = `${userId}/${Date.now()}-${fileName}`
     const contentType = file?.type || (fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg')
     try {
+      // 1.4.3: Capacitor WebView 에서 File 객체를 직접 storage.upload 에 넘기면
+      // 내부 fetch 의 multipart boundary 처리 차이로 storage 가 거부 → 웹은 정상,
+      // 앱만 실패하는 회귀. ArrayBuffer 로 명시 변환 + contentType 강제 지정.
+      const body = await fileToUploadBody(file)
       const { data, error } = await supabase.storage
         .from('review-media')
-        .upload(path, file, { cacheControl: '31536000', upsert: false, contentType })
+        .upload(path, body, { cacheControl: '31536000', upsert: false, contentType })
       if (error) return { url: null, error }
       const { data: urlData } = supabase.storage.from('review-media').getPublicUrl(data.path)
       return { url: urlData.publicUrl, error: null }
@@ -740,9 +744,12 @@ export const storage = {
     try {
       const ext = (file.type && file.type.split('/')[1]) || 'jpg'
       const path = `${userId}/avatar-${Date.now()}.${ext}`
+      const contentType = file?.type || `image/${ext}`
+      // 1.4.3: Capacitor WebView File → ArrayBuffer 변환 (위 uploadMedia 와 동일 사유).
+      const body = await fileToUploadBody(file)
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { cacheControl: '31536000', upsert: true })
+        .upload(path, body, { cacheControl: '31536000', upsert: true, contentType })
       if (error) return { url: null, error }
       const { data: urlData } = supabase.storage
         .from('avatars')
@@ -750,4 +757,15 @@ export const storage = {
       return { url: urlData.publicUrl, error: null }
     } catch (e) { return { url: null, error: e } }
   },
+}
+
+// 1.4.3: Capacitor WebView 가 File 을 fetch multipart 로 보낼 때 boundary 가 깨지는
+// 이슈 우회. arrayBuffer 가 가능하면 그걸 사용, 아니면 file 그대로 (웹 fallback).
+async function fileToUploadBody(file) {
+  try {
+    if (file && typeof file.arrayBuffer === 'function') {
+      return await file.arrayBuffer()
+    }
+  } catch {}
+  return file
 }
