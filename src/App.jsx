@@ -5971,16 +5971,13 @@ function AppInner() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboarded, setOnboarded] = useStoredState("waylog:onboarded", false);
 
-  // 1.4.0 — 자동 권한 요청을 Onboarding 종료 시점으로 지연 (audit P1-26).
-  // 1.3.0 까지는 첫 마운트 즉시 요청 → 사용자가 앱 가치 보기 전 거부율 ↑.
-  // 이제 Onboarding(3-step) 완료 또는 "건너뛰기" 후 한 번만 요청.
-  //
-  // 1.4.3: 1.4.2 까지 `waylog:push:auto-requested` 가드가 한 번 set 되면 영구 skip 이라
-  // 사용자가 1.3.0 → 1.4.0 시도 중 권한 다이얼로그를 받지 못한 채 키만 set 되면
-  // 영영 권한 요청이 안 되는 회귀 → 가드 약화: 권한이 default 상태면 매번 재시도 가능,
-  // granted/denied 일 때만 영구 skip. 또한 결과를 사용자에게 토스트로 알려 silent skip 방지.
+  // 1.4.4: 권한 요청 타이밍 재조정.
+  // 1.3.0: 첫 마운트 즉시 요청. 1.4.0(P1-26): onboarded 종료 후로 지연 → 신규 설치자가
+  // OS 다이얼로그 대신 앱 내 banner 만 보고 "왜 OS 다이얼로그 안 뜨냐" 회귀.
+  // 이제 user 로그인 직후 즉시 OS requestPermissions 호출 (Android 13+ POST_NOTIFICATIONS).
+  // 권한이 default 일 때만 다이얼로그 떠야 OS 가 발화 — granted/denied 는 즉시 그 결과 반환.
   useEffect(() => {
-    if (!onboarded) return;
+    if (!user?.id) return;
     (async () => {
       try {
         const platform = Capacitor.getPlatform?.();
@@ -5988,24 +5985,21 @@ function AppInner() {
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const { receive } = await PushNotifications.checkPermissions();
-        // granted/denied 면 OS 가 이미 결정 완료 — 다이얼로그 다시 못 띄움. 영구 skip.
-        if (receive === "granted" || receive === "denied") {
-          localStorage.setItem("waylog:push:auto-requested", "1");
-          return;
-        }
-        // default 상태에서만 다이얼로그 발화. 결과를 사용자에게 알림.
+        // granted/denied 면 OS 가 이미 결정 완료 — 다이얼로그 다시 못 띄움. skip.
+        if (receive === "granted" || receive === "denied") return;
+
+        // default 상태에서만 OS 다이얼로그 발화.
         const res = await PushNotifications.requestPermissions();
         if (res?.receive === "granted") {
           setToast("알림을 켰어요");
         } else if (res?.receive === "denied") {
           setToast("알림이 꺼져 있어요. 설정에서 다시 켜실 수 있어요");
         }
-        localStorage.setItem("waylog:push:auto-requested", "1");
       } catch (e) {
         console.warn("auto push permission failed", e);
       }
     })();
-  }, [onboarded, setToast]);
+  }, [user?.id, setToast]);
 
   const [selectedUser, setSelectedUser] = useState(null);
   // following: 내가 팔로우한 사용자들의 user_id (uuid) Set.
@@ -6050,10 +6044,16 @@ function AppInner() {
 
   // (targetUserId: uuid, targetNickname: string) — UUID 기반.
   // 시드 author 처럼 user_id 가 없으면 진입점에서 호출 자체를 차단해야 한다.
+  // 1.4.4: in-flight 가드 — 빠른 더블탭으로 같은 user 에 add/remove 호출이 race 하면
+  // server 가 unique constraint violation 으로 실패 → state corruption 가능. 진행 중
+  // toggle 이 있으면 무시. 또한 server 실패 시 fetchMine 으로 server 와 sync 복구.
+  const followInFlightRef = useRef(new Set());
   const toggleFollow = useCallback(async (targetUserId, targetNickname = "") => {
     if (!user) { setAuthOpen(true); setToast("로그인이 필요해요"); return; }
     if (!targetUserId) { setToast("이 사용자는 팔로우할 수 없어요"); return; }
     if (targetUserId === user.id) { setToast("자기 자신은 팔로우할 수 없어요"); return; }
+    if (followInFlightRef.current.has(targetUserId)) return; // 진행 중 무시
+    followInFlightRef.current.add(targetUserId);
     const wasFollowing = following.has(targetUserId);
     // optimistic update — 실패 시 rollback
     setFollowingArr((prev) => wasFollowing
@@ -6064,14 +6064,20 @@ function AppInner() {
         ? await supabaseFollows.remove(user.id, targetUserId)
         : await supabaseFollows.add(user.id, targetUserId);
       if (error) {
-        // rollback
+        // rollback + server 와 sync — race 후 일관성 회복
         setFollowingArr((prev) => wasFollowing
           ? [...prev, targetUserId]
           : prev.filter((id) => id !== targetUserId));
+        try {
+          const { data } = await supabaseFollows.fetchMine(user.id);
+          if (Array.isArray(data)) setFollowingArr(data);
+        } catch {}
         setToast(wasFollowing ? "팔로우 취소에 실패했어요" : "팔로우에 실패했어요");
+        followInFlightRef.current.delete(targetUserId);
         return;
       }
     }
+    followInFlightRef.current.delete(targetUserId);
     // 새 팔로우만 알림 (취소는 안 보냄). 자기 자신은 위에서 이미 return 처리.
     if (!wasFollowing) {
       sendPushNotification(
@@ -7780,6 +7786,19 @@ function AppInner() {
           const updated = { ...u, avatar: avatarUrl, bio: updatedBio };
           profileCacheRef.current = { userId: u.id, avatar: avatarUrl, nickname: u.nickname, bio: updatedBio };
           setUser(updated);
+          // 1.4.4: 본인 reviews/community 카드의 author 정보를 즉시 patch.
+          // 이전엔 user.avatar 만 갱신되고 reviews 의 authorAvatar 는 enrichWithProfiles
+          // 의 옛 cache 그대로라, 다른 화면 가서 본인 카드 보면 옛 아바타 표시.
+          setUserReviews((prev) => prev.map((r) =>
+            r.authorId === u.id
+              ? { ...r, author: u.nickname, authorAvatar: avatarUrl }
+              : r
+          ));
+          setCommunity((prev) => prev.map((p) =>
+            p.authorId === u.id
+              ? { ...p, author: u.nickname, avatar: avatarUrl }
+              : p
+          ));
           setToast("프로필이 수정됐어요");
         }}
         onOpenSettings={() => { setProfileOpen(false); setTimeout(() => setSettingsOpen(true), 100); }}
