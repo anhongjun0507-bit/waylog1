@@ -15,8 +15,8 @@ android {
         applicationId "com.waylog.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 18
-        versionName "1.4.1"
+        versionCode 19
+        versionName "1.4.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -40,8 +40,14 @@ android {
             signingConfig keystoreFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
+            // 1.4.2: minify/shrink OFF — 1.4.0 P1-20 (PushNotifications.addListener
+            // "pushNotificationActionPerformed") 추가 후 release 빌드에서 reflection
+            // 으로 호출되는 plugin 메서드가 R8 strip 대상이 되어 첫 실행 시 native crash
+            // ("계속 중단" 다이얼로그) 발생. proguard-rules.pro 에 Capacitor/Firebase
+            // 보호 규칙 추가했으나 검증 전엔 안전을 위해 strip 자체를 끔.
+            // 다음 사이클(1.5.0)에서 rules 동작 검증 후 다시 켜는 것 검토.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
