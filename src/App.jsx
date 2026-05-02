@@ -213,7 +213,7 @@ const extractJsonBlock = (text) => {
   return match ? match[0] : null;
 };
 
-const aiMealAnalysis = async (mealType, photoDataUrl) => {
+const aiMealAnalysis = async (mealType, photoDataUrl, foodName = null) => {
   const mealLabel = { breakfast: "아침", lunch: "점심", dinner: "저녁" }[mealType] || "식사";
 
   // 1) 사진이 있으면 Vision 분석 시도
@@ -234,7 +234,37 @@ JSON만 출력하세요 (코드블록/설명 없이): {"name":"음식 이름","c
     } catch {} // timeout 등 — 텍스트 폴백으로 진행
   }
 
-  // 2) Vision 실패 → 텍스트 기반 추정 폴백
+  // 2) 사용자가 음식 이름을 직접 입력한 경우 — 그 이름으로 영양 정보 추정
+  // 사진 분석과 동일한 결과 모양을 반환해 UI 분기 최소화.
+  if (foodName && foodName.trim()) {
+    const trimmed = foodName.trim();
+    let text = null;
+    try {
+      text = await callClaude(
+        `"${trimmed}" 한 인분의 영양 정보를 추정해주세요. JSON만 응답 (코드블록/설명 없이): {"name":"음식 이름","cal":칼로리숫자,"protein":단백질g,"carb":탄수화물g,"fat":지방g}`,
+        200
+      );
+    } catch {}
+    const block = extractJsonBlock(text);
+    if (block) {
+      try {
+        const parsed = JSON.parse(block);
+        return {
+          name: parsed.name || trimmed,
+          cal: parsed.cal ?? 0,
+          protein: parsed.protein ?? 0,
+          carb: parsed.carb ?? 0,
+          fat: parsed.fat ?? 0,
+          isFallback: false,
+          source: "input",
+        };
+      } catch {}
+    }
+    // AI 실패해도 입력한 이름은 유지 — 사용자가 영양값만 직접 채울 수 있게.
+    return { name: trimmed, cal: 0, protein: 0, carb: 0, fat: 0, isFallback: true, source: "input" };
+  }
+
+  // 3) 사진/이름 모두 없음 → 일반 텍스트 추정 (기존 폴백 경로 유지)
   let text = null;
   try {
     text = await callClaude(
@@ -248,7 +278,7 @@ JSON만 출력하세요 (코드블록/설명 없이): {"name":"음식 이름","c
     catch {}
   }
 
-  // 3) 모두 실패 → 고정 폴백
+  // 4) 모두 실패 → 고정 폴백
   const options = fallbackMeals[mealType] || fallbackMeals.lunch;
   return { ...options[Math.floor(Math.random() * options.length)], isFallback: true, source: "stub" };
 };
@@ -3926,8 +3956,33 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
   const [editFat, setEditFat] = useState("");
   const [reanalyzing, setReanalyzing] = useState(false);
   const reanalyzeTimer = useRef(null);
+  // 사진 없이 음식 이름만으로 분석하고 싶을 때 입력값.
+  const [textInput, setTextInput] = useState("");
 
   const mealLabels = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
+
+  const applyAnalysisResult = (ai) => {
+    setResult(ai);
+    setEditName(ai.name);
+    setEditCal(String(ai.cal));
+    setEditProtein(String(ai.protein));
+    setEditCarb(String(ai.carb));
+    setEditFat(String(ai.fat));
+  };
+
+  // 음식 이름 입력 → AI 영양 추정. 사진 없이 진입하는 경로.
+  // AI 가 실패해도 aiMealAnalysis 가 입력 이름을 유지한 채 isFallback 결과를 돌려줘
+  // 사용자는 그대로 칼로리/단백질만 수동으로 채워넣을 수 있다.
+  const handleTextSubmit = async () => {
+    const name = textInput.trim();
+    if (!name || analyzing) return;
+    setAnalyzing(true);
+    const ai = await aiMealAnalysis(mealType, null, name);
+    applyAnalysisResult(ai);
+    setAnalyzing(false);
+    // AI 가 0/0/0 으로 폴백한 경우엔 사용자가 바로 수정할 수 있게 편집 모드 진입.
+    if (ai.isFallback) setEditMode(true);
+  };
 
   // 이름 변경 시 디바운스 후 AI 재분석
   const handleNameChange = (newName) => {
@@ -3975,12 +4030,7 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
         // photo 세팅 완료 후 Vision 분석 시작
         setAnalyzing(true);
         aiMealAnalysis(mealType, dataUrl).then((ai) => {
-          setResult(ai);
-          setEditName(ai.name);
-          setEditCal(String(ai.cal));
-          setEditProtein(String(ai.protein));
-          setEditCarb(String(ai.carb));
-          setEditFat(String(ai.fat));
+          applyAnalysisResult(ai);
           setAnalyzing(false);
         });
       };
@@ -4010,17 +4060,40 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
           {mealLabels[mealType] || "식사"} 기록
         </h3>
         <p className={cls("text-xs mb-4", dark ? "text-gray-400" : "text-gray-500")}>
-          사진을 올리면 AI가 음식과 영양 정보를 자동으로 분석해요
+          사진을 올리거나 음식 이름을 입력하면 AI가 영양 정보를 자동으로 분석해요
         </p>
 
-        {!photo && !analyzing && (
-          <label className={cls("flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border-2 border-dashed cursor-pointer transition active:scale-[0.98]",
-            dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-brand-200 bg-brand-50/50 text-gray-500")}>
-            <Camera size={36} className="text-brand-500"/>
-            <span className="text-sm font-bold">식단 사진 촬영 / 선택</span>
-            <span className="text-xs opacity-70">사진을 올리면 AI가 자동 분석해요</span>
-            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto}/>
-          </label>
+        {!photo && !analyzing && !result && (
+          <div className="space-y-3">
+            <label className={cls("flex flex-col items-center justify-center gap-3 py-10 rounded-2xl border-2 border-dashed cursor-pointer transition active:scale-[0.98]",
+              dark ? "border-gray-700 bg-gray-800/50 text-gray-400" : "border-brand-200 bg-brand-50/50 text-gray-500")}>
+              <Camera size={36} className="text-brand-500"/>
+              <span className="text-sm font-bold">식단 사진 촬영 / 선택</span>
+              <span className="text-xs opacity-70">사진을 올리면 AI가 자동 분석해요</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhoto}/>
+            </label>
+
+            <div className="flex items-center gap-3">
+              <div className={cls("flex-1 h-px", dark ? "bg-gray-700" : "bg-gray-200")}/>
+              <span className={cls("text-xs font-bold", dark ? "text-gray-500" : "text-gray-400")}>또는</span>
+              <div className={cls("flex-1 h-px", dark ? "bg-gray-700" : "bg-gray-200")}/>
+            </div>
+
+            <div className="flex gap-2">
+              <input value={textInput} onChange={(e) => setTextInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleTextSubmit(); }}
+                placeholder="예: 김치찌개, 닭가슴살 샐러드"
+                className={cls("flex-1 min-w-0 px-3.5 py-3 rounded-2xl text-sm font-medium outline-none",
+                  dark ? "bg-gray-800 text-white placeholder-gray-500" : "bg-gray-50 text-gray-900 placeholder-gray-400")}/>
+              <button onClick={handleTextSubmit} disabled={!textInput.trim()}
+                className={cls("px-4 py-3 rounded-2xl text-sm font-black transition active:scale-95 shrink-0",
+                  textInput.trim()
+                    ? "bg-brand-500 text-white shadow"
+                    : dark ? "bg-gray-800 text-gray-600" : "bg-gray-100 text-gray-400")}>
+                분석
+              </button>
+            </div>
+          </div>
         )}
 
         {analyzing && (
@@ -4047,10 +4120,17 @@ const MealUploadModal = ({ mealType, onClose, onSave, dark }) => {
                     {editMode ? "직접 수정" : "AI 분석 결과"}
                   </p>
                   {result.isFallback && !editMode && (
-                    <p className={cls("text-xs mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>AI 분석 실패 — 추천 식단으로 대체했어요. 직접 수정해주세요</p>
+                    <p className={cls("text-xs mt-0.5", dark ? "text-amber-400" : "text-amber-600")}>
+                      {result.source === "input"
+                        ? "AI가 영양 정보를 가져오지 못했어요. 직접 입력해주세요"
+                        : "AI 분석 실패 — 추천 식단으로 대체했어요. 직접 수정해주세요"}
+                    </p>
                   )}
                   {result.source === "vision" && !editMode && (
                     <p className={cls("text-xs mt-0.5", dark ? "text-brand-300" : "text-brand-600")}>사진 분석 결과예요. 맞지 않으면 수정해주세요</p>
+                  )}
+                  {result.source === "input" && !result.isFallback && !editMode && (
+                    <p className={cls("text-xs mt-0.5", dark ? "text-brand-300" : "text-brand-600")}>입력하신 음식 이름으로 추정한 결과예요. 맞지 않으면 수정해주세요</p>
                   )}
                 </div>
                 <button onClick={() => setEditMode(!editMode)}

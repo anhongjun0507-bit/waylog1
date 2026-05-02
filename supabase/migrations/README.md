@@ -53,6 +53,8 @@ supabase db push
 | `20260421_community_anon_merge.sql` | 1.1.x | 챌린지 익명 커뮤니티 통합 |
 | `20260427_notif_prefs.sql` | 1.2.0 | 알림 종류별 토글 + 발송 일원화 |
 | `20260428_user_ai_quota.sql` | 1.4.0 | claude Edge Function 사용자별 일일 AI 쿼터 |
+| `20260430_update_my_profile_rpc.sql` | 1.4.5 | profiles 저장 SECURITY DEFINER RPC (PostgREST upsert silent fail 우회) |
+| `20260502_profiles_updated_at_and_avatar_backfill.sql` | 1.4.5 hotfix | profiles.updated_at 컬럼 보강 + 누락된 avatar_url backfill |
 
 ## 새 마이그레이션 추가 절차
 

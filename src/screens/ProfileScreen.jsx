@@ -23,7 +23,13 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
     reader.readAsDataURL(file);
   };
 
-  const moodCount = Object.values(moods).filter(Boolean).length;
+  // 게시물/저장됨/무드 카운트는 본인 시점 + 현재 존재하는 리뷰 기준으로 산정.
+  // userReviews 는 전체 피드 (본인 + 타인) 라 그대로 길이 쓰면 다른 사용자 글까지 합산됨.
+  // moods 는 localStorage 영속이라 삭제된 리뷰의 무드가 남아있어 stale count 발생.
+  const myReviews = userReviews.filter((r) => r.authorId === user.id || r.author === user.nickname);
+  const existingReviewIds = new Set(userReviews.map((r) => String(r.id)));
+  const moodCount = Object.entries(moods).filter(([id, v]) => v && existingReviewIds.has(String(id))).length;
+  const savedCount = userReviews.filter((r) => favs.has(r.id)).length;
   const totalCats = Object.values(taste.cats).reduce((a,b) => a+b, 0);
 
   const save = async () => {
@@ -81,11 +87,11 @@ const ProfileScreen = ({ user, onClose, onLogout, onUpdateProfile, onOpenSetting
 
         <div className={cls("grid grid-cols-3 gap-0 mt-6 border-y py-4", dark ? "border-[#262626]" : "border-[#dbdbdb]")}>
           <div className="text-center">
-            <p className={cls("text-[18px] font-bold tabular-nums", dark ? "text-white" : "text-black")}>{userReviews.length}</p>
+            <p className={cls("text-[18px] font-bold tabular-nums", dark ? "text-white" : "text-black")}>{myReviews.length}</p>
             <p className={cls("text-[13px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>게시물</p>
           </div>
           <div className="text-center">
-            <p className={cls("text-[18px] font-bold tabular-nums", dark ? "text-white" : "text-black")}>{favs.size}</p>
+            <p className={cls("text-[18px] font-bold tabular-nums", dark ? "text-white" : "text-black")}>{savedCount}</p>
             <p className={cls("text-[13px] mt-0.5", dark ? "text-[#a8a8a8]" : "text-[#737373]")}>저장됨</p>
           </div>
           <div className="text-center">
